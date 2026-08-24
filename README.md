@@ -46,10 +46,14 @@ ordinary control flow instead of being flattened into a per-request state machin
 
 ## Install
 
+Not on PyPI yet — install from the repository:
+
 ```bash
-pip install qbwc-kit            # core: standard library only
-pip install 'qbwc-kit[server]'  # adds the FastAPI adapter
+pip install git+https://github.com/meister5/qbwc-kit                    # core: standard library only
+pip install 'qbwc-kit[server] @ git+https://github.com/meister5/qbwc-kit'  # adds the FastAPI adapter
 ```
+
+Or clone it and `pip install -e '.[dev]'` to run the tests.
 
 The core — SOAP, qbXML, sessions, the WSDL generator — has no dependencies outside the
 standard library. FastAPI is only needed if you use `qbwc_kit.server`; the service itself is

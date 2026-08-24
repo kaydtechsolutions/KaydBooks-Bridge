@@ -20,7 +20,7 @@ try:
     from fastapi import FastAPI, Request, Response
 except ModuleNotFoundError as exc:  # pragma: no cover - exercised by install shape, not tests
     raise ModuleNotFoundError(
-        "qbwc_kit.server needs FastAPI. Install it with: pip install 'qbwc-kit[server]'"
+        "qbwc_kit.server needs FastAPI. Install it with: pip install fastapi"
     ) from exc
 
 #: QBWC sends this exact content type and expects it back.

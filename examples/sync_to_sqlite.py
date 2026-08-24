@@ -2,7 +2,7 @@
 
 Run it:
 
-    pip install 'qbwc-kit[server]' uvicorn
+    pip install 'qbwc-kit[server] @ git+https://github.com/meister5/qbwc-kit' uvicorn
     python examples/sync_to_sqlite.py
 
 Then point the Web Connector at it by importing the ``.qwc`` file printed on
