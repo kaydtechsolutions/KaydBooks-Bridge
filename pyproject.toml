@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qbwc-kit"
+version = "0.1.0"
+description = "Talk to QuickBooks Desktop over the Web Connector: SOAP callbacks, qbXML, and test doubles."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Eren Altuntas" }]
+keywords = ["quickbooks", "qbxml", "web-connector", "qbwc", "soap", "accounting", "erp"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial :: Accounting",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = []
+
+[project.optional-dependencies]
+server = ["fastapi>=0.100"]
+dev = ["pytest>=7", "fastapi>=0.100", "httpx>=0.24", "ruff>=0.4"]
+
+[project.urls]
+Homepage = "https://github.com/meister5/qbwc-kit"
+Issues = "https://github.com/meister5/qbwc-kit/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests", "examples"]
+# Code blocks in the README are hand-aligned for reading; recent ruff versions
+# format markdown too, and that alignment is not worth a red CI badge.
+extend-exclude = ["*.md"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E402"]
