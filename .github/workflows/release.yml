@@ -1,0 +1,28 @@
+# Publishes to PyPI when a v* tag is pushed.
+#
+# One-time setup before the first tag, on https://pypi.org/manage/account/publishing/:
+# add a pending trusted publisher for this project name, owner "meister5", this
+# repository, workflow "release.yml", and leave the environment field blank.
+# Trusted publishing uses a short-lived OIDC token, so there is no API key to
+# store in the repository and nothing to rotate.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # required for trusted publishing
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install build twine
+      - run: python -m build
+      - run: twine check dist/*
+      - uses: pypa/gh-action-pypi-publish@release/v1
