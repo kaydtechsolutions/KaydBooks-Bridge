@@ -1,6 +1,7 @@
 # qbwc-kit
 
 [![CI](https://github.com/meister5/qbwc-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/meister5/qbwc-kit/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/qbwc-kit?style=flat-square)](https://pypi.org/project/qbwc-kit/)
 [![Python](https://img.shields.io/badge/python-3.10%20%E2%80%93%203.13-blue)](pyproject.toml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -46,11 +47,11 @@ ordinary control flow instead of being flattened into a per-request state machin
 
 ## Install
 
-Not on PyPI yet — install from the repository:
+On PyPI — install from there:
 
 ```bash
-pip install git+https://github.com/meister5/qbwc-kit                    # core: standard library only
-pip install 'qbwc-kit[server] @ git+https://github.com/meister5/qbwc-kit'  # adds the FastAPI adapter
+pip install qbwc-kit                    # core: standard library only
+pip install 'qbwc-kit[server]'          # adds the FastAPI adapter
 ```
 
 Or clone it and `pip install -e '.[dev]'` to run the tests.
