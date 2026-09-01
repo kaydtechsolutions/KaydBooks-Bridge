@@ -11,8 +11,8 @@ to QuickBooks over COM, and posts the response back.
 
 Before you can read a single invoice you have to implement eight SOAP callbacks, serve a
 WSDL, keep a ticket-based session alive across many HTTP round trips, and hand-build XML that
-QuickBooks rejects with unhelpful errors when the element order is wrong. This library is all
-of that, leaving you to write only the part specific to your data.
+QuickBooks rejects with unhelpful errors when the element order is wrong. I wrote all of that,
+so the only part left is the one specific to your data.
 
 ```python
 from qbwc_kit import QBWCService, StaticAuthenticator, qbxml
@@ -41,8 +41,8 @@ service = QBWCService(
 app = create_app(service, endpoint_url="https://books.example.com/qbwc")
 ```
 
-The `while` loop is what the library exists for. Each `yield` suspends the task until the Web
-Connector comes back with the response, so pagination, conditional writes, and read-then-write jobs stay in
+The `while` loop is why I wrote this. Each `yield` suspends the task until the Web Connector
+comes back with the response, so pagination, conditional writes, and read-then-write jobs stay in
 ordinary control flow instead of being flattened into a per-request state machine.
 
 ## Install
@@ -65,7 +65,7 @@ library. FastAPI is only needed if you use `qbwc_kit.server`. The service itself
 Exercising a Web Connector integration normally requires a Windows box, a QuickBooks Desktop
 install, an open company file, and a human clicking *Update Selected*. The failure modes that
 matter (a task that never terminates, an iterator that loops forever, a non-zero status nobody
-checked) are therefore the ones you tend to find in production.
+checked) are the ones I kept only finding in production.
 
 `qbwc_kit.testing` replaces both ends:
 
@@ -82,13 +82,13 @@ assert result.progress[-1] == 100
 assert quickbooks.seen[0].count("iterator=\"Start\"") == 1
 ```
 
-`FakeWebConnector` replays the real call sequence (`clientVersion`, `authenticate`, the
+My `FakeWebConnector` replays the real call sequence (`clientVersion`, `authenticate`, the
 `sendRequestXML`/`receiveResponseXML` loop, `closeConnection`) and raises if the session
 doesn't terminate, which catches runaway iterators in milliseconds instead of in the
 connector's log. `FakeQuickBooks` answers qbXML the way QuickBooks does: paged iterators,
 `MaxReturned`, status 1 for an empty result, status 3100 for an unsupported request.
 
-## Things that catch people out
+## Things that caught me out
 
 **Status codes ride on successful envelopes.** A request QuickBooks refused (status 3100,
 "not available in this edition") comes back as a perfectly well-formed response document with
@@ -107,15 +107,15 @@ the last read, and a stale one is rejected rather than silently clobbering anoth
 edit. `qbxml.mod()` requires it as a keyword argument for that reason.
 
 **Iterators only exist on some entities.** Asking for one on an entity that doesn't support it
-is an opaque parse error from QuickBooks, so `qbwc-kit` raises at build time instead.
+is an opaque parse error from QuickBooks, so I raise at build time instead.
 
 **Returning 100 ends the session.** `receiveResponseXML` returns percent complete, and a
 progress calculation that rounds up too early silently truncates the sync. `Session.progress()`
 caps at 99 until the work is genuinely done.
 
 **An unknown ticket is normal.** Restart the server mid-update and the next callback arrives
-with a ticket that no longer exists. Faulting makes the Web Connector retry forever; this
-service tells it the session is over instead.
+with a ticket that no longer exists. Faulting makes the Web Connector retry forever, so I tell it
+the session is over instead.
 
 ## Layout
 
