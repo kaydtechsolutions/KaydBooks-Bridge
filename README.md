@@ -9,10 +9,10 @@ QuickBooks Desktop has no HTTP API. The only supported way in is the **Web Conne
 Windows service that polls *your* SOAP endpoint on a schedule, asks it for qbXML, hands that
 to QuickBooks over COM, and posts the response back.
 
-So before you can read a single invoice you have to implement eight SOAP callbacks, serve a
+Before you can read a single invoice you have to implement eight SOAP callbacks, serve a
 WSDL, keep a ticket-based session alive across many HTTP round trips, and hand-build XML that
 QuickBooks rejects with unhelpful errors when the element order is wrong. This library is all
-of that, so the only thing left to write is the part that is actually about your data.
+of that, leaving you to write only the part specific to your data.
 
 ```python
 from qbwc_kit import QBWCService, StaticAuthenticator, qbxml
@@ -41,13 +41,13 @@ service = QBWCService(
 app = create_app(service, endpoint_url="https://books.example.com/qbwc")
 ```
 
-That `while` loop is the point. Each `yield` suspends the task until the Web Connector comes
-back with the response, so pagination, conditional writes, and read-then-write jobs stay in
+The `while` loop is what the library exists for. Each `yield` suspends the task until the Web
+Connector comes back with the response, so pagination, conditional writes, and read-then-write jobs stay in
 ordinary control flow instead of being flattened into a per-request state machine.
 
 ## Install
 
-On PyPI — install from there:
+It is on PyPI:
 
 ```bash
 pip install qbwc-kit                    # core: standard library only
@@ -56,18 +56,16 @@ pip install 'qbwc-kit[server]'          # adds the FastAPI adapter
 
 Or clone it and `pip install -e '.[dev]'` to run the tests.
 
-The core — SOAP, qbXML, sessions, the WSDL generator — has no dependencies outside the
-standard library. FastAPI is only needed if you use `qbwc_kit.server`; the service itself is
-just `dispatch(soap_body) -> soap_body`, so it drops into Flask, Django, or bare WSGI without
-this package caring.
+The core (SOAP, qbXML, sessions, the WSDL generator) has no dependencies outside the standard
+library. FastAPI is only needed if you use `qbwc_kit.server`. The service itself is just
+`dispatch(soap_body) -> soap_body`, so it drops into Flask, Django or bare WSGI unchanged.
 
 ## Testing without QuickBooks
 
-The awkward part of a Web Connector integration is that exercising it normally requires a
-Windows box, a QuickBooks Desktop install, an open company file, and a human clicking *Update
-Selected*. Which means the failure modes that matter — a task that never terminates, an
-iterator that loops forever, a non-zero status nobody checked — are exactly the ones you only
-find in production.
+Exercising a Web Connector integration normally requires a Windows box, a QuickBooks Desktop
+install, an open company file, and a human clicking *Update Selected*. The failure modes that
+matter (a task that never terminates, an iterator that loops forever, a non-zero status nobody
+checked) are therefore the ones you tend to find in production.
 
 `qbwc_kit.testing` replaces both ends:
 
@@ -84,13 +82,13 @@ assert result.progress[-1] == 100
 assert quickbooks.seen[0].count("iterator=\"Start\"") == 1
 ```
 
-`FakeWebConnector` replays the real call sequence — `clientVersion`, `authenticate`, the
-`sendRequestXML`/`receiveResponseXML` loop, `closeConnection` — and raises if the session
+`FakeWebConnector` replays the real call sequence (`clientVersion`, `authenticate`, the
+`sendRequestXML`/`receiveResponseXML` loop, `closeConnection`) and raises if the session
 doesn't terminate, which catches runaway iterators in milliseconds instead of in the
 connector's log. `FakeQuickBooks` answers qbXML the way QuickBooks does: paged iterators,
 `MaxReturned`, status 1 for an empty result, status 3100 for an unsupported request.
 
-## The parts that bite
+## Things that catch people out
 
 **Status codes ride on successful envelopes.** A request QuickBooks refused (status 3100,
 "not available in this edition") comes back as a perfectly well-formed response document with
@@ -101,8 +99,8 @@ distinguishes "nothing found" (status 1, genuinely fine) from "never ran", and
 `raise_for_status()` is one call away.
 
 **Element order is part of the schema.** qbXML is a sequence, not a bag. `MaxReturned` before
-the filters, `EditSequence` before the fields being changed. The builders emit the right order
-so you pass a dict and stop thinking about it.
+the filters, `EditSequence` before the fields being changed. The builders emit the right order,
+so you pass a dict and do not have to track it.
 
 **Writes use optimistic concurrency.** Every `Mod` request must carry the `EditSequence` from
 the last read, and a stale one is rejected rather than silently clobbering another user's
@@ -123,7 +121,7 @@ service tells it the session is over instead.
 
 | Module | What it does |
 | --- | --- |
-| `qbwc_kit.soap` | The small SOAP 1.1 slice QBWC actually uses — parse a call, build a response or fault |
+| `qbwc_kit.soap` | The small SOAP 1.1 slice QBWC actually uses: parse a call, build a response or fault |
 | `qbwc_kit.qbxml` | Request builders (`query`, `add`, `mod`) and a status-aware response parser |
 | `qbwc_kit.session` | Generator-based tasks, the request/response loop, ticket store with TTL |
 | `qbwc_kit.service` | The eight callbacks, framework-agnostic |
@@ -142,9 +140,9 @@ python examples/sync_to_sqlite.py --write-qwc mirror.qwc   # generate the connec
 python examples/sync_to_sqlite.py --url https://books.example.com/qbwc
 ```
 
-Two details in there are worth stealing. The watermark only advances after every page has been
+Two details in it are worth copying. The watermark only advances after every page has been
 written, so an interrupted run repeats work instead of skipping it. And it is rewound by a
-minute, because QuickBooks stamps `TimeModified` from the workstation clock — a record saved
+minute, because QuickBooks stamps `TimeModified` from the workstation clock, so a record saved
 during the sync can otherwise land just behind the watermark and never be picked up again.
 
 The example is covered by the test suite, so it can't drift from the library.
@@ -157,13 +155,13 @@ The example is covered by the test suite, so it can't drift from the library.
 - `OwnerID` and `FileID` in the `.qwc` file identify your integration to QuickBooks.
   Generate them once and keep them; changing them forces every user to re-authorise.
 - The connector authenticates with a password stored in Windows' credential store. Treat the
-  `authenticate` callback as a real auth boundary — `StaticAuthenticator` compares with
+  `authenticate` callback as a real auth boundary. `StaticAuthenticator` compares with
   `secrets.compare_digest`, and anything you write should too.
 
 ## Scope
 
 Read and write access to list and transaction entities through qbXML, which is what the Web
-Connector exposes. Not covered: QuickBooks Online (that has a real REST API — use it),
+Connector exposes. Not covered: QuickBooks Online (which has a REST API of its own),
 qbposXML for Point of Sale, and the direct COM `QBFC` interface, which needs code running on
 the same Windows machine as QuickBooks.
 
