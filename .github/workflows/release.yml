@@ -1,22 +1,21 @@
-# Publishes to PyPI when a v* tag is pushed.
+# Publishes to PyPI and creates the GitHub Release when a v* tag is pushed.
 #
-# One-time setup before the first tag, on https://pypi.org/manage/account/publishing/:
-# add a pending trusted publisher for this project name, owner "meister5", this
-# repository, workflow "release.yml", and leave the environment field blank.
-# Trusted publishing uses a short-lived OIDC token, so there is no API key to
-# store in the repository and nothing to rotate.
+# PyPI auth: project-scoped API token stored in the PYPI_TOKEN repo secret
+# (set via `gh secret set PYPI_TOKEN`). Token lives locally at
+# ~/.config/pypi/tokens/qbwc-kit.token.
 
 name: Release
 
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch: # manual re-run
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write   # required for trusted publishing
+      contents: write # create the GitHub Release
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -25,4 +24,12 @@ jobs:
       - run: pip install build twine
       - run: python -m build
       - run: twine check dist/*
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Publish to PyPI
+        env:
+          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: twine upload -u __token__ -p "$PYPI_TOKEN" dist/*
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
