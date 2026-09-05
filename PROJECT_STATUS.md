@@ -93,6 +93,9 @@ Updated: 2026-09-05. Live posting: DISABLED. Real integration tests: NONE.
   bindings, documented country/version minimums and immutable SQLite evidence. Full local
   suite, Ruff lint/format, wheel/source build and Twine metadata checks pass. The artifacts
   contain the new module and discovery documentation. No QuickBooks process was involved.
+- [QBWC discovery CI run 33990832056](https://github.com/kaydtechsolutions/KaydBooks-Bridge/actions/runs/33990832056)
+  passed lint/build and all eight Windows/Linux Python 3.10–3.13 jobs at feature commit
+  `da4bab2d179cf1d5f6a2efd21304979996d3c226`.
 
 ## Blockers and next actions
 
