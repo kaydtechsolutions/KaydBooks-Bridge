@@ -27,10 +27,16 @@ class Store:
     def __init__(self, root: Path, company: str):
         self.company = identifier(company)
         root = outside_repository(root)
-        folder = (root / company).resolve()
+        # Windows can canonicalize a missing path differently from the same path
+        # once another worker has created it (junctions/short names). Materialize
+        # directories first, then compare both existing canonical paths.
+        root.mkdir(parents=True, exist_ok=True)
+        root = outside_repository(root)
+        folder = root / company
+        folder.mkdir(parents=True, exist_ok=True)
+        folder = folder.resolve()
         if not folder.is_relative_to(root):
             raise BridgeError("company state path escapes private root")
-        folder.mkdir(parents=True, exist_ok=True)
         self.path = folder / "jobs.sqlite3"
         if self.path.is_symlink():
             raise BridgeError("company database must not be a symbolic link")

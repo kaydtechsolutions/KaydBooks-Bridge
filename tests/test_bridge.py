@@ -420,3 +420,16 @@ def test_rejected_requests_are_audited_without_untrusted_content(setup):
     assert audit["valid"]
     assert audit["events"][0]["event"] == "request_rejected"
     assert "sensitive untrusted input" not in json.dumps(audit)
+
+
+def test_company_directory_symlink_cannot_escape_private_root(tmp_path):
+    root, outside = tmp_path / "state", tmp_path / "other-company"
+    root.mkdir()
+    outside.mkdir()
+    try:
+        (root / "company-a").symlink_to(outside, target_is_directory=True)
+    except OSError:
+        pytest.skip("OS does not permit symlink creation for this test principal")
+    with pytest.raises(BridgeError, match="escapes private root"):
+        Store(root, "company-a")
+    assert not list(outside.iterdir())

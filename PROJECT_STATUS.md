@@ -43,7 +43,7 @@ Updated: 2026-09-05. Live posting: DISABLED. Real integration tests: NONE.
   recovery and read-only reconciliation. No retry override or live transport exists.
 - Shared service-boundary tests cover CLI/chat/document/tool/schedule/delegation/
   Kanban/browser/desktop labels. These are not real interface integration tests.
-- Latest local suite: **213 passed**, including 41 Bridge synthetic tests and 172
+- Latest local suite: **214 passed**, including 42 Bridge synthetic tests and 172
   inherited/regression transport tests. Ruff lint and format checks pass.
 - Actual subprocess termination after a synthetic external commit was tested:
   restart preserved in-flight state, recovery marked unknown, reconciliation found
@@ -58,6 +58,10 @@ Updated: 2026-09-05. Live posting: DISABLED. Real integration tests: NONE.
 - CI uses the frozen uv lock on Windows/Linux across Python 3.10–3.13 and builds
   artifacts. [PR checks](https://github.com/kaydtechsolutions/KaydBooks-Bridge/pull/2/checks)
   are the live source for remote results; local passes do not establish remote success.
+- Initial remote CI passed all four Linux versions and lint/build, but exposed a
+  Windows path-canonicalization race during concurrent first-company initialization.
+  Directory creation now precedes canonical containment comparison; symlink escape
+  protection has an additional regression test. Follow-up CI is linked in the PR.
 - Architecture, M0–M7 acceptance plan, capability evidence rules, onboarding,
   permissions, troubleshooting, pause/recovery, backup/upgrade and deployment gates
   are documented in `docs/`. One upstream Starlette/httpx deprecation warning remains.
