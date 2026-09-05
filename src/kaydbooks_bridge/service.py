@@ -332,7 +332,7 @@ class Bridge:
             ).fetchall()
             for row in rows:
                 db.execute(
-                    "UPDATE jobs SET state='unknown',attempt=NULL,detail='expired_dispatch' WHERE id=?",
+                    "UPDATE jobs SET state='unknown',detail='expired_dispatch' WHERE id=?",
                     (row["id"],),
                 )
                 store.event(
@@ -363,7 +363,7 @@ class Bridge:
                     state, detail, txn_id = "verified", "reconciled_saved_record", candidate
                     evidence = {"saved_record_hash": digest(saved)}
             db.execute(
-                "UPDATE jobs SET state=?,detail=?,txn_id=?,attempt=NULL WHERE id=?",
+                "UPDATE jobs SET state=?,detail=?,txn_id=? WHERE id=?",
                 (state, detail, txn_id, job_id),
             )
             store.event(

@@ -102,6 +102,12 @@ Recovery does not touch an unexpired attempt or replay any write. A pause preven
 new dispatches; it cannot retract a write already sent. Unknown and posted-unverified
 states block the company's next write even after resume.
 
+The database rejects deletion of jobs or idempotency aliases, mutation of prepared
+payload/source identity, approval or receipt rewrites, malformed dispatch attempts,
+and state transitions outside the documented flow. These guards persist across process
+restart. Treat an integrity error as a software or storage investigation; do not edit
+the database to force progress.
+
 No match, several matches or a mismatched saved record means **hold**. Do not delete
 the job, edit SQLite, change keys or run a GUI posting attempt to bypass the hold.
 There is deliberately no operator retry override in this milestone. Future retry

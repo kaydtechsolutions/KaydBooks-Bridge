@@ -43,7 +43,7 @@ Updated: 2026-09-05. Live posting: DISABLED. Real integration tests: NONE.
   recovery and read-only reconciliation. No retry override or live transport exists.
 - Shared service-boundary tests cover CLI/chat/document/tool/schedule/delegation/
   Kanban/browser/desktop labels. These are not real interface integration tests.
-- Latest local suite: **214 passed**, including 42 Bridge synthetic tests and 172
+- Latest local suite: **218 passed**, including 46 Bridge synthetic tests and 172
   inherited/regression transport tests. Ruff lint and format checks pass.
 - Actual subprocess termination after a synthetic external commit was tested:
   restart preserved in-flight state, recovery marked unknown, reconciliation found
@@ -68,6 +68,14 @@ Updated: 2026-09-05. Live posting: DISABLED. Real integration tests: NONE.
 - Architecture, M0–M7 acceptance plan, capability evidence rules, onboarding,
   permissions, troubleshooting, pause/recovery, backup/upgrade and deployment gates
   are documented in `docs/`. One upstream Starlette/httpx deprecation warning remains.
+- Durable queue integrity is now enforced in SQLite after restart: immutable prepared
+  identity/payload/source, append-only jobs and idempotency aliases, one-time approvals
+  and receipts, coupled dispatch attempt fields, legal state transitions, immutable
+  company/schema metadata, and boolean durable pause control. Tests prove malformed
+  inserts, requeue of unknown writes, mutation/deletion and receipt/approval rewrites
+  are rejected. Dispatch attempt IDs are retained through reconciliation as evidence.
+- This queue-hardening milestone is locally mock-tested. Remote PR CI is pending for
+  the new commit; no real Hermes or QuickBooks behavior was exercised.
 
 ## Blockers and next actions
 

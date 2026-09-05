@@ -59,11 +59,99 @@ class Store:
                 payload TEXT NOT NULL, source TEXT NOT NULL,
                 approval_by TEXT, approval_hash TEXT, attempt TEXT, lease_until REAL,
                 txn_id TEXT, detail TEXT NOT NULL DEFAULT '')""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS jobs_insert_guard
+                BEFORE INSERT ON jobs
+                WHEN NEW.state != 'draft'
+                  OR NEW.approval_by IS NOT NULL
+                  OR NEW.approval_hash IS NOT NULL
+                  OR NEW.attempt IS NOT NULL
+                  OR NEW.lease_until IS NOT NULL
+                  OR NEW.txn_id IS NOT NULL
+                  OR NEW.detail != ''
+                BEGIN SELECT RAISE(ABORT, 'invalid initial job state'); END""")
             db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS one_unresolved_write
                 ON jobs ((1)) WHERE state IN ('in-flight', 'posted-unverified', 'unknown')""")
             db.execute("""CREATE TABLE IF NOT EXISTS idempotency_keys (
                 key TEXT PRIMARY KEY, job_id TEXT NOT NULL REFERENCES jobs(id))""")
             db.execute("INSERT OR IGNORE INTO idempotency_keys SELECT idempotency_key,id FROM jobs")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS jobs_identity_immutable
+                BEFORE UPDATE OF id,idempotency_key,fingerprint,source_key,business_key,
+                operation,submitter,payload,source ON jobs
+                WHEN OLD.id IS NOT NEW.id
+                  OR OLD.idempotency_key IS NOT NEW.idempotency_key
+                  OR OLD.fingerprint IS NOT NEW.fingerprint
+                  OR OLD.source_key IS NOT NEW.source_key
+                  OR OLD.business_key IS NOT NEW.business_key
+                  OR OLD.operation IS NOT NEW.operation
+                  OR OLD.submitter IS NOT NEW.submitter
+                  OR OLD.payload IS NOT NEW.payload
+                  OR OLD.source IS NOT NEW.source
+                BEGIN SELECT RAISE(ABORT, 'job identity is immutable'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS jobs_state_transition_guard
+                BEFORE UPDATE OF state ON jobs
+                WHEN NOT (
+                    OLD.state = NEW.state
+                    OR (OLD.state = 'draft' AND NEW.state = 'validated')
+                    OR (OLD.state = 'validated' AND NEW.state = 'queued')
+                    OR (OLD.state = 'queued' AND NEW.state = 'in-flight')
+                    OR (OLD.state = 'in-flight' AND NEW.state IN
+                        ('posted-unverified', 'blocked', 'failed', 'unknown'))
+                    OR (OLD.state IN ('posted-unverified', 'unknown')
+                        AND NEW.state = 'verified')
+                )
+                BEGIN SELECT RAISE(ABORT, 'invalid job state transition'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS jobs_approval_guard
+                BEFORE UPDATE OF approval_by,approval_hash ON jobs
+                WHEN OLD.approval_by IS NOT NEW.approval_by
+                  OR OLD.approval_hash IS NOT NEW.approval_hash
+                BEGIN
+                    SELECT CASE
+                        WHEN OLD.state != 'validated'
+                          OR OLD.approval_by IS NOT NULL
+                          OR OLD.approval_hash IS NOT NULL
+                          OR NEW.approval_by IS NULL
+                          OR NEW.approval_hash != OLD.fingerprint
+                        THEN RAISE(ABORT, 'invalid approval mutation')
+                    END;
+                END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS jobs_attempt_guard
+                BEFORE UPDATE OF attempt,lease_until ON jobs
+                WHEN OLD.attempt IS NOT NEW.attempt OR OLD.lease_until IS NOT NEW.lease_until
+                BEGIN
+                    SELECT CASE
+                        WHEN OLD.state != 'queued'
+                          OR NEW.state != 'in-flight'
+                          OR OLD.attempt IS NOT NULL
+                          OR OLD.lease_until IS NOT NULL
+                          OR NEW.attempt IS NULL
+                          OR NEW.lease_until IS NULL
+                        THEN RAISE(ABORT, 'invalid dispatch attempt mutation')
+                    END;
+                END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS jobs_receipt_immutable
+                BEFORE UPDATE OF txn_id ON jobs
+                WHEN OLD.txn_id IS NOT NEW.txn_id
+                  AND (OLD.txn_id IS NOT NULL
+                       OR NEW.txn_id IS NULL
+                       OR NEW.state NOT IN ('posted-unverified', 'verified'))
+                BEGIN SELECT RAISE(ABORT, 'invalid transaction receipt mutation'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS jobs_state_invariant_guard
+                BEFORE UPDATE ON jobs
+                WHEN (OLD.state = 'queued' AND NEW.state = 'in-flight'
+                      AND (NEW.attempt IS NULL OR NEW.lease_until IS NULL))
+                  OR (((OLD.state = 'in-flight' AND NEW.state = 'posted-unverified')
+                       OR (OLD.state IN ('posted-unverified', 'unknown')
+                           AND NEW.state = 'verified'))
+                      AND NEW.txn_id IS NULL)
+                BEGIN SELECT RAISE(ABORT, 'job state invariant violated'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS jobs_no_delete BEFORE DELETE ON jobs
+                BEGIN SELECT RAISE(ABORT, 'jobs are append-only records'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS idempotency_no_update
+                BEFORE UPDATE ON idempotency_keys
+                BEGIN SELECT RAISE(ABORT, 'idempotency keys are append-only'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS idempotency_no_delete
+                BEFORE DELETE ON idempotency_keys
+                BEGIN SELECT RAISE(ABORT, 'idempotency keys are append-only'); END""")
             db.execute("""CREATE TABLE IF NOT EXISTS audit (
                 sequence INTEGER PRIMARY KEY, at REAL NOT NULL, actor TEXT NOT NULL,
                 job_id TEXT, event TEXT NOT NULL, data TEXT NOT NULL,
@@ -76,6 +164,15 @@ class Store:
                 "CREATE TABLE IF NOT EXISTS control (id INTEGER PRIMARY KEY CHECK(id=1), paused INTEGER NOT NULL)"
             )
             db.execute("INSERT OR IGNORE INTO control VALUES (1, 0)")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS control_boolean_update
+                BEFORE UPDATE OF paused ON control WHEN NEW.paused NOT IN (0, 1)
+                BEGIN SELECT RAISE(ABORT, 'pause control must be boolean'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS control_no_delete BEFORE DELETE ON control
+                BEGIN SELECT RAISE(ABORT, 'pause control is durable'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS metadata_no_update BEFORE UPDATE ON metadata
+                BEGIN SELECT RAISE(ABORT, 'metadata is immutable'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS metadata_no_delete BEFORE DELETE ON metadata
+                BEGIN SELECT RAISE(ABORT, 'metadata is immutable'); END""")
 
     @contextmanager
     def transaction(self):
@@ -83,6 +180,7 @@ class Store:
         db.row_factory = sqlite3.Row
         try:
             db.execute("PRAGMA busy_timeout=10000")
+            db.execute("PRAGMA foreign_keys=ON")
             db.execute("PRAGMA synchronous=FULL")
             db.execute("BEGIN IMMEDIATE")
             yield db

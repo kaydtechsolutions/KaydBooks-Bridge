@@ -433,3 +433,125 @@ def test_company_directory_symlink_cannot_escape_private_root(tmp_path):
     with pytest.raises(BridgeError, match="escapes private root"):
         Store(root, "company-a")
     assert not list(outside.iterdir())
+
+
+def test_restart_installs_durable_job_integrity_guards(setup):
+    bridge, _, _, _ = setup
+    job = bridge.prepare(TOKENS["preparer-a"], "company-a", setup[3])
+    store, _ = ledger_for(setup)
+
+    def rejected(sql, message):
+        with pytest.raises(sqlite3.IntegrityError, match=message), store.transaction() as db:
+            db.execute(sql, (job["id"],))
+
+    # Reopen the store to prove the constraints are durable database schema,
+    # rather than process-local checks installed by the preparing Bridge object.
+    store = Store(store.path.parent.parent, "company-a")
+    rejected("UPDATE jobs SET payload='{}' WHERE id=?", "job identity is immutable")
+    rejected("UPDATE jobs SET state='verified' WHERE id=?", "invalid job state transition")
+    rejected("DELETE FROM jobs WHERE id=?", "jobs are append-only records")
+    rejected(
+        "UPDATE idempotency_keys SET key='replacement' WHERE job_id=?",
+        "idempotency keys are append-only",
+    )
+    rejected("DELETE FROM idempotency_keys WHERE job_id=?", "idempotency keys are append-only")
+
+    with (
+        pytest.raises(sqlite3.IntegrityError, match="metadata is immutable"),
+        store.transaction() as db,
+    ):
+        db.execute("UPDATE metadata SET value='company-b' WHERE key='company'")
+    with (
+        pytest.raises(sqlite3.IntegrityError, match="pause control must be boolean"),
+        store.transaction() as db,
+    ):
+        db.execute("UPDATE control SET paused=2 WHERE id=1")
+
+    assert bridge.status(TOKENS["operator-a"], "company-a", job["id"])["state"] == "draft"
+    assert bridge.audit(TOKENS["operator-a"], "company-a")["valid"]
+
+
+def test_approval_and_receipt_cannot_be_rewritten(setup):
+    bridge, _, _, _ = setup
+    job = queue(setup)
+    store, _ = ledger_for(setup)
+    with (
+        pytest.raises(sqlite3.IntegrityError, match="invalid approval mutation"),
+        store.transaction() as db,
+    ):
+        db.execute(
+            "UPDATE jobs SET approval_by='replacement' WHERE id=?",
+            (job["id"],),
+        )
+    verified = bridge.simulate(TOKENS["operator-a"], "company-a")
+    with (
+        pytest.raises(sqlite3.IntegrityError, match="invalid transaction receipt mutation"),
+        store.transaction() as db,
+    ):
+        db.execute("UPDATE jobs SET txn_id='sim-replacement' WHERE id=?", (job["id"],))
+    assert (
+        bridge.status(TOKENS["operator-a"], "company-a", job["id"])["txn_id"] == verified["txn_id"]
+    )
+
+
+def test_unknown_write_cannot_be_requeued_after_restart(setup, monkeypatch):
+    bridge, path, _, _ = setup
+    job = queue(setup)
+    monkeypatch.setattr(SyntheticLedger, "write", lambda *_: (_ for _ in ()).throw(TimeoutError()))
+    assert bridge.simulate(TOKENS["operator-a"], "company-a")["state"] == "unknown"
+    store, _ = ledger_for(setup)
+    store = Store(store.path.parent.parent, "company-a")
+    with (
+        pytest.raises(sqlite3.IntegrityError, match="invalid job state transition"),
+        store.transaction() as db,
+    ):
+        db.execute("UPDATE jobs SET state='queued' WHERE id=?", (job["id"],))
+    assert Bridge(path).status(TOKENS["operator-a"], "company-a", job["id"])["state"] == "unknown"
+
+
+def test_persisted_queue_fields_are_coupled_to_transitions(setup):
+    bridge, _, _, envelope = setup
+    job = bridge.prepare(TOKENS["preparer-a"], "company-a", envelope)
+    store, _ = ledger_for(setup)
+    values = (
+        "rogue-job",
+        "rogue-key",
+        "f" * 64,
+        "rogue-source",
+        "rogue-business",
+        "invoice.create",
+        "preparer-a",
+        "verified",
+        json.dumps(envelope["payload"]),
+        json.dumps(envelope["source"]),
+        "sim-rogue",
+    )
+    with (
+        pytest.raises(sqlite3.IntegrityError, match="invalid initial job state"),
+        store.transaction() as db,
+    ):
+        db.execute(
+            """INSERT INTO jobs
+               (id,idempotency_key,fingerprint,source_key,business_key,operation,
+                submitter,state,payload,source,txn_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+            values,
+        )
+    with (
+        pytest.raises(sqlite3.IntegrityError, match="invalid transaction receipt mutation"),
+        store.transaction() as db,
+    ):
+        db.execute("UPDATE jobs SET txn_id='sim-early' WHERE id=?", (job["id"],))
+
+    bridge.action(TOKENS["preparer-a"], "company-a", job["id"], "validate")
+    bridge.action(TOKENS["approver-a"], "company-a", job["id"], "approve")
+    bridge.action(TOKENS["preparer-a"], "company-a", job["id"], "submit")
+    with (
+        pytest.raises(sqlite3.IntegrityError, match="job state invariant violated"),
+        store.transaction() as db,
+    ):
+        db.execute("UPDATE jobs SET state='in-flight' WHERE id=?", (job["id"],))
+    with (
+        pytest.raises(sqlite3.IntegrityError, match="invalid dispatch attempt mutation"),
+        store.transaction() as db,
+    ):
+        db.execute("UPDATE jobs SET attempt='late-attempt' WHERE id=?", (job["id"],))

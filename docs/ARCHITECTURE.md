@@ -56,6 +56,14 @@ unique idempotency/source/business keys, and a partial unique index across unres
 write states. Configuration schema and database schema are version 1; unknown versions
 or a copied database with a different company binding fail closed.
 
+SQLite triggers enforce queue invariants after restart. Jobs and idempotency aliases
+cannot be deleted; prepared identity, payload and source fields cannot change;
+approvals and transaction receipts cannot be rewritten; dispatch attempts are created
+only while claiming queued work; and state changes follow the explicit graph. Initial
+inserts must be clean drafts. Metadata is immutable and pause control remains boolean
+and durable. These constraints protect against application defects. An OS-level
+database administrator can still replace the file or drop schema objects.
+
 The ordinary path is draft → validated → queued → in-flight → posted-unverified →
 verified. Proven pre-write identity/master/duplicate conflicts become blocked.
 A thrown exception before a receipt is persisted becomes unknown; with a receipt it
