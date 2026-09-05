@@ -1,0 +1,74 @@
+"""Authenticated local CLI. No HTTP endpoint or live write switch in this milestone."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+from .capabilities import inventory
+from .config import BridgeError, Config
+from .service import Bridge
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description="KaydBooks Bridge (simulation only)")
+    parser.add_argument("--config", default=os.environ.get("KAYDBOOKS_CONFIG"))
+    parser.add_argument("--company", help="explicit company ID; never inferred")
+    commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("capabilities")
+    commands.add_parser("check-config")
+    prepare = commands.add_parser("prepare")
+    prepare.add_argument("input", type=Path, help="structured synthetic envelope JSON")
+    for action in ("validate", "approve", "submit", "reconcile"):
+        commands.add_parser(action).add_argument("job_id")
+    commands.add_parser("status").add_argument("job_id", nargs="?")
+    for action in ("simulate", "recover", "pause", "resume", "audit"):
+        commands.add_parser(action)
+    args = parser.parse_args(argv)
+    try:
+        if args.command == "capabilities":
+            result = inventory()
+        elif args.command == "check-config":
+            if not args.config:
+                raise BridgeError("private config path required")
+            config = Config.load(args.config)
+            config.authenticate(os.environ.get("KAYDBOOKS_TOKEN", ""))
+            result = {"valid": True, "mode": "simulation", "live_posting": False}
+        else:
+            if not args.config or not args.company:
+                raise BridgeError("private config path and explicit company required")
+            bridge = Bridge(args.config)
+            token = os.environ.get("KAYDBOOKS_TOKEN", "")
+            if args.command == "prepare":
+                if args.input.stat().st_size > 131072:
+                    raise BridgeError("input too large")
+                envelope = json.loads(args.input.read_text(encoding="utf-8"))
+                # A local invocation always attributes itself as CLI.
+                envelope["surface"] = "cli"
+                result = bridge.prepare(token, args.company, envelope)
+            elif args.command in {"validate", "approve", "submit"}:
+                result = bridge.action(token, args.company, args.job_id, args.command)
+            elif args.command == "reconcile":
+                result = bridge.reconcile(token, args.company, args.job_id)
+            elif args.command == "status":
+                result = bridge.status(token, args.company, args.job_id)
+            elif args.command in {"pause", "resume"}:
+                result = bridge.pause(token, args.company, args.command == "pause")
+            else:
+                result = getattr(bridge, args.command)(token, args.company)
+        print(json.dumps(result, indent=2))
+        return 0
+    except BridgeError as exc:
+        print(json.dumps({"error": str(exc)}), file=sys.stderr)
+        return 2
+    except (OSError, ValueError, TypeError, KeyError):
+        # Do not echo private paths, JSON content or credentials into diagnostics.
+        print(json.dumps({"error": "invalid or inaccessible private input"}), file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

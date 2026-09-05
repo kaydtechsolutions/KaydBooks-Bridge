@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "mode": "simulation",
+  "state_root": "REPLACE_WITH_ABSOLUTE_PRIVATE_PATH_OUTSIDE_GIT",
+  "companies": {
+    "company-a": {
+      "simulation_identity": "synthetic-company-a",
+      "currency": "USD",
+      "max_total": "10000.00",
+      "customers": ["customer-a"],
+      "items": ["item-a"],
+      "sources": ["synthetic-intake"],
+      "approval_required": true
+    },
+    "company-b": {
+      "simulation_identity": "synthetic-company-b",
+      "currency": "USD",
+      "max_total": "5000.00",
+      "customers": ["customer-b"],
+      "items": ["item-b"],
+      "sources": ["synthetic-intake"],
+      "approval_required": true
+    }
+  },
+  "principals": {
+    "preparer-a": {
+      "token_env": "KAYDBOOKS_PREPARER_A_SECRET",
+      "companies": {"company-a": ["prepare", "read", "validate", "submit"]}
+    },
+    "approver-a": {
+      "token_env": "KAYDBOOKS_APPROVER_A_SECRET",
+      "companies": {"company-a": ["approve", "read"]}
+    },
+    "operator-a": {
+      "token_env": "KAYDBOOKS_OPERATOR_A_SECRET",
+      "companies": {"company-a": ["simulate", "recover", "pause", "read"]}
+    },
+    "operator-b": {
+      "token_env": "KAYDBOOKS_OPERATOR_B_SECRET",
+      "companies": {"company-b": ["read", "simulate", "recover", "pause"]}
+    }
+  }
+}

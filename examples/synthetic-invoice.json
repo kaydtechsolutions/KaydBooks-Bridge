@@ -1,0 +1,19 @@
+{
+  "operation": "invoice.create",
+  "idempotency_key": "synthetic-invoice-one",
+  "surface": "cli",
+  "payload": {
+    "customer_id": "customer-a",
+    "txn_date": "2026-09-01",
+    "ref_number": "SYN-0001",
+    "currency": "USD",
+    "lines": [{"item_id": "item-a", "amount": "125.00"}]
+  },
+  "source": {
+    "namespace": "synthetic-intake",
+    "reference": "document-one",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "original_values": {"customer": "Company A synthetic customer", "amount": "125.00"},
+    "uncertain_fields": []
+  }
+}

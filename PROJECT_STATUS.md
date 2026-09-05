@@ -25,16 +25,55 @@ Updated: 2026-09-05. Live posting: DISABLED. Real integration tests: NONE.
   only after review/merge. Do not create release tags on the inherited main branch.
 - CI now includes Windows and Linux. No release or deployment performed.
 
-## In progress
+## Foundation milestone implemented and synthetic-tested
 
-Foundation: strict private configuration, company-scoped durable jobs, audit,
-permissions, idempotency, simulation adapter, reconciliation and CLI.
+- `kaydbooks_bridge` application package and authenticated CLI; private config/state
+  rejected inside Git checkouts. Company A/B templates contain synthetic values only.
+- Separate company databases and durable company/schema binding; strict Decimal
+  amounts, dates, currency, masters, source allowlists and uncertainty checks.
+- Immutable prepared jobs, fingerprint-bound separate approval, current policy and
+  permission checks, persistent pause, per-company serialized dispatch.
+- Canonical idempotency including aliases, source/reference duplicate checks,
+  append-only chained audit, receipt persistence and independent synthetic read-back.
+- Durable synthetic ledger, unknown/posted-unverified holds, explicit expired-attempt
+  recovery and read-only reconciliation. No retry override or live transport exists.
+- Shared service-boundary tests cover CLI/chat/document/tool/schedule/delegation/
+  Kanban/browser/desktop labels. These are not real interface integration tests.
+- Latest local suite: **213 passed**, including 41 Bridge synthetic tests and 172
+  inherited/regression transport tests. Ruff lint and format checks pass.
+- Actual subprocess termination after a synthetic external commit was tested:
+  restart preserved in-flight state, recovery marked unknown, reconciliation found
+  one saved record, and no second write occurred.
+- PowerShell CLI walkthrough completed prepare → validate → approve → submit →
+  simulate → verified, with valid audit. Runtime state/secrets remained outside Git.
+- Distribution renamed to `kaydbooks-bridge` (`0.1.0.dev1`), preserving the upstream
+  `qbwc_kit` namespace and license. Wheel/source build passed; no upload/release.
+- `twine check` passed for wheel and source archive. Clean isolated wheel install
+  with no dependencies imported both namespaces and confirmed the disabled live gate.
+  Source archive includes operational docs and synthetic examples.
+- CI uses the frozen uv lock on Windows/Linux across Python 3.10–3.13 and builds
+  artifacts. Remote CI results will be recorded after opening the review PR.
+- Architecture, M0–M7 acceptance plan, capability evidence rules, onboarding,
+  permissions, troubleshooting, pause/recovery, backup/upgrade and deployment gates
+  are documented in `docs/`. One upstream Starlette/httpx deprecation warning remains.
 
 ## Blockers and next actions
 
-- Hermes executable not found on PATH. Installed product/version, enabled tools,
-  permissions and runtime endpoints are unverified. No Hermes access needed yet.
+- Corrected initial PATH observation: a local Hermes executable was found.
+  Read-only version/help, CLI tool inventory and tool registration source inspection
+  completed. Actual installed version/tool enablement evidence is stored privately
+  outside Git. Bridge-specific permissions, profile, schemas and integration behavior
+  remain unverified. No Hermes settings, schedules, recipients or boards were changed.
 - No authorized QuickBooks test company/SDK connection. All wire capabilities and
   actual company binding remain unverified; no live worker will be exposed.
-- Next: finish foundation tests and docs, commit milestone, open review PR;
-  then perform capability-specific read-only deployment discovery before connecting.
+- Real Hermes and QuickBooks integration tests: **none**. Production-enabled features:
+  **none**. Real transaction/report/tax/inventory/landed-cost support is unverified.
+- Planned: durable QBWC callback adapter and real company binding; per-operation
+  master/account/tax validation; native Hermes tools and document intake; schedules,
+  notifications, memory, delegation, Kanban projections, reports, optional GUI flows.
+- Draft revisions/cancellation, dependencies, operator correction of blocked jobs,
+  policy-change audit, OS ACL provisioning and signed external audit checkpoints
+  are not implemented. Held outcomes cannot be bypassed through the CLI.
+- Next: open the foundation review PR and record remote CI, then M2 read-only
+  discovery and durable callback design. Request an authorized
+  QuickBooks test-company connection only when beginning the real discovery run.

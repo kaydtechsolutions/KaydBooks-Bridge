@@ -1,0 +1,390 @@
+"""Single company-scoped execution contract for trusted interface adapters."""
+
+from __future__ import annotations
+
+import json
+import time
+import uuid
+from functools import wraps
+from pathlib import Path
+
+from .config import BridgeError, Config, identifier, strict_keys
+from .simulation import SyntheticLedger
+from .store import Store
+from .validation import canonical, digest, validate_invoice, validate_source
+
+SURFACES = frozenset(
+    {"cli", "chat", "documents", "tools", "schedule", "delegation", "kanban", "browser", "desktop"}
+)
+
+
+def audited(method):
+    """Record rejected authenticated requests without persisting untrusted content."""
+
+    @wraps(method)
+    def call(self, token, company, *args, **kwargs):
+        try:
+            return method(self, token, company, *args, **kwargs)
+        except BridgeError:
+            config = Config.load(self.config_path)
+            try:
+                actor = config.authenticate(token)
+            except BridgeError:
+                # No company may be attributed to an unauthenticated caller.
+                raise BridgeError("authentication failed") from None
+            if company in config.companies:
+                store = Store(config.root, company)
+                with store.transaction() as db:
+                    store.event(
+                        db,
+                        self.clock(),
+                        actor,
+                        None,
+                        "request_rejected",
+                        {"action": method.__name__},
+                    )
+            raise
+
+    return call
+
+
+class Bridge:
+    def __init__(self, config_path: str | Path, *, clock=time.time):
+        self.config_path = config_path
+        self.clock = clock
+
+    def _context(self, token, company, permission):
+        config = Config.load(self.config_path)  # re-read policy and environment credentials
+        actor = config.authenticate(token)
+        selected = config.authorize(actor, company, permission)
+        return config, actor, selected, Store(config.root, company)
+
+    @audited
+    def prepare(self, token: str, company: str, envelope: dict) -> dict:
+        _, actor, policy, store = self._context(token, company, "prepare")
+        strict_keys(envelope, {"operation", "idempotency_key", "surface", "payload", "source"})
+        if envelope["operation"] != "invoice.create":
+            raise BridgeError("operation unavailable; only synthetic invoice.create is implemented")
+        if envelope["surface"] not in SURFACES:
+            raise BridgeError("unsupported interface")
+        identifier(envelope["idempotency_key"])
+        payload = validate_invoice(envelope["payload"], policy)
+        source = validate_source(envelope["source"], policy)
+        fingerprint = digest(
+            {"operation": envelope["operation"], "payload": payload, "source": source}
+        )
+        source_key = canonical([source["namespace"], source["reference"]])
+        business_key = canonical([envelope["operation"], payload["ref_number"].casefold()])
+        with store.transaction() as db:
+            matches = db.execute(
+                "SELECT id,fingerprint FROM jobs WHERE id IN (SELECT job_id FROM idempotency_keys WHERE key=?) OR source_key=? OR business_key=?",
+                (envelope["idempotency_key"], source_key, business_key),
+            ).fetchall()
+            if matches:
+                if len(matches) != 1 or matches[0]["fingerprint"] != fingerprint:
+                    raise BridgeError(
+                        "duplicate key, source or reference conflicts with existing job"
+                    )
+                job_id = matches[0]["id"]
+                db.execute(
+                    "INSERT OR IGNORE INTO idempotency_keys VALUES (?,?)",
+                    (envelope["idempotency_key"], job_id),
+                )
+                store.event(
+                    db,
+                    self.clock(),
+                    actor,
+                    job_id,
+                    "duplicate_prevented",
+                    {"surface": envelope["surface"]},
+                )
+                return store.job(db, job_id)
+            job_id = uuid.uuid4().hex
+            db.execute(
+                """INSERT INTO jobs (id,idempotency_key,fingerprint,source_key,business_key,
+                       operation,submitter,state,payload,source) VALUES (?,?,?,?,?,?,?,'draft',?,?)""",
+                (
+                    job_id,
+                    envelope["idempotency_key"],
+                    fingerprint,
+                    source_key,
+                    business_key,
+                    envelope["operation"],
+                    actor,
+                    canonical(payload),
+                    canonical(source),
+                ),
+            )
+            db.execute(
+                "INSERT INTO idempotency_keys VALUES (?,?)", (envelope["idempotency_key"], job_id)
+            )
+            store.event(
+                db,
+                self.clock(),
+                actor,
+                job_id,
+                "prepared",
+                {"surface": envelope["surface"], "fingerprint": fingerprint},
+            )
+            return store.job(db, job_id)
+
+    @audited
+    def action(self, token: str, company: str, job_id: str, action: str) -> dict:
+        if action not in {"validate", "approve", "submit"}:
+            raise BridgeError("unsupported action; job state cannot be set by a client")
+        config, actor, policy, store = self._context(token, company, action)
+        with store.transaction() as db:
+            job = store.job(db, job_id)
+            expected = {"validate": "draft", "approve": "validated", "submit": "validated"}[action]
+            if job["state"] != expected:
+                raise BridgeError("action is invalid for the current job state")
+            validate_invoice(job["payload"], policy)
+            validate_source(job["source"], policy)
+            if job["source"]["uncertain_fields"]:
+                raise BridgeError(
+                    "uncertain extracted fields require a corrected source and new job"
+                )
+            if action == "approve":
+                if actor == job["submitter"]:
+                    raise BridgeError("approval must come from a different principal")
+                db.execute(
+                    "UPDATE jobs SET approval_by=?,approval_hash=? WHERE id=?",
+                    (actor, job["fingerprint"], job_id),
+                )
+            else:
+                if action == "submit":
+                    self._approval(config, policy, job)
+                db.execute(
+                    "UPDATE jobs SET state=? WHERE id=?",
+                    ("validated" if action == "validate" else "queued", job_id),
+                )
+            store.event(db, self.clock(), actor, job_id, action, {})
+            return store.job(db, job_id)
+
+    @staticmethod
+    def _approval(config, policy, job):
+        if policy.approval_required:
+            if not job["approval_by"] or job["approval_hash"] != job["fingerprint"]:
+                raise BridgeError("approval required")
+            config.authorize(job["approval_by"], policy.id, "approve")
+
+    @audited
+    def status(self, token: str, company: str, job_id: str | None = None) -> dict:
+        _, actor, _, store = self._context(token, company, "read")
+        with store.transaction() as db:
+            if job_id:
+                result = store.job(db, job_id)
+            else:
+                result = {
+                    "company": company,
+                    "mode": "simulation",
+                    "live_posting": False,
+                    "paused": bool(db.execute("SELECT paused FROM control").fetchone()[0]),
+                    "jobs": [
+                        dict(row)
+                        for row in db.execute(
+                            "SELECT id,state,operation,detail FROM jobs ORDER BY rowid"
+                        )
+                    ],
+                    "audit_valid": store.verify_audit(db),
+                }
+            store.event(db, self.clock(), actor, job_id, "read", {})
+            return result
+
+    @audited
+    def pause(self, token: str, company: str, paused: bool):
+        if type(paused) is not bool:
+            raise BridgeError("paused must be boolean")
+        _, actor, _, store = self._context(token, company, "pause")
+        with store.transaction() as db:
+            db.execute("UPDATE control SET paused=?", (int(paused),))
+            store.event(db, self.clock(), actor, None, "paused" if paused else "resumed", {})
+        return {"company": company, "paused": paused}
+
+    @audited
+    def simulate(self, token: str, company: str) -> dict | None:
+        config, actor, policy, store = self._context(token, company, "simulate")
+        ledger = SyntheticLedger(store, policy)  # no injectable production transport
+        with store.transaction() as db:
+            if db.execute("SELECT paused FROM control").fetchone()[0]:
+                raise BridgeError("company is paused")
+            if db.execute(
+                "SELECT 1 FROM jobs WHERE state IN ('in-flight','posted-unverified','unknown')"
+            ).fetchone():
+                raise BridgeError("company has an unresolved write; reconcile before dispatch")
+            row = db.execute(
+                "SELECT id FROM jobs WHERE state='queued' ORDER BY rowid LIMIT 1"
+            ).fetchone()
+            if row is None:
+                return None
+            job = store.job(db, row["id"])
+            # Initiator and worker both need current authority. Delegation adds none.
+            config.authorize(job["submitter"], company, "submit")
+            validate_invoice(job["payload"], policy)
+            validate_source(job["source"], policy)
+            self._approval(config, policy, job)
+            attempt = uuid.uuid4().hex
+            db.execute(
+                "UPDATE jobs SET state='in-flight',attempt=?,lease_until=? WHERE id=?",
+                (attempt, self.clock() + 60, job["id"]),
+            )
+            store.event(
+                db,
+                self.clock(),
+                actor,
+                job["id"],
+                "dispatch_intent",
+                {"attempt": attempt, "mode": "simulation"},
+            )
+        try:
+            if ledger.identity() != policy.simulation_identity or not ledger.masters_valid(
+                job["payload"]
+            ):
+                return self._finish(
+                    store, actor, job["id"], attempt, "blocked", "identity_or_master_mismatch"
+                )
+            matches = ledger.find(job["payload"])
+            if matches:
+                if len(matches) != 1 or matches[0]["payload"] != job["payload"]:
+                    return self._finish(
+                        store, actor, job["id"], attempt, "blocked", "external_duplicate_conflict"
+                    )
+                txn_id = matches[0]["txn_id"]
+            else:
+                # Last check at the write boundary. Hold the local transaction for
+                # this local simulator only, preventing recovery/pause overtaking it.
+                with store.transaction() as db:
+                    current = store.job(db, job["id"])
+                    if (
+                        current["attempt"] != attempt
+                        or current["state"] != "in-flight"
+                        or current["lease_until"] <= self.clock()
+                    ):
+                        raise BridgeError("stale dispatch")
+                    if db.execute("SELECT paused FROM control").fetchone()[0]:
+                        raise BridgeError("company paused before write")
+                    latest = Config.load(self.config_path)
+                    latest_actor = latest.authenticate(token)
+                    latest_policy = latest.authorize(latest_actor, company, "simulate")
+                    latest.authorize(job["submitter"], company, "submit")
+                    validate_invoice(job["payload"], latest_policy)
+                    validate_source(job["source"], latest_policy)
+                    self._approval(latest, latest_policy, job)
+                    if ledger.identity() != latest_policy.simulation_identity:
+                        raise BridgeError("company changed before write")
+                    txn_id = ledger.write(job["payload"])
+            # Save receipt before a separate read-back. A crash here must not resend.
+            self._finish(
+                store, actor, job["id"], attempt, "posted-unverified", "receipt_saved", txn_id
+            )
+            saved = ledger.read(txn_id)
+            state = "verified" if saved == job["payload"] else "posted-unverified"
+            return self._finish(
+                store,
+                actor,
+                job["id"],
+                attempt,
+                state,
+                "saved_record_matches" if state == "verified" else "saved_record_mismatch",
+                txn_id,
+                evidence={"saved_record_hash": digest(saved)},
+            )
+        except Exception:
+            # Exception strings may contain source data/credentials. Persist only a safe code.
+            with store.transaction() as db:
+                current = store.job(db, job["id"])
+            state = "posted-unverified" if current["txn_id"] else "unknown"
+            return self._finish(
+                store,
+                actor,
+                job["id"],
+                attempt,
+                state,
+                "adapter_outcome_requires_reconciliation",
+                current["txn_id"],
+            )
+
+    def _finish(self, store, actor, job_id, attempt, state, detail, txn_id=None, evidence=None):
+        with store.transaction() as db:
+            job = store.job(db, job_id)
+            if job["attempt"] != attempt or job["state"] not in {"in-flight", "posted-unverified"}:
+                raise BridgeError("stale worker result; reconciliation required")
+            db.execute(
+                "UPDATE jobs SET state=?,detail=?,txn_id=? WHERE id=?",
+                (state, detail, txn_id, job_id),
+            )
+            store.event(
+                db,
+                self.clock(),
+                actor,
+                job_id,
+                state,
+                {"detail": detail, "txn_id": txn_id, **(evidence or {})},
+            )
+            return store.job(db, job_id)
+
+    @audited
+    def recover(self, token: str, company: str) -> dict:
+        _, actor, _, store = self._context(token, company, "recover")
+        with store.transaction() as db:
+            rows = db.execute(
+                "SELECT id FROM jobs WHERE state='in-flight' AND lease_until<=?", (self.clock(),)
+            ).fetchall()
+            for row in rows:
+                db.execute(
+                    "UPDATE jobs SET state='unknown',attempt=NULL,detail='expired_dispatch' WHERE id=?",
+                    (row["id"],),
+                )
+                store.event(
+                    db, self.clock(), actor, row["id"], "unknown", {"detail": "expired_dispatch"}
+                )
+        return {"recovered_to_unknown": len(rows), "writes_retried": 0}
+
+    @audited
+    def reconcile(self, token: str, company: str, job_id: str) -> dict:
+        _, actor, policy, store = self._context(token, company, "recover")
+        ledger = SyntheticLedger(store, policy)
+        # Serialize reconciliation with completion, recovery and competing reconcilers.
+        # The simulation read is local. A real asynchronous transport needs persisted
+        # read intents and fenced callbacks, not a database transaction over the network.
+        with store.transaction() as db:
+            job = store.job(db, job_id)
+            if job["state"] not in {"unknown", "posted-unverified"}:
+                raise BridgeError("only uncertain outcomes can be reconciled")
+            if ledger.identity() != policy.simulation_identity:
+                raise BridgeError("connected company mismatch")
+            matches = ledger.find(job["payload"])
+            state, detail, txn_id = job["state"], "reconciliation_inconclusive", job["txn_id"]
+            evidence = {}
+            if len(matches) == 1 and matches[0]["payload"] == job["payload"]:
+                candidate = matches[0]["txn_id"]
+                saved = ledger.read(candidate)
+                if (txn_id is None or txn_id == candidate) and saved == job["payload"]:
+                    state, detail, txn_id = "verified", "reconciled_saved_record", candidate
+                    evidence = {"saved_record_hash": digest(saved)}
+            db.execute(
+                "UPDATE jobs SET state=?,detail=?,txn_id=?,attempt=NULL WHERE id=?",
+                (state, detail, txn_id, job_id),
+            )
+            store.event(
+                db,
+                self.clock(),
+                actor,
+                job_id,
+                "reconciled",
+                {"state": state, "detail": detail, "txn_id": txn_id, **evidence},
+            )
+            return store.job(db, job_id)
+
+    @audited
+    def audit(self, token: str, company: str) -> dict:
+        _, actor, _, store = self._context(token, company, "read")
+        with store.transaction() as db:
+            store.event(db, self.clock(), actor, None, "audit_read", {})
+            return {
+                "valid": store.verify_audit(db),
+                "events": [
+                    {**dict(row), "data": json.loads(row["data"])}
+                    for row in db.execute("SELECT * FROM audit ORDER BY sequence")
+                ],
+            }
