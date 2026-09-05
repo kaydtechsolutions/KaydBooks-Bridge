@@ -308,7 +308,7 @@ class SessionStore:
         """Drop every session older than the TTL, returning how many went."""
         cutoff = time.monotonic() - self.ttl_seconds
         with self._lock:
-            stale = [t for t, s in self._sessions.items() if s.created_at < cutoff]
+            stale = [t for t, s in self._sessions.items() if s.created_at <= cutoff]
             dropped = [self._sessions.pop(ticket) for ticket in stale]
         for session in dropped:
             session.closed = True
