@@ -10,6 +10,10 @@ Updated: 2026-09-05. Live posting: DISABLED. Real integration tests: NONE.
   PR #1 is not assumed merged into main.
 - No repository or parent AGENTS.md found. Upstream MIT attribution retained.
 - Public repository; examples and tests must contain synthetic data only.
+- Review PR: [#2 — company-scoped foundation](https://github.com/kaydtechsolutions/KaydBooks-Bridge/pull/2).
+  Native Git push stalled; uploaded through the connected GitHub API. The uploaded
+  milestone trees exactly matched the tested local trees. Original local commit
+  history is preserved on `codex/foundation-local`; `codex/foundation` tracks the PR.
 
 ## Completed / evidence
 
@@ -52,7 +56,8 @@ Updated: 2026-09-05. Live posting: DISABLED. Real integration tests: NONE.
   with no dependencies imported both namespaces and confirmed the disabled live gate.
   Source archive includes operational docs and synthetic examples.
 - CI uses the frozen uv lock on Windows/Linux across Python 3.10–3.13 and builds
-  artifacts. Remote CI results will be recorded after opening the review PR.
+  artifacts. [PR checks](https://github.com/kaydtechsolutions/KaydBooks-Bridge/pull/2/checks)
+  are the live source for remote results; local passes do not establish remote success.
 - Architecture, M0–M7 acceptance plan, capability evidence rules, onboarding,
   permissions, troubleshooting, pause/recovery, backup/upgrade and deployment gates
   are documented in `docs/`. One upstream Starlette/httpx deprecation warning remains.
@@ -74,6 +79,6 @@ Updated: 2026-09-05. Live posting: DISABLED. Real integration tests: NONE.
 - Draft revisions/cancellation, dependencies, operator correction of blocked jobs,
   policy-change audit, OS ACL provisioning and signed external audit checkpoints
   are not implemented. Held outcomes cannot be bypassed through the CLI.
-- Next: open the foundation review PR and record remote CI, then M2 read-only
-  discovery and durable callback design. Request an authorized
+- Next: resolve any PR CI/review findings, then M2 read-only discovery and durable
+  callback design. Request an authorized
   QuickBooks test-company connection only when beginning the real discovery run.
