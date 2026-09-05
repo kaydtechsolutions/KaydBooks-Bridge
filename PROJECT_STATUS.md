@@ -61,7 +61,10 @@ Updated: 2026-09-05. Live posting: DISABLED. Real integration tests: NONE.
 - Initial remote CI passed all four Linux versions and lint/build, but exposed a
   Windows path-canonicalization race during concurrent first-company initialization.
   Directory creation now precedes canonical containment comparison; symlink escape
-  protection has an additional regression test. Follow-up CI is linked in the PR.
+  protection has an additional regression test. Follow-up [CI run 33980287486](https://github.com/kaydtechsolutions/KaydBooks-Bridge/actions/runs/33980287486)
+  passed all eight Windows/Linux Python 3.10–3.13 combinations plus lint/build at
+  commit `781c168c9a6e370e73f42689f6eeb7d9a1f99e41`. This subsequent status update
+  changes documentation only.
 - Architecture, M0–M7 acceptance plan, capability evidence rules, onboarding,
   permissions, troubleshooting, pause/recovery, backup/upgrade and deployment gates
   are documented in `docs/`. One upstream Starlette/httpx deprecation warning remains.
