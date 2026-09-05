@@ -74,8 +74,8 @@ Updated: 2026-09-05. Live posting: DISABLED. Real integration tests: NONE.
   company/schema metadata, and boolean durable pause control. Tests prove malformed
   inserts, requeue of unknown writes, mutation/deletion and receipt/approval rewrites
   are rejected. Dispatch attempt IDs are retained through reconciliation as evidence.
-- This queue-hardening milestone is locally mock-tested. Remote PR CI is pending for
-  the new commit; no real Hermes or QuickBooks behavior was exercised.
+- Queue-hardening CI run `33989477054` passed lint/build and all eight Windows/Linux
+  Python 3.10–3.13 jobs. No real Hermes or QuickBooks behavior was exercised.
 
 ## Blockers and next actions
 
