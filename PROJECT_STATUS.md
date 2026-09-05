@@ -109,6 +109,8 @@ Updated: 2026-09-06. Live posting: DISABLED. Real QuickBooks integration tests: 
   passed lint/build and all eight Windows/Linux Python 3.10–3.13 jobs at commit
   `fc1d9814060af8aa6744d76f56dd8eda84000db3`. GitHub reported PR #2 mergeable; it
   remains open and was not merged.
+- Documentation follow-up [CI run 33992022387](https://github.com/kaydtechsolutions/KaydBooks-Bridge/actions/runs/33992022387)
+  also passed all nine checks at `194c584dedfa784007a797628922f5a99b0618db`.
 - On the available Windows host, QuickBooks Enterprise 2024 R21 and Web Connector 34
   were found running in the current session. The current company-window title did not
   identify a sample/test company, so no connector was imported. A private localhost
@@ -119,8 +121,12 @@ Updated: 2026-09-06. Live posting: DISABLED. Real QuickBooks integration tests: 
   trust and readiness evidence is retained privately outside Git.
 - The active staged certificate is explicitly `CA:FALSE`. Its predecessor was generated
   CA-capable and remains in the current-user trusted store because automatic approval
-  review rejected deletion. Exact thumbprint cleanup instructions are stored privately;
-  a Windows operator must remove only that superseded certificate before connector use.
+  review rejected deletion; deletion was not retried. A live Windows TLS handshake and
+  chain check proved the endpoint presents the active certificate, not its predecessor.
+  The superseded entry does not prevent qualification and is not an M2 prerequisite.
+  Exact private fingerprint evidence remains available for a separate hygiene task.
+- Exact-path private operator instructions plus local password-copy, clipboard-clear and
+  candidate-export helpers are staged outside Git. The helpers contain no credentials.
 
 ## Blockers and next actions
 
@@ -132,9 +138,9 @@ Updated: 2026-09-06. Live posting: DISABLED. Real QuickBooks integration tests: 
 - The sole remaining immediate M2 requirement is an operator-confirmed dedicated
   synthetic QuickBooks company opened as QuickBooks Admin. The staged service/QWC are
   ready, but the current open company is not identifiable as synthetic and must not be
-  used. The same Windows operator must remove the precisely identified superseded local
-  certificate. Follow `docs/M2_QUALIFICATION.md` to import the QWC and initiate one
-  fail-closed candidate-capture update. Real callback behavior and binding are unverified.
+  used. Follow the exact-path private operator guide or `docs/M2_QUALIFICATION.md` to
+  import the QWC and initiate one fail-closed candidate-capture update. Real callback
+  behavior and company binding remain unverified.
 - Real Hermes and QuickBooks integration tests: **none**. Production-enabled features:
   **none**. Real transaction/report/tax/inventory/landed-cost support is unverified.
 - Planned: real qualification of the synthetic-tested QBWC discovery adapter;

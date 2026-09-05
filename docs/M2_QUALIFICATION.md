@@ -29,12 +29,12 @@ never treats one as identity.
 
 The initial certificate-generation command produced a CA-capable localhost certificate.
 The service now uses a separately generated, trusted `CA:FALSE` server certificate.
-Automatic review prevented deletion of the superseded trusted certificate. Before the
-connector import, the Windows operator must open
-`superseded-cert-cleanup.json`, match its exact thumbprint in the current user's Trusted
-Root store, remove only that superseded certificate, and retain the active v2 certificate.
-The superseded private key and certificate files identify the item and can be deleted
-after its trust-store entry is removed.
+Automatic review prevented deletion of the superseded trusted certificate, and that
+deletion was not retried. A live `SslStream` check proved that Windows accepts the
+hostname and chain and that the endpoint presents the active v2 certificate, not the
+superseded certificate. The old trust entry therefore does not prevent qualification
+and must not be removed as part of this run. Its exact private fingerprint evidence is
+retained for a separately authorized hygiene task if one is ever required.
 
 The QWC fields follow Intuit's [Web Connector Programmer's Guide](https://static.developer.intuit.com/qbSDK-current/doc/pdf/QBWC_proguide.pdf).
 The installed Web Connector major version matches Intuit's current
@@ -44,22 +44,22 @@ the official [CompanyQuery schema](https://static.developer.intuit.com/qbSDK-cur
 
 ## Minimal operator steps
 
-1. Remove the exact superseded certificate identified by
-   `superseded-cert-cleanup.json`; verify `https://localhost:8443/healthz` still opens
-   without a certificate warning.
-2. In QuickBooks, close the currently open company. Open a dedicated synthetic test
+1. In QuickBooks, close the currently open company. Open a dedicated synthetic test
    company as its QuickBooks Admin. Confirm that it is the approved M2 target. Do not
    continue while any real company is open.
-3. Start the private service with `start-service.ps1` if the health URL is unavailable.
-4. Open QuickBooks Web Connector and choose **Add an Application**. Import
+2. Start the private service with `start-service.ps1` if the health URL is unavailable.
+3. Open QuickBooks Web Connector and choose **Add an Application**. Import
    `KaydBooks-Bridge-M2-ReadOnly.qwc` from the private stage directory.
-5. In the QuickBooks authorization dialog, authorize only the currently open synthetic
+4. In the QuickBooks authorization dialog, authorize only the currently open synthetic
    company and choose the option that requires that company to remain open. Do not grant
    unattended access. The QuickBooks dialog may describe broad SDK access; the staged
    service itself enforces query-only requests.
-6. Copy the connector password locally from `credentials.json` into the Web Connector
+5. Copy the connector password locally from `credentials.json` into the Web Connector
    password cell. Do not send it through chat or place it in Git. Clear the clipboard.
-7. Select **KaydBooks Bridge M2 Read-Only** and click **Update Selected** once.
+6. Select **KaydBooks Bridge M2 Read-Only** and click **Update Selected** once.
+
+An exact-path private operator guide and clipboard helpers are generated in the private
+stage. The password helper reads the credential only when run and does not contain it.
 
 The first update is expected to stop with `company binding is not operator-confirmed`.
 That is the fail-closed candidate-capture step: HCP evidence is persisted before the
