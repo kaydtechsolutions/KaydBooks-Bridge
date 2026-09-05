@@ -105,6 +105,10 @@ Updated: 2026-09-06. Live posting: DISABLED. Real QuickBooks integration tests: 
 - Current local verification: **242 passed**; Ruff lint and format checks pass; wheel
   and source builds pass Twine metadata checks. The seven added tests are synthetic or
   local HTTP/TLS shape tests and do not count as QuickBooks integration evidence.
+- [M2 staging CI run 33991930089](https://github.com/kaydtechsolutions/KaydBooks-Bridge/actions/runs/33991930089)
+  passed lint/build and all eight Windows/Linux Python 3.10–3.13 jobs at commit
+  `fc1d9814060af8aa6744d76f56dd8eda84000db3`. GitHub reported PR #2 mergeable; it
+  remains open and was not merged.
 - On the available Windows host, QuickBooks Enterprise 2024 R21 and Web Connector 34
   were found running in the current session. The current company-window title did not
   identify a sample/test company, so no connector was imported. A private localhost
