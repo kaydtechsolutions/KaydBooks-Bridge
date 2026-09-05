@@ -1,6 +1,6 @@
 # KaydBooks Bridge project status
 
-Updated: 2026-09-05. Live posting: DISABLED. Real integration tests: NONE.
+Updated: 2026-09-06. Live posting: DISABLED. Real QuickBooks integration tests: NONE.
 
 ## Scope and branch
 
@@ -96,6 +96,27 @@ Updated: 2026-09-05. Live posting: DISABLED. Real integration tests: NONE.
 - [QBWC discovery CI run 33990832056](https://github.com/kaydtechsolutions/KaydBooks-Bridge/actions/runs/33990832056)
   passed lint/build and all eight Windows/Linux Python 3.10–3.13 jobs at feature commit
   `da4bab2d179cf1d5f6a2efd21304979996d3c226`.
+- M2 qualification staging now has an HTTPS-only Bridge entry point, bounded callback
+  bodies, health/support endpoints, environment-backed private credential loading and
+  stable QWC generation that refuses silent OwnerID/FileID changes. An all-zero private
+  identity sentinel captures HCP evidence durably but returns no Bridge request until an
+  operator confirms the synthetic company. Candidate export writes claims/evidence to a
+  new private file and cannot edit the configured binding.
+- Current local verification: **242 passed**; Ruff lint and format checks pass; wheel
+  and source builds pass Twine metadata checks. The seven added tests are synthetic or
+  local HTTP/TLS shape tests and do not count as QuickBooks integration evidence.
+- On the available Windows host, QuickBooks Enterprise 2024 R21 and Web Connector 34
+  were found running in the current session. The current company-window title did not
+  identify a sample/test company, so no connector was imported. A private localhost
+  stage was provisioned outside Git with restricted ACLs, generated credentials, stable
+  QWC IDs and a 30-day leaf certificate trusted for the current user. Windows HTTPS
+  health/WSDL and manual authenticate/close callback probes passed. These probes did not
+  involve QuickBooks and are not real integration evidence. Redacted version, hash,
+  trust and readiness evidence is retained privately outside Git.
+- The active staged certificate is explicitly `CA:FALSE`. Its predecessor was generated
+  CA-capable and remains in the current-user trusted store because automatic approval
+  review rejected deletion. Exact thumbprint cleanup instructions are stored privately;
+  a Windows operator must remove only that superseded certificate before connector use.
 
 ## Blockers and next actions
 
@@ -104,12 +125,12 @@ Updated: 2026-09-05. Live posting: DISABLED. Real integration tests: NONE.
   completed. Actual installed version/tool enablement evidence is stored privately
   outside Git. Bridge-specific permissions, profile, schemas and integration behavior
   remain unverified. No Hermes settings, schedules, recipients or boards were changed.
-- No authorized QuickBooks test company/SDK connection. Real callback behavior and
-  company binding remain unverified; no live worker or callback endpoint is exposed.
-  Qualification requires an authorized Windows host with a supported QuickBooks Desktop
-  and QBWC installation, a dedicated synthetic test company, staged TLS endpoint/QWC
-  file, read-only application permission, configured private CompanyRet digest, and an
-  operator to initiate the update. Version/transcript evidence stays outside Git.
+- The sole remaining immediate M2 requirement is an operator-confirmed dedicated
+  synthetic QuickBooks company opened as QuickBooks Admin. The staged service/QWC are
+  ready, but the current open company is not identifiable as synthetic and must not be
+  used. The same Windows operator must remove the precisely identified superseded local
+  certificate. Follow `docs/M2_QUALIFICATION.md` to import the QWC and initiate one
+  fail-closed candidate-capture update. Real callback behavior and binding are unverified.
 - Real Hermes and QuickBooks integration tests: **none**. Production-enabled features:
   **none**. Real transaction/report/tax/inventory/landed-cost support is unverified.
 - Planned: real qualification of the synthetic-tested QBWC discovery adapter;
@@ -118,6 +139,6 @@ Updated: 2026-09-05. Live posting: DISABLED. Real integration tests: NONE.
 - Draft revisions/cancellation, dependencies, operator correction of blocked jobs,
   policy-change audit, OS ACL provisioning and signed external audit checkpoints
   are not implemented. Held outcomes cannot be bypassed through the CLI.
-- Next: update PR #2 and resolve CI/review findings. When the documented read-only
-  QuickBooks prerequisite is available, qualify M2 against the dedicated test company;
-  otherwise continue M3 design with fresh master/account/tax query validation and no writes.
+- Next: after operator confirmation, capture and privately review CompanyRet identity,
+  configure its digest, restart the staged service, run the read-only update twice to
+  exercise recovery/duplicate behavior, and retain actual callback evidence outside Git.

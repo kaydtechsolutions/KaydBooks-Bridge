@@ -68,4 +68,19 @@ def test_qwc_file_is_well_formed_and_carries_the_ids():
     assert root.tag == "QBWCXML"
     assert root.findtext("OwnerID").startswith("{57F3B9B0")
     assert root.findtext("QBType") == "QBFS"
+    assert root.findtext("AuthFlags") == "0x0"
     assert root.find("Scheduler").findtext("RunEveryNSeconds") == "300"
+
+
+def test_qwc_rejects_invalid_auth_flags():
+    with pytest.raises(ValueError, match="auth_flags"):
+        build_qwc(
+            app_name="Books Bridge",
+            app_id="",
+            app_url="https://books.example.com/qbwc",
+            app_description="Read only",
+            username="qbwc",
+            owner_id="{57F3B9B0-86F1-4fcc-B1EE-566DE1813D20}",
+            file_id="{57F3B9B0-86F1-4fcc-B1EE-566DE1813D21}",
+            auth_flags=16,
+        )

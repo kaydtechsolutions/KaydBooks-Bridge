@@ -134,8 +134,10 @@ job and synthetic-ledger stores together for a simulation drill. A real QuickBoo
 ledger is independent: restored queue state requires external reconciliation before
 any writes. Schema versions other than 1 fail closed; no automatic migration exists.
 
-Production preparation still needs staged TLS/QWC deployment, real callback/company
-qualification, request size limits, fresh master
+The local M2 qualification stage now has TLS/QWC deployment and an 8 MiB callback
+limit; see [the qualification runbook](M2_QUALIFICATION.md). Production preparation
+still needs real callback/company qualification, a managed public certificate and
+endpoint, fresh master
 queries, exact transaction/report schemas, structured response evidence, OS isolation,
 secret rotation, audited policy changes, backup/restore drills and tested upgrades.
 Do not deploy the inherited generic `qbwc_kit.server` directly as the Bridge service.

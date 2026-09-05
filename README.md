@@ -60,6 +60,7 @@ on the command line or in job payloads.
 See [PROJECT_STATUS.md](PROJECT_STATUS.md), the [architecture and durable plan](docs/ARCHITECTURE.md),
 [capability matrix](docs/CAPABILITIES.md), [operations guide](docs/OPERATIONS.md), and
 [durable QBWC discovery protocol](docs/QBWC_DISCOVERY.md), and
+[M2 qualification runbook](docs/M2_QUALIFICATION.md), and
 [expanded scope from PR #1](HERMES_INTEGRATION_SCOPE.md).
 
 ## License

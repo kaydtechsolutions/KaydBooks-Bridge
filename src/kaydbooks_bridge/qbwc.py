@@ -28,6 +28,7 @@ INVALID_USER = "nvu"
 BUSY = "busy"
 ACTIVE_STATES = ("authenticated", "request-sent", "verified", "blocked")
 DISCOVERY_MIN_VERSION = {"US": (1, 0), "CA": (2, 0), "UK": (2, 0), "AU": (6, 1)}
+UNCONFIRMED_IDENTITY = "0" * 64
 
 
 class UnknownTicket(LookupError):
@@ -627,6 +628,8 @@ class DurableQBWCDiscoveryService:
         return result.records[0]
 
     def _verify_hcp(self, payload: str, connector: Connector) -> None:
+        if connector.identity_sha256 == UNCONFIRMED_IDENTITY:
+            raise BridgeError("company binding is not operator-confirmed")
         if "currently not supported in QBPOS" in payload:
             raise BridgeError("QuickBooks Point of Sale discovery is unsupported")
         try:
@@ -641,6 +644,8 @@ class DurableQBWCDiscoveryService:
             raise BridgeError("HCP company binding mismatch")
 
     def _verify_discovery_response(self, payload: str, row, connector: Connector):
+        if connector.identity_sha256 == UNCONFIRMED_IDENTITY:
+            raise BridgeError("company binding is not operator-confirmed")
         try:
             responses = parse_response(payload)
             if len(responses) != 2:

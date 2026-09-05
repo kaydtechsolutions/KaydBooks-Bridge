@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from kaydbooks_bridge.config import BridgeError, Config
+from kaydbooks_bridge.deployment import export_binding_candidate
 from kaydbooks_bridge.qbwc import DurableQBWCDiscoveryService
 from kaydbooks_bridge.store import Store
 from qbwc_kit import soap
@@ -122,6 +123,32 @@ def test_read_only_company_binding_is_persisted_and_audited(discovery_setup):
         events = [row[0] for row in db.execute("SELECT event FROM audit ORDER BY sequence")]
     assert "qbwc_discovery_request_persisted" in events
     assert "qbwc_company_binding_verified" in events
+
+
+def test_unconfirmed_binding_captures_hcp_but_never_returns_a_request(discovery_setup):
+    path, raw = discovery_setup
+    raw["connectors"]["connector-company-a"]["identity_sha256"] = "0" * 64
+    path.write_text(json.dumps(raw))
+    service = DurableQBWCDiscoveryService.from_path(path)
+    ticket, _ = authenticate(service)
+
+    assert send(service, ticket, hcp=hcp_for()) == ""
+    session = service.inspect_session(ticket)
+    assert session["state"] == "blocked"
+    assert session["hcp_xml"]
+    assert session["request_xml"] is None
+    assert session["last_error"] == "company binding is not operator-confirmed"
+
+    candidate = path.parent / "binding-candidate.json"
+    export_binding_candidate(path, "connector-company-a", candidate)
+    evidence = json.loads(candidate.read_text())
+    assert evidence["operator_confirmed"] is False
+    assert evidence["claims"] == COMPANY_A
+    assert evidence["identity_sha256"] != "0" * 64
+    assert (
+        json.loads(path.read_text())["connectors"]["connector-company-a"]["identity_sha256"]
+        == "0" * 64
+    )
 
 
 def test_inherited_fake_connector_runs_the_durable_discovery_cycle(discovery_setup):

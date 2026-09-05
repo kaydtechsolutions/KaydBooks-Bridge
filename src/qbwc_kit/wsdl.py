@@ -167,6 +167,7 @@ def build_qwc(
     file_id: str,
     run_every_n_seconds: int = 900,
     support_url: str | None = None,
+    auth_flags: int = 0,
 ) -> str:
     """Render the ``.qwc`` file a user imports into the Web Connector.
 
@@ -178,6 +179,8 @@ def build_qwc(
     the URL would otherwise produce a file the Web Connector refuses to import,
     with "invalid file" as the entire explanation.
     """
+    if type(auth_flags) is not int or auth_flags < 0 or auth_flags > 0xF:
+        raise ValueError("auth_flags must be an integer from 0x0 through 0xF")
     support = support_url or app_url
     return (
         '<?xml version="1.0"?>'
@@ -191,6 +194,7 @@ def build_qwc(
         f"<OwnerID>{escape(owner_id)}</OwnerID>"
         f"<FileID>{escape(file_id)}</FileID>"
         "<QBType>QBFS</QBType>"
+        f"<AuthFlags>0x{auth_flags:X}</AuthFlags>"
         f"<Scheduler><RunEveryNSeconds>{int(run_every_n_seconds)}</RunEveryNSeconds></Scheduler>"
         "</QBWCXML>"
     )

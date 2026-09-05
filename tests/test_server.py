@@ -66,6 +66,13 @@ def test_garbage_post_returns_a_fault_with_200(client_and_task):
     assert "faultstring" in response.text
 
 
+def test_optional_callback_size_limit_rejects_before_dispatch():
+    service = QBWCService(authenticator=StaticAuthenticator("u", "p", []))
+    app = create_app(service, endpoint_url="https://example.com/qbwc", max_request_bytes=32)
+    response = TestClient(app).post("/qbwc", content="x" * 33)
+    assert response.status_code == 413
+
+
 def test_can_mount_on_an_existing_app():
     service = QBWCService(authenticator=StaticAuthenticator("u", "p", []))
     app = fastapi.FastAPI()
