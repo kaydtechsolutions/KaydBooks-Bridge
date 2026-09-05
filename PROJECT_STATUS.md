@@ -43,7 +43,7 @@ Updated: 2026-09-05. Live posting: DISABLED. Real integration tests: NONE.
   recovery and read-only reconciliation. No retry override or live transport exists.
 - Shared service-boundary tests cover CLI/chat/document/tool/schedule/delegation/
   Kanban/browser/desktop labels. These are not real interface integration tests.
-- Latest local suite: **218 passed**, including 46 Bridge synthetic tests and 172
+- Latest local suite: **235 passed**, including 63 Bridge synthetic tests and 172
   inherited/regression transport tests. Ruff lint and format checks pass.
 - Actual subprocess termination after a synthetic external commit was tested:
   restart preserved in-flight state, recovery marked unknown, reconciliation found
@@ -76,6 +76,23 @@ Updated: 2026-09-05. Live posting: DISABLED. Real integration tests: NONE.
   are rejected. Dispatch attempt IDs are retained through reconciliation as evidence.
 - Queue-hardening CI run `33989477054` passed lint/build and all eight Windows/Linux
   Python 3.10–3.13 jobs. No real Hermes or QuickBooks behavior was exercised.
+- Durable read-only QBWC discovery now maps each authenticated connector identity to
+  one configured company and rejects missing, ambiguous or inconsistent CompanyRet
+  fingerprints. At least three official CompanyRet claims are required, including a
+  claim stronger than display/fiscal names; callback file paths are hashed evidence,
+  never identity. Connector passwords and optional file paths remain environment-backed.
+- Reviewed the official Intuit QBWC callback guide, SDK programmer guide and CompanyQuery
+  OSR schema. The adapter persists HCP preflight, callback context, exact correlated
+  HostQuery/CompanyQuery request, exact response and callback outcomes before advancing.
+  It checks response count/status/correlation, host country, negotiated supported qbXML
+  version and configured company digest. It emits no write request and has no task hook.
+- Seventeen focused synthetic tests cover inherited fake-connector flow, restart recovery,
+  exact duplicate callbacks,
+  conflicting responses, expired tickets, overlapping connectors, disconnect release,
+  cross-company/cross-session replay, path/name insufficiency, missing/ambiguous/mismatched
+  bindings, documented country/version minimums and immutable SQLite evidence. Full local
+  suite, Ruff lint/format, wheel/source build and Twine metadata checks pass. The artifacts
+  contain the new module and discovery documentation. No QuickBooks process was involved.
 
 ## Blockers and next actions
 
@@ -84,16 +101,20 @@ Updated: 2026-09-05. Live posting: DISABLED. Real integration tests: NONE.
   completed. Actual installed version/tool enablement evidence is stored privately
   outside Git. Bridge-specific permissions, profile, schemas and integration behavior
   remain unverified. No Hermes settings, schedules, recipients or boards were changed.
-- No authorized QuickBooks test company/SDK connection. All wire capabilities and
-  actual company binding remain unverified; no live worker will be exposed.
+- No authorized QuickBooks test company/SDK connection. Real callback behavior and
+  company binding remain unverified; no live worker or callback endpoint is exposed.
+  Qualification requires an authorized Windows host with a supported QuickBooks Desktop
+  and QBWC installation, a dedicated synthetic test company, staged TLS endpoint/QWC
+  file, read-only application permission, configured private CompanyRet digest, and an
+  operator to initiate the update. Version/transcript evidence stays outside Git.
 - Real Hermes and QuickBooks integration tests: **none**. Production-enabled features:
   **none**. Real transaction/report/tax/inventory/landed-cost support is unverified.
-- Planned: durable QBWC callback adapter and real company binding; per-operation
-  master/account/tax validation; native Hermes tools and document intake; schedules,
-  notifications, memory, delegation, Kanban projections, reports, optional GUI flows.
+- Planned: real qualification of the synthetic-tested QBWC discovery adapter;
+  per-operation master/account/tax validation; native Hermes tools and document intake;
+  schedules, notifications, memory, delegation, Kanban projections, reports, optional GUI flows.
 - Draft revisions/cancellation, dependencies, operator correction of blocked jobs,
   policy-change audit, OS ACL provisioning and signed external audit checkpoints
   are not implemented. Held outcomes cannot be bypassed through the CLI.
-- Next: resolve any PR CI/review findings, then M2 read-only discovery and durable
-  callback design. Request an authorized
-  QuickBooks test-company connection only when beginning the real discovery run.
+- Next: update PR #2 and resolve CI/review findings. When the documented read-only
+  QuickBooks prerequisite is available, qualify M2 against the dedicated test company;
+  otherwise continue M3 design with fresh master/account/tax query validation and no writes.

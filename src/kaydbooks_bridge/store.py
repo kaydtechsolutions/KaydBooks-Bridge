@@ -22,6 +22,16 @@ STATES = (
     "unknown",
 )
 
+QBWC_STATES = (
+    "authenticated",
+    "request-sent",
+    "verified",
+    "blocked",
+    "disconnected",
+    "closed",
+    "expired",
+)
+
 
 class Store:
     def __init__(self, root: Path, company: str):
@@ -51,6 +61,101 @@ class Store:
                 "INSERT OR IGNORE INTO metadata VALUES (?, ?)",
                 [("schema_version", "1"), ("company", company)],
             )
+            db.execute(f"""CREATE TABLE IF NOT EXISTS qbwc_sessions (
+                ticket TEXT PRIMARY KEY, connector TEXT NOT NULL,
+                state TEXT NOT NULL CHECK (state IN {QBWC_STATES}),
+                created_at REAL NOT NULL, updated_at REAL NOT NULL, expires_at REAL NOT NULL,
+                correlation TEXT NOT NULL UNIQUE, hcp_xml TEXT, hcp_hash TEXT,
+                company_file_hash TEXT, country TEXT, qbxml_version TEXT,
+                request_xml TEXT, request_hash TEXT, request_return_count INTEGER NOT NULL DEFAULT 0,
+                response_xml TEXT, response_hash TEXT, response_result INTEGER,
+                response_callback_count INTEGER NOT NULL DEFAULT 0,
+                identity_hash TEXT, host_evidence TEXT, last_error TEXT NOT NULL DEFAULT '',
+                close_result TEXT)""")
+            db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS one_active_qbwc_company
+                ON qbwc_sessions ((1))
+                WHERE state IN ('authenticated','request-sent','verified','blocked')""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS qbwc_session_identity_immutable
+                BEFORE UPDATE OF ticket,connector,created_at,correlation ON qbwc_sessions
+                WHEN OLD.ticket IS NOT NEW.ticket
+                  OR OLD.connector IS NOT NEW.connector
+                  OR OLD.created_at IS NOT NEW.created_at
+                  OR OLD.correlation IS NOT NEW.correlation
+                BEGIN SELECT RAISE(ABORT, 'QBWC session identity is immutable'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS qbwc_request_immutable
+                BEFORE UPDATE OF request_xml,request_hash,hcp_xml,hcp_hash ON qbwc_sessions
+                WHEN (OLD.request_xml IS NOT NULL AND OLD.request_xml IS NOT NEW.request_xml)
+                  OR (OLD.request_hash IS NOT NULL AND OLD.request_hash IS NOT NEW.request_hash)
+                  OR (OLD.hcp_xml IS NOT NULL AND OLD.hcp_xml IS NOT NEW.hcp_xml)
+                  OR (OLD.hcp_hash IS NOT NULL AND OLD.hcp_hash IS NOT NEW.hcp_hash)
+                BEGIN SELECT RAISE(ABORT, 'QBWC request evidence is immutable'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS qbwc_request_initial_guard
+                BEFORE UPDATE OF request_xml,request_hash ON qbwc_sessions
+                WHEN OLD.request_xml IS NULL AND NEW.request_xml IS NOT NULL
+                  AND (OLD.state != 'authenticated' OR NEW.state != 'request-sent'
+                       OR NEW.request_hash IS NULL)
+                BEGIN SELECT RAISE(ABORT, 'invalid QBWC request persistence'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS qbwc_context_immutable_after_send
+                BEFORE UPDATE OF hcp_xml,hcp_hash,company_file_hash,country,qbxml_version
+                ON qbwc_sessions
+                WHEN OLD.state != 'authenticated'
+                  AND (OLD.hcp_xml IS NOT NEW.hcp_xml
+                       OR OLD.hcp_hash IS NOT NEW.hcp_hash
+                       OR OLD.company_file_hash IS NOT NEW.company_file_hash
+                       OR OLD.country IS NOT NEW.country
+                       OR OLD.qbxml_version IS NOT NEW.qbxml_version)
+                BEGIN SELECT RAISE(ABORT, 'QBWC callback context is immutable after send'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS qbwc_response_immutable
+                BEFORE UPDATE OF response_xml,response_hash,response_result,identity_hash,host_evidence
+                ON qbwc_sessions
+                WHEN (OLD.response_xml IS NOT NULL AND OLD.response_xml IS NOT NEW.response_xml)
+                  OR (OLD.response_hash IS NOT NULL AND OLD.response_hash IS NOT NEW.response_hash)
+                  OR (OLD.response_result IS NOT NULL
+                      AND OLD.response_result IS NOT NEW.response_result)
+                  OR (OLD.identity_hash IS NOT NULL
+                      AND OLD.identity_hash IS NOT NEW.identity_hash)
+                  OR (OLD.host_evidence IS NOT NULL
+                      AND OLD.host_evidence IS NOT NEW.host_evidence)
+                BEGIN SELECT RAISE(ABORT, 'QBWC response evidence is immutable'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS qbwc_response_initial_guard
+                BEFORE UPDATE OF response_xml,response_hash,response_result,identity_hash,host_evidence
+                ON qbwc_sessions
+                WHEN OLD.response_hash IS NULL AND NEW.response_hash IS NOT NULL
+                  AND (OLD.state != 'request-sent'
+                       OR NEW.state NOT IN ('verified','blocked')
+                       OR NEW.response_xml IS NULL OR NEW.response_result IS NULL
+                       OR (NEW.state = 'verified'
+                           AND (NEW.identity_hash IS NULL OR NEW.host_evidence IS NULL))
+                       OR (NEW.state = 'blocked'
+                           AND (NEW.identity_hash IS NOT NULL OR NEW.host_evidence IS NOT NULL)))
+                BEGIN SELECT RAISE(ABORT, 'invalid QBWC response persistence'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS qbwc_state_transition_guard
+                BEFORE UPDATE OF state ON qbwc_sessions
+                WHEN NOT (
+                    OLD.state = NEW.state
+                    OR (OLD.state = 'authenticated' AND NEW.state IN
+                        ('request-sent','blocked','disconnected','closed','expired'))
+                    OR (OLD.state = 'request-sent' AND NEW.state IN
+                        ('verified','blocked','disconnected','closed','expired'))
+                    OR (OLD.state = 'verified' AND NEW.state IN ('blocked','closed','expired'))
+                    OR (OLD.state = 'blocked' AND NEW.state IN ('closed','expired'))
+                    OR (OLD.state = 'disconnected' AND NEW.state = 'closed')
+                )
+                BEGIN SELECT RAISE(ABORT, 'invalid QBWC session state transition'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS qbwc_session_no_delete
+                BEFORE DELETE ON qbwc_sessions
+                BEGIN SELECT RAISE(ABORT, 'QBWC sessions are durable evidence'); END""")
+            db.execute("""CREATE TABLE IF NOT EXISTS qbwc_callbacks (
+                sequence INTEGER PRIMARY KEY, at REAL NOT NULL, ticket TEXT NOT NULL,
+                method TEXT NOT NULL, input_hash TEXT NOT NULL, result_hash TEXT NOT NULL,
+                outcome TEXT NOT NULL,
+                FOREIGN KEY(ticket) REFERENCES qbwc_sessions(ticket))""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS qbwc_callbacks_no_update
+                BEFORE UPDATE ON qbwc_callbacks
+                BEGIN SELECT RAISE(ABORT, 'QBWC callbacks are append-only'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS qbwc_callbacks_no_delete
+                BEFORE DELETE ON qbwc_callbacks
+                BEGIN SELECT RAISE(ABORT, 'QBWC callbacks are append-only'); END""")
             db.execute(f"""CREATE TABLE IF NOT EXISTS jobs (
                 id TEXT PRIMARY KEY, idempotency_key TEXT NOT NULL UNIQUE,
                 fingerprint TEXT NOT NULL, source_key TEXT NOT NULL UNIQUE,

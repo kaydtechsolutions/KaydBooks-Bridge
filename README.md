@@ -17,11 +17,13 @@ as Bridge endpoints: they do not enforce Bridge company permissions or durable j
 - Strict synthetic invoice and source validation with decimal amounts and master allowlists.
 - Durable draft, validated, queued, in-flight, posted-unverified, verified, blocked,
   failed and unknown state vocabulary. `failed` is reserved; uncertain outcomes stay held.
+- Durable QBWC callback tickets and a fixed read-only Host/Company discovery request,
+  with configured CompanyRet fingerprints, session isolation and replay-safe recovery.
 - Atomic duplicate checks, serialized company dispatch, append-only audit events,
   saved-record comparison, pause, crash recovery and reconciliation without retries.
 - A local CLI usable without Hermes or QuickBooks. Only a synthetic invoice adapter exists.
 
-Native Hermes adapters, real SDK company binding, transaction/report support,
+Native Hermes adapters, real SDK-qualified company binding, transaction/report support,
 document extraction, schedules, notifications, memory and GUI workflows remain planned.
 An interface label in a test envelope does not mean that Hermes interface is connected.
 
@@ -57,6 +59,7 @@ on the command line or in job payloads.
 
 See [PROJECT_STATUS.md](PROJECT_STATUS.md), the [architecture and durable plan](docs/ARCHITECTURE.md),
 [capability matrix](docs/CAPABILITIES.md), [operations guide](docs/OPERATIONS.md), and
+[durable QBWC discovery protocol](docs/QBWC_DISCOVERY.md), and
 [expanded scope from PR #1](HERMES_INTEGRATION_SCOPE.md).
 
 ## License

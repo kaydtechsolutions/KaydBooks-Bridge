@@ -47,16 +47,31 @@ class Company:
 
 
 @dataclass(frozen=True)
+class Connector:
+    id: str
+    company: str
+    password_env: str
+    company_file_env: str | None
+    identity_fields: tuple[str, ...]
+    identity_sha256: str
+
+
+@dataclass(frozen=True)
 class Config:
     root: Path
     companies: dict[str, Company]
     principals: dict[str, dict]
+    connectors: dict[str, Connector]
 
     @classmethod
     def load(cls, path: str | Path) -> Config:
         source = outside_repository(Path(path))
         data = json.loads(source.read_text(encoding="utf-8"))
-        strict_keys(data, {"schema_version", "mode", "state_root", "companies", "principals"})
+        strict_keys(
+            data,
+            {"schema_version", "mode", "state_root", "companies", "principals"},
+            {"connectors"},
+        )
         if type(data["schema_version"]) is not int or data["schema_version"] != 1:
             raise BridgeError("unsupported configuration version")
         if data["mode"] != "simulation":
@@ -120,7 +135,58 @@ class Config:
                     raise BridgeError("invalid company permission grants")
                 if any(p not in PERMISSIONS for p in permissions):
                     raise BridgeError("unsupported permission")
-        return cls(root, companies, principals)
+        connectors = {}
+        identity_companies: dict[str, str] = {}
+        company_identities: dict[str, tuple[tuple[str, ...], str]] = {}
+        for name, raw in data.get("connectors", {}).items():
+            identifier(name)
+            strict_keys(
+                raw,
+                {"company", "password_env", "identity_fields", "identity_sha256"},
+                {"company_file_env"},
+            )
+            company = raw["company"]
+            if company not in companies:
+                raise BridgeError("connector references an unknown company")
+            password_env = _secret_env(raw["password_env"])
+            if password_env in env_names:
+                raise BridgeError("secret references must be unique")
+            env_names.add(password_env)
+            company_file_env = raw.get("company_file_env")
+            if company_file_env is not None:
+                company_file_env = _secret_env(company_file_env)
+                if company_file_env in env_names:
+                    raise BridgeError("secret references must be unique")
+                env_names.add(company_file_env)
+            fields = raw["identity_fields"]
+            if (
+                not isinstance(fields, list)
+                or len(fields) < 3
+                or len(fields) != len(set(fields))
+                or any(field not in COMPANY_IDENTITY_FIELDS for field in fields)
+                or not set(fields) & STRONG_COMPANY_IDENTITY_FIELDS
+            ):
+                raise BridgeError("company identity requires distinct supported claims")
+            expected = raw["identity_sha256"]
+            if not isinstance(expected, str) or not re.fullmatch(r"[a-f0-9]{64}", expected):
+                raise BridgeError("company identity SHA-256 is invalid")
+            other_company = identity_companies.get(expected)
+            if other_company is not None and other_company != company:
+                raise BridgeError("company identity binding is ambiguous")
+            company_identity = (tuple(fields), expected)
+            if company in company_identities and company_identities[company] != company_identity:
+                raise BridgeError("configured company has inconsistent identity bindings")
+            identity_companies[expected] = company
+            company_identities[company] = company_identity
+            connectors[name] = Connector(
+                id=name,
+                company=company,
+                password_env=password_env,
+                company_file_env=company_file_env,
+                identity_fields=tuple(fields),
+                identity_sha256=expected,
+            )
+        return cls(root, companies, principals, connectors)
 
     def authenticate(self, token: str) -> str:
         matches = []
@@ -139,6 +205,59 @@ class Config:
         ):
             raise BridgeError("permission denied")
         return self.companies[company]
+
+    def authenticate_connector(self, username: str, password: str) -> Connector:
+        connector = self.connectors.get(username)
+        if connector is None:
+            raise BridgeError("authentication failed")
+        expected = os.environ.get(connector.password_env, "")
+        if len(expected) < 32 or not secrets.compare_digest(password.encode(), expected.encode()):
+            raise BridgeError("authentication failed")
+        return connector
+
+    @staticmethod
+    def connector_company_file(connector: Connector) -> str:
+        if connector.company_file_env is None:
+            return ""
+        value = os.environ.get(connector.company_file_env, "")
+        if not value or len(value) > 1024 or any(char in value for char in "\r\n\0"):
+            raise BridgeError("configured company file is unavailable")
+        return value
+
+
+def _secret_env(value: object) -> str:
+    if not isinstance(value, str) or not re.fullmatch(r"KAYDBOOKS_[A-Z0-9_]+", value):
+        raise BridgeError("use a KAYDBOOKS_ environment secret reference")
+    return value
+
+
+COMPANY_IDENTITY_FIELDS = frozenset(
+    {
+        "CompanyName",
+        "LegalCompanyName",
+        "EIN",
+        "SSN",
+        "Phone",
+        "Email",
+        "TaxForm",
+        "FirstMonthFiscalYear",
+        "FirstMonthIncomeTaxYear",
+        "Address.Addr1",
+        "Address.City",
+        "Address.State",
+        "Address.PostalCode",
+        "LegalAddress.Addr1",
+        "LegalAddress.City",
+        "LegalAddress.State",
+        "LegalAddress.PostalCode",
+    }
+)
+STRONG_COMPANY_IDENTITY_FIELDS = COMPANY_IDENTITY_FIELDS - {
+    "CompanyName",
+    "LegalCompanyName",
+    "FirstMonthFiscalYear",
+    "FirstMonthIncomeTaxYear",
+}
 
 
 PERMISSIONS = frozenset(

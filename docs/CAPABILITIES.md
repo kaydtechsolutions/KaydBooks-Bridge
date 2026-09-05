@@ -51,8 +51,8 @@ designed and qualified against an authorized test installation.
 
 | Area | Evidence / limitation | Bridge state |
 | --- | --- | --- |
-| SOAP callbacks, sessions, qbXML parser/builders | Inherited tests, including fakes; in-memory sessions cannot be the durable queue | Transport unit/synthetic tested |
-| Host/Company/Preferences discovery | Requires actual QBWC/SDK session, product, country, version negotiation and company binding | Planned; connection unverified |
+| SOAP callbacks, sessions, qbXML parser/builders | Bridge persists tickets, callback hashes and exact discovery request/response; inherited generator sessions remain unsuitable for writes | Discovery adapter synthetic-tested |
+| Host/Company/Preferences discovery | HCP preflight plus correlated Host/Company query validates configured CompanyRet digest, country and qbXML version | Synthetic-tested; real connection unverified |
 | Invoice creation/read-back | Narrow synthetic amount-only invoice; no SDK request emitted by Bridge | Synthetic-tested; real support unverified |
 | Other transactions | Generic builder names do not establish schema or edition support | Planned; unavailable through Bridge |
 | Reports | Validate each report, basis, filters, dates, permissions and totals separately | Planned; unverified |

@@ -25,6 +25,8 @@ $env:KAYDBOOKS_PREPARER_A_SECRET = uv run --frozen python -c 'import secrets; pr
 $env:KAYDBOOKS_APPROVER_A_SECRET = uv run --frozen python -c 'import secrets; print(secrets.token_urlsafe(32))'
 $env:KAYDBOOKS_OPERATOR_A_SECRET = uv run --frozen python -c 'import secrets; print(secrets.token_urlsafe(32))'
 $env:KAYDBOOKS_OPERATOR_B_SECRET = uv run --frozen python -c 'import secrets; print(secrets.token_urlsafe(32))'
+$env:KAYDBOOKS_QBWC_COMPANY_A_SECRET = uv run --frozen python -c 'import secrets; print(secrets.token_urlsafe(32))'
+$env:KAYDBOOKS_QBWC_COMPANY_A_FILE = 'C:\Synthetic\CompanyA.QBW'
 $env:KAYDBOOKS_TOKEN = $env:KAYDBOOKS_PREPARER_A_SECRET
 uv run --frozen kaydbooks-bridge check-config
 ```
@@ -132,14 +134,15 @@ job and synthetic-ledger stores together for a simulation drill. A real QuickBoo
 ledger is independent: restored queue state requires external reconciliation before
 any writes. Schema versions other than 1 fail closed; no automatic migration exists.
 
-Production preparation still needs TLS/QBWC authentication, authenticated callback
-company binding, request size limits, durable callback replay protection, fresh master
+Production preparation still needs staged TLS/QWC deployment, real callback/company
+qualification, request size limits, fresh master
 queries, exact transaction/report schemas, structured response evidence, OS isolation,
 secret rotation, audited policy changes, backup/restore drills and tested upgrades.
 Do not deploy the inherited generic `qbwc_kit.server` directly as the Bridge service.
 Do not install `qbwc-kit` separately alongside this distribution: both own that namespace.
 
-Real integration access is requested only when starting M2: first an authorized
-test-company discovery session with posting disabled. The later Hermes contract test
-needs an isolated profile and scoped bridge credentials; notification recipients or
-GUI permissions are requested only for the corresponding optional feature.
+The M2 adapter is implemented with synthetic callbacks; see
+[durable QBWC discovery](QBWC_DISCOVERY.md) for its state machine, private binding
+configuration and exact real integration-test prerequisite. The later Hermes contract
+test needs an isolated profile and scoped bridge credentials; notification recipients
+or GUI permissions are requested only for the corresponding optional feature.

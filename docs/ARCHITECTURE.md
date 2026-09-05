@@ -78,9 +78,11 @@ merely because a lease elapsed. No exactly-once guarantee is claimed.
 
 The synthetic write boundary holds a short local database transaction during the
 separate local ledger write to serialize pause/recovery. This is not a design for a
-network round trip: a real QBWC adapter requires persisted outbound requests, callback
-correlation, session identity, leases and fencing around asynchronous callbacks.
-Never restore a generator and blindly replay its last write.
+network round trip. M2 now adds durable QBWC tickets, callback records, response
+correlation and exact request/response persistence for a fixed read-only discovery
+batch. Restart may return the exact persisted discovery request because it cannot write.
+No production transaction worker exists. Never restore a generator and blindly replay
+its last write, and never extend read-only replay behavior to an uncertain write.
 
 The audit is hash chained and protected from ordinary UPDATE/DELETE by SQLite
 triggers. An administrator can rewrite a database or truncate its tail; independent
@@ -92,7 +94,7 @@ signed checkpoints/immutable audit export are future production requirements.
 | --- | --- | --- |
 | M0: prerequisites and inherited baseline | Isolated branch, incorporate unmerged PR #1, Windows TTL regression, prevent inherited publishing | Complete locally |
 | M1: foundation | Company isolation, strict private config, authenticated CLI, durable queue/audit, duplicate controls, simulated saved-record comparison and recovery; concurrent/crash/permission tests | Implemented; synthetic tests |
-| M2: SDK discovery and read-only transport | Bind authenticated QBWC session to expected company file plus independently queried company evidence; Host/Company/Preferences inventory; negotiate qbXML version; persist requests/callbacks and reject cross-session replay | Planned |
+| M2: SDK discovery and read-only transport | Bind authenticated QBWC connector to configured company through HCP preflight plus correlated Host/Company queries; negotiate qbXML version; persist requests/callbacks and reject cross-session replay | Implemented; synthetic-tested, real qualification blocked |
 | M3: first real transaction adapter | Pick one verified operation in one authorized synthetic test company; fresh master resolution, tax/account/currency validation, duplicate query, response identifiers and independent complete read-back; timeout/restart reconciliation | Planned |
 | M4: Hermes tools and document intake | Versioned narrow tools for prepare/validate/submit/status/lookup/verify/recover, immutable source bytes, field confidence and review, no raw qbXML/SQL; isolated Hermes profile contract tests | Planned |
 | M5: scheduling and optional collaboration | Schedule occurrence keys, dependencies, timezone, cancellation, no overlaps; notification outbox; versioned memory; delegated jobs; Kanban as a projection | Planned |

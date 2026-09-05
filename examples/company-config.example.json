@@ -22,6 +22,22 @@
       "approval_required": true
     }
   },
+  "connectors": {
+    "connector-company-a": {
+      "company": "company-a",
+      "password_env": "KAYDBOOKS_QBWC_COMPANY_A_SECRET",
+      "company_file_env": "KAYDBOOKS_QBWC_COMPANY_A_FILE",
+      "identity_fields": ["CompanyName", "LegalCompanyName", "EIN"],
+      "identity_sha256": "73aba74e408cf2dbb0eec5ecef8e08bbfac222eb73e73f09bfe0f40d7218d15d"
+    },
+    "connector-company-b": {
+      "company": "company-b",
+      "password_env": "KAYDBOOKS_QBWC_COMPANY_B_SECRET",
+      "company_file_env": "KAYDBOOKS_QBWC_COMPANY_B_FILE",
+      "identity_fields": ["CompanyName", "LegalCompanyName", "EIN"],
+      "identity_sha256": "28b1dfe9dbbca8589a36773a31b87e8a8aaa025f578425516e7b70f88447868b"
+    }
+  },
   "principals": {
     "preparer-a": {
       "token_env": "KAYDBOOKS_PREPARER_A_SECRET",
