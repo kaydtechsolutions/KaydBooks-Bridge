@@ -76,9 +76,19 @@ integrity. Private helper copies inserted only a marker and pause at each checkp
 the harness terminated the exact helper PID. It did not terminate QuickBooks. Private
 evidence includes helper hashes, checkpoint/closure markers and original responses.
 
-Power loss, termination inside ProcessRequest, and parent-only death with a surviving
-helper remain unqualified. Permission denial, mismatch rejection and transport overlap
-remain synthetic tests. Original private CompanyRet evidence is never committed.
+Parent-only termination with a surviving helper also passed against the sample.
+The helper paused after response save, retaining its session and mutex. Terminating
+the Python parent did not release the native mutex: explicit recovery's second helper
+failed before SDK dispatch. Automatic replay was refused. Once released, the survivor
+closed and published; recovery and a separate CLI invocation verified saved evidence
+without another query. Private native evidence showed exactly one actual SDK dispatch.
+Audit dispatch-intent events include rejected helper attempts and are not a count of
+actual requests received by QuickBooks.
+
+QBWC authenticate returned busy when invoked locally against this held journal; this
+does not qualify actual Web Connector callbacks. Power loss and termination inside
+ProcessRequest remain unqualified. Permission denial and mismatched-company tests
+remain synthetic. Original private CompanyRet evidence is never committed.
 
 QBWC read-only registration remains blocked by its AppLock metadata operation. Direct
 SDK success does not qualify QBWC, Hermes, production companies, transaction adapters,

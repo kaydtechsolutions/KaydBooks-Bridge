@@ -2,6 +2,27 @@
 
 Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK discovery: PASS; QBWC qualification: BLOCKED.
 
+## Latest qualification: parent interruption with surviving native helper
+
+- Real sample-company test passed: a private helper copy paused after saving the
+  read-only response while its native session and mutex remained open. The harness
+  terminated only its Python parent; the helper survived and later closed normally.
+- A fresh service refused automatic replay. Explicit read recovery launched a second
+  helper, which the native mutex rejected before SDK dispatch. Private native evidence
+  showed exactly one actual SDK dispatch. Audit dispatch-intent events also include
+  the rejected recovery attempt and must not be counted as actual SDK requests.
+- After releasing the checkpoint, the survivor published its response. Shared binding
+  verification and audit integrity passed, with no additional query. A separate CLI
+  process then verified the completed run from durable evidence.
+- QBWC authenticate returned busy against the held company journal when invoked
+  locally. This is a service-level overlap check, not a real Web Connector callback.
+- Focused synthetic regressions: **26 passed**. Application source is unchanged;
+  private harness, instrumented helper hashes, PIDs, XML and results remain outside Git.
+- Limits: OS power loss and interruption inside ProcessRequest remain unqualified.
+  QBWC AppLock registration remains blocked. Live posting remains disabled.
+- Next: inventory and implement the next narrow read-only lookup adapter through
+  the same company validation and durable recovery controls. No user action is needed.
+
 ## Latest qualification: native helper interruption/recovery
 
 - Actual sample-company fault injection passed at two native-helper checkpoints.
