@@ -1,6 +1,29 @@
 # KaydBooks Bridge project status
 
-Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK and QBWC discovery, including QBWC post-restart update: PASS.
+Updated: 2026-09-06. General live posting: DISABLED. One separately approved sample invoice was saved and verified. Real direct SDK and QBWC discovery, including QBWC post-restart update: PASS.
+
+## Latest qualification: one approved sample invoice and independent receipt checks
+
+- Operator explicitly approved one non-taxable service invoice of 10.00 in the confirmed
+  sample company. Fresh SDK master evidence and the validated review were checked before
+  dispatch; the isolated helper rechecked company, preferences, customer/item/account/code
+  values and absence of the invoice reference within the native session.
+- Exactly one InvoiceAdd request was sent. Its durable intent preceded dispatch; exact
+  request hash was fixed to the approved snapshot. Returned TxnID and response were saved
+  before querying by TxnID. The add response and query matched the approved invoice.
+- A separate read-only native session queried the reference and verified the same invoice.
+  A repeat invocation was refused by the persisted intent guard before opening an SDK
+  session. Receipts and audit chain verified; no blind retry, second invoice or void.
+- Added pure request construction and strict saved-receipt comparison for bounded
+  non-taxable, single-currency service invoices. These helpers have no transport/CLI
+  dispatch capability. General service posting and the native read-only allowlist remain
+  unchanged. Exact records, write helper, authorization and evidence remain private.
+- Validation: 489 tests pass, including 33 request/receipt cases; native helper compilation
+  and five altered-request rejection checks passed. The core simulation job was not
+  promoted to a production-success state; actual test-write evidence is recorded separately.
+- NEXT: integrate durable transaction receipts and reconciliation with the shared job
+  lifecycle before any general posting mode. No further sample writes are authorized by
+  this one-invoice approval. Taxable/inventory/production posting remain unqualified.
 
 ## Latest qualification: non-taxable commercial invoice and review preview
 
