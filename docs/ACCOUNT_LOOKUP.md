@@ -97,3 +97,8 @@ modal; after restoring its window, explicit read recovery completed successfully
 A fresh Python process replayed the persisted result with dispatch disabled. This is
 not qualification of interruption inside ProcessRequest or production accounting.
 All exact records and native evidence remain private. Posting remains disabled.
+
+
+Configured invoice receivables roles can now be checked against saved exact lookup
+evidence from either transport. See [account role checks](ACCOUNT_ROLES.md) for
+permissions, CLI arguments and the saved-evidence-only limitation.

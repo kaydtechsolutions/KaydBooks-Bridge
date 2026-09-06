@@ -2,6 +2,22 @@
 
 Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK and QBWC discovery, including QBWC post-restart update: PASS.
 
+## Latest implementation: configurable invoice receivables role checks
+
+- Added optional private company account_roles mapping and authenticated account-role
+  CLI. Initial supported rule: invoice.create / receivable / AccountsReceivable.
+- Requires current read+validate permissions, owned verified exact lookup evidence,
+  configured ListID, active status, correct type and reverified company binding.
+  Both QBWC and direct SDK evidence are supported. Previews cannot qualify a role.
+- Successful checks record policy/response digests in company audit and explicitly
+  report saved-evidence-only scope. No invoice state transitions or posting enabled.
+- Local suite: 306 passed; lint, format and build passed. Synthetic tests cover both
+  transports and changed policy, permission, binding, owner, type and unsupported rules.
+  Actual staged role validation is unqualified: staged operator lacks validate grant;
+  existing grants remain unchanged. See docs/ACCOUNT_ROLES.md.
+- Next: define and validate transaction-specific currency/customer/item dependencies
+  before connecting these preflight checks to invoice preparation. Posting disabled.
+
 ## Latest implementation: direct SDK exact account lookup qualified
 
 - Added mutually exclusive `--list-id` / `--accounts` CLI modes. Exact ListID is bound

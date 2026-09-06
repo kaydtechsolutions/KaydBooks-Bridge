@@ -6,7 +6,7 @@ import json
 import os
 import re
 import secrets
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
@@ -44,6 +44,7 @@ class Company:
     items: tuple[str, ...]
     sources: tuple[str, ...]
     approval_required: bool
+    account_roles: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -96,6 +97,7 @@ class Config:
                     "sources",
                     "approval_required",
                 },
+                {"account_roles"},
             )
             identifier(raw["simulation_identity"])
             if not isinstance(raw["currency"], str) or not re.fullmatch(
@@ -113,6 +115,9 @@ class Config:
                 raw[key] = tuple(raw[key])
             if type(raw["approval_required"]) is not bool:
                 raise BridgeError("approval_required must be boolean")
+            from .account_roles import validate_roles
+
+            raw["account_roles"] = validate_roles(raw.get("account_roles", {}))
             companies[name] = Company(id=name, **raw)
         principals = data["principals"]
         if not isinstance(principals, dict) or not principals:
