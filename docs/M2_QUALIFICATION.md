@@ -92,3 +92,18 @@ with the dedicated synthetic company open as that company's QuickBooks Admin bef
 the QWC is imported. The QWC's `IsReadOnly=true` asks the QuickBooks request processor
 for read-only access. The Bridge independently enforces read-only discovery and has no
 posting hook; these are separate controls.
+
+Web Connector 34 may then fail a first-time read-only import with QBWC1039 and SDK
+status 3263. Its own import routine tries to create a `FileID` data-extension definition
+in the company, and QuickBooks correctly rejects that metadata write under read-only
+authorization. This happens before the web service receives a callback.
+
+For a dedicated synthetic company only, create a private one-time bootstrap QWC with
+the same AppName, OwnerID and FileID, `IsReadOnly=false`, optional unattended access,
+and an explicit registration-only description. Import it while the sample company is
+open, allow access only while QuickBooks is running, and do not enable personal data.
+Do not configure its password or run an update. After QBWC creates the FileID, replace
+the registration with the stable `IsReadOnly=true` QWC before any service callback.
+The temporary QuickBooks permission is broader only because of QBWC's registration
+behavior; the Bridge remains query-only and live posting remains disabled throughout.
+Retain the exact QBWC log as real qualification evidence.

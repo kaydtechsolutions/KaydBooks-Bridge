@@ -134,6 +134,13 @@ Updated: 2026-09-06. Live posting: DISABLED. Real QuickBooks integration tests: 
   and permits only optional unattended access. This QuickBooks request-processor control
   is independent of the Bridge's enforced query-only mode. Focused tests are synthetic;
   the failed authorization attempt is real integration evidence, not a successful test.
+- A second real import against an operator-confirmed Intuit sample company proved that
+  QuickBooks honored `IsReadOnly=true`: its permission summary allowed reading without
+  personal data and only while QuickBooks was running. QBWC then failed before callbacks
+  with SDK status 3263 because its own first-time registration attempted to add the
+  required FileID data-extension definition under read-only authorization. A private,
+  same-ID registration bootstrap is staged for this QBWC limitation. It must never run
+  an update; the stable read-only QWC must replace it before any callback.
 
 ## Blockers and next actions
 
@@ -142,10 +149,10 @@ Updated: 2026-09-06. Live posting: DISABLED. Real QuickBooks integration tests: 
   completed. Actual installed version/tool enablement evidence is stored privately
   outside Git. Bridge-specific permissions, profile, schemas and integration behavior
   remain unverified. No Hermes settings, schedules, recipients or boards were changed.
-- The sole immediate M2 action is to import the corrected private QWC while the dedicated
-  synthetic company is open as its QuickBooks Admin, approve read-only access, enter the
-  password locally, and run one update. Real callback behavior and company binding remain
-  unverified.
+- The sole immediate M2 action is to import the private same-ID registration bootstrap
+  against the confirmed sample company, without entering a password or running an update,
+  then replace it with the stable read-only QWC. Real callback behavior and company
+  binding remain unverified.
 - Real Hermes and QuickBooks integration tests: **none**. Production-enabled features:
   **none**. Real transaction/report/tax/inventory/landed-cost support is unverified.
 - Planned: real qualification of the synthetic-tested QBWC discovery adapter;
