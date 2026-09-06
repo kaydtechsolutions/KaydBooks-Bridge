@@ -15,7 +15,7 @@ configuration. Public examples and tests use synthetic companies.
 | Transactions | Sales invoices, supplier bills, customer receipts and supplier payments |
 | Items | Services and inventory products, including mixed documents |
 | Adjustments | Customer credits/refunds, supplier credits, partial payments, deposits, discounts and additional charges |
-| Tax | Configurable per company; support both enabled and disabled company settings |
+| Tax | Excluded from this release by operator instruction on 2026-09-07; retain non-tax checks |
 | Currency | Single-currency and multi-currency companies; base-currency-only use needs no multi-currency activation |
 | Input | Manual forms, uploaded PDFs/photos/scans, Excel/CSV imports and Hermes chat |
 | Review | Review before posting; configurable approval policy and separately controlled self-approval |
@@ -67,10 +67,10 @@ qualification are separate evidence; a passing mock does not establish native su
   duplicate prevention, durable dispatch, independent read-back, abrupt-parent-exit
   recovery and refusal to resend a dispatched invoice.
 - [ ] **M3-02:** Inventory and mixed invoices: fresh items/accounts, supported inventory
-  settings, quantity/price/tax calculations, saved-line and stock-effect comparison.
+  settings, quantity/price calculations, saved-line and stock-effect comparison.
   The non-tax, single-currency simple-inventory/mixed path is sample-qualified: a USD15
   mixed invoice matched saved lines/balance and stock decrease from two to zero. Broader
-  tax/currency and inventory settings remain separate unqualified variants.
+  currency and inventory settings remain separate unqualified variants; tax is excluded.
 - [ ] **M3-03:** Supplier bills: vendor binding, expense/service/inventory lines,
   payable and expense/asset accounts, due dates, terms and reference checks. Verify
   saved lines, totals and liability effects; preserve an unknown outcome without retry.
@@ -90,14 +90,17 @@ qualification are separate evidence; a passing mock does not establish native su
 - [ ] **M3-06:** Customer credit notes and refunds: reference the intended customer,
   invoice/credit and accounts, avoid duplicate applications, verify remaining credit.
   One native USD5 non-tax service credit passed original-invoice limits, saved credit
-  verification and independent customer balance decrease from USD25 to USD20. It remains
-  unapplied; credit application, refunds, inventory and broader variants are unqualified.
+  verification and independent customer balance decrease from USD25 to USD20. It was
+  initially unapplied. A subsequent native USD3 application verified the invoice balance
+  10 -> 7, remaining credit 5 -> 2 and unchanged customer balance 20. Both reciprocal
+  links are retained with their native negative sign. Refunds and broader variants remain
+  unqualified; M3-06 stays partial.
 - [ ] **M3-07:** Supplier credits: correct vendor/accounts/items and bill applications;
   verify remaining payable and unused credit independently.
 - [ ] **M3-08:** Discounts and additional charges: explicit line/document treatment,
-  tax and rounding rules, correct accounts and exact saved totals for each operation.
-- [ ] **M3-09:** Tax-enabled and tax-disabled behavior: no forced tax activation,
-  supported codes/rates/jurisdiction verified, unsupported cases clearly blocked.
+  non-tax rounding rules, correct accounts and exact saved totals for each operation.
+- **M3-09 — EXCLUDED:** Tax-enabled transaction qualification is outside this release.
+  Non-tax validation remains enforced; taxable requests must not silently lose tax.
 - [ ] **M3-10:** Single- and multi-currency behavior: transaction/base amounts,
   exchange rate/date, master currency compatibility and payment allocations verified.
 - [ ] **M3-11:** Customer/vendor/item creation and updates: explicit fields and review,
@@ -130,8 +133,10 @@ qualification are separate evidence; a passing mock does not establish native su
 
 - [x] **M5-01:** Local schedule occurrence deduplication, timezones, dependencies,
   cancellation, versioned preferences, canonical delegation and read-only board contracts.
-- [ ] **M5-02:** Manual workflow is the default for a new company; approval and the
-  deliberate posting action remain distinct and auditable.
+- [x] **M5-02:** Manual workflow is the default for a new company; approval and the
+  deliberate posting action remain distinct and auditable. New-company setup requires
+  approval and enables no dispatch gate. The manual acceptance test proves approval
+  and submit perform zero writes; only deliberate native dispatch writes, with ordered audit.
 - [ ] **M5-03:** Scheduled posting of approved work: persisted cadence/timezone,
   cancellation, missed-run policy, restart recovery and no overlapping dispatch.
 - [ ] **M5-04:** Automatic mode: explicitly configured rules, limits, source/review
@@ -164,7 +169,7 @@ filters, paging/completeness, empty results, permissions, and independent reconc
 - [ ] **M6-07:** Inventory quantities and valuation with supported location filters.
 - [ ] **M6-08:** Sales analysis by customer, item and period.
 - [ ] **M6-09:** Purchase analysis by supplier, item and period.
-- [ ] **M6-10:** Tax summaries for sales and purchases supported by the company/edition.
+- **M6-10 — EXCLUDED:** Sales/purchase tax summaries are outside this release.
 - [ ] **M6-11:** Trial balance and general ledger.
 - [ ] **M6-12:** Native report support matrix and actual sample reconciliation for each
   enabled report. Unsupported requests fail explicitly; history is not current balance.
@@ -198,7 +203,7 @@ implementing and qualifying the software with the authorized sample company.
 1. M3 supplier bill preparation/read-back and generalized operation lifecycle, retaining
    existing invoice invariants. First qualify a base-currency non-tax bill path.
 2. Complete service/inventory transactions, payments, credits/refunds, master updates,
-   discounts/charges, then the tax and currency variants for each operation.
+   discounts/charges, then currency variants for each operation. Tax is excluded.
 3. Complete M4 forms/import/extraction/chat and revision/permission workflows over those
    contracts. Individual supporting changes may land earlier when required by M3.
 4. Complete M5 manual/scheduled/automatic posting and Hermes notification integration.
@@ -207,10 +212,8 @@ implementing and qualifying the software with the authorized sample company.
 
 Before implementing each native operation, verify the exact QuickBooks SDK schema,
 edition/version support and saved-record projections. Do not infer support from generic
-request names in the inherited library. Current `Bridge.prepare` accepts only
-`invoice.create`; supplier policies, payload schemas, evidence and durable adapters
-must be added before `bill.create` is advertised or dispatched.
+request names in the inherited library. Current supported operation families are listed in the project status; each new
+family requires policy, evidence, durable dispatch and independent native readback.
 
-Current step: **M3-03, [supplier-bill contract and lifecycle](SUPPLIER_BILLS.md)**, with the explicit
-permission-default update as supporting work. No new accounting write is implied by
-this checklist, and no real company details belong in it.
+Current step: **M3-06, customer credit application and refunds**, followed by supplier
+credits and the remaining non-tax acceptance gates. No real company details belong here.

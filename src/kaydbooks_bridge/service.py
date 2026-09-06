@@ -22,6 +22,10 @@ SURFACES = frozenset(
 
 
 def validate_payload(operation, payload, policy):
+    if operation == "customer-credit.apply":
+        from .credit_application import validate_payload as validate_credit
+
+        return validate_credit(payload, policy)
     if operation == "customer-credit.create":
         from .customer_credits import validate_payload as validate_credit
 
@@ -44,6 +48,10 @@ def validate_payload(operation, payload, policy):
 
 
 def require_evidence(config, policy, store, db, job, now):
+    if job["operation"] == "customer-credit.apply":
+        from .application_evidence import require
+
+        return require(config, policy, store, db, job, now)
     if job["operation"] == "customer-credit.create":
         from .credit_evidence import require
 
@@ -118,6 +126,7 @@ class Bridge:
             "customer-payment.create",
             "supplier-payment.create",
             "customer-credit.create",
+            "customer-credit.apply",
         ):
             raise BridgeError("operation unavailable")
         if envelope["surface"] not in SURFACES:
@@ -179,6 +188,8 @@ class Bridge:
                     from .supplier_payment_evidence import resolve as resolver
                 if envelope["operation"] == "customer-credit.create":
                     from .credit_evidence import resolve as resolver
+                if envelope["operation"] == "customer-credit.apply":
+                    from .application_evidence import resolve as resolver
                 evidence = resolver(
                     config,
                     policy,
@@ -193,6 +204,7 @@ class Bridge:
                 "customer-payment.create",
                 "supplier-payment.create",
                 "customer-credit.create",
+                "customer-credit.apply",
             ) or (policy.invoice_masters and bill_context is None):
                 raise BridgeError("verified invoice master evidence required")
             if matches:
@@ -274,6 +286,9 @@ class Bridge:
         credit = store.job(db, job_id)["operation"] == "customer-credit.create"
         if credit:
             table = "credit_evidence_links"
+        application = store.job(db, job_id)["operation"] == "customer-credit.apply"
+        if application:
+            table = "application_evidence_links"
         db.execute(
             f"INSERT INTO {table}(job_id,evidence) VALUES (?,?)",
             (job_id, canonical(evidence)),
@@ -283,7 +298,9 @@ class Bridge:
             self.clock(),
             actor,
             job_id,
-            "credit_evidence_linked"
+            "application_evidence_linked"
+            if application
+            else "credit_evidence_linked"
             if credit
             else "supplier_payment_evidence_linked"
             if supplier_payment
@@ -373,6 +390,7 @@ class Bridge:
                 "customer-payment.create",
                 "supplier-payment.create",
                 "customer-credit.create",
+                "customer-credit.apply",
             ):
                 raise BridgeError("use dedicated native payment reconciliation")
             evidence = resolve(
@@ -428,6 +446,7 @@ class Bridge:
                 "customer-payment.create",
                 "supplier-payment.create",
                 "customer-credit.create",
+                "customer-credit.apply",
             ):
                 from .source_review import require as require_review
 
@@ -563,6 +582,7 @@ class Bridge:
                 "customer-payment.create",
                 "supplier-payment.create",
                 "customer-credit.create",
+                "customer-credit.apply",
             ):
                 raise BridgeError("payment requires dedicated native dispatch or reconciliation")
             if db.execute(
@@ -711,6 +731,7 @@ class Bridge:
                 "customer-payment.create",
                 "supplier-payment.create",
                 "customer-credit.create",
+                "customer-credit.apply",
             ):
                 raise BridgeError("payment requires dedicated native dispatch or reconciliation")
             if job["state"] not in {"unknown", "posted-unverified"}:

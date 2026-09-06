@@ -73,6 +73,25 @@ public static class PrivateReadOnlyDiscovery {
    var root=doc.DocumentElement;
    if(root.Name!="QBXML" || root.ChildNodes.Count!=1) throw new InvalidOperationException("Invalid discovery envelope");
    var batch=root.FirstChild;
+   if(batch.ChildNodes.Count==7 && batch.ChildNodes[5].Name=="InvoiceQueryRq" && batch.ChildNodes[6].Name=="CreditMemoQueryRq") {
+    string correlation=batch.FirstChild.Attributes["requestID"].Value;
+    correlation=correlation.Substring(0,correlation.Length-1);
+    FixedQuery(batch.ChildNodes[2],"Preferences","MultiCurrencyPreferences",false);
+    FixedQuery(batch.ChildNodes[3],"Customer","ListID,IsActive,Balance,CurrencyRef",true);
+    FixedQuery(batch.ChildNodes[4],"Account","ListID,IsActive,AccountType,CurrencyRef",true);
+    for(int i=2;i<7;i++) {
+     var q=batch.ChildNodes[i];
+     if(q.Attributes.Count!=1||q.Attributes["requestID"]==null||q.Attributes["requestID"].Value!=correlation+(i+1).ToString())throw new Exception("Application query correlation differs");
+     if(i<5)continue;
+     var id=q.FirstChild;
+     if(id==null||id.Name!="TxnID"||!System.Text.RegularExpressions.Regex.IsMatch(id.InnerText,@"\A[A-Za-z0-9-]{1,31}\z"))throw new Exception("Exact application transaction required");
+     string expected="<TxnID>"+id.InnerText+"</TxnID><IncludeLinkedTxns>true</IncludeLinkedTxns>";
+     string fields=i==5?"TxnID,EditSequence,CustomerRef,ARAccountRef,IsPending,Subtotal,SalesTaxTotal,BalanceRemaining,IsPaid,CurrencyRef,ExchangeRate,LinkedTxn":"TxnID,EditSequence,CustomerRef,ARAccountRef,IsPending,TotalAmount,SalesTaxTotal,CreditRemaining,CurrencyRef,ExchangeRate,LinkedTxn";
+     foreach(string field in fields.Split(','))expected+="<IncludeRetElement>"+field+"</IncludeRetElement>";
+     if(q.InnerXml!=expected)throw new Exception("Fixed credit application query required");
+    }
+    while(batch.ChildNodes.Count>2)batch.RemoveChild(batch.LastChild);
+   }
    // Validate and detach fixed credit extensions before validating their invoice-master prefix.
    if(batch.LastChild!=null && batch.LastChild.Name=="CreditMemoQueryRq") {
     string[] cf="TxnID,EditSequence,CustomerRef,ARAccountRef,TxnDate,RefNumber,IsPending,Subtotal,SalesTaxTotal,CurrencyRef,ExchangeRate,IsToBePrinted,IsToBeEmailed,IsTaxIncluded,CustomerSalesTaxCodeRef,ItemSalesTaxRef,LinkedTxn,CreditMemoLineRet,CreditMemoLineGroupRet,DiscountLineRet,SalesTaxLineRet,ShippingLineRet,TotalAmount,CreditRemaining,Memo".Split(',');

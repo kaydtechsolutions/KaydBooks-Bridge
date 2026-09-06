@@ -1,12 +1,16 @@
 # KaydBooks Bridge project status
 
+Tax functionality and tax reports are excluded from this release by operator instruction
+on 2026-09-07. Non-tax checks remain enforced. 35 acceptance gates remain unfinished; manual workflow gate M5-02 now passes.
+
 Updated: 2026-09-07. Production posting: DISABLED. Four sample invoices (USD45 total)
 and four USD10 sample bills have verified receipts. Three customer receipts totaling USD20
-settled the mixed invoice and left USD5 unapplied. Fresh Customer Balance Summary and
-CustomerRet both report USD25, matching USD30 unpaid invoices minus USD5 unapplied.
+settled the mixed invoice and left USD5 unapplied. Before the credit test, Customer Balance Summary and CustomerRet both reported USD25,
+matching USD30 unpaid invoices minus USD5 unapplied.
 Two USD5 supplier payments settled the mixed bill; Vendor Balance Summary and complete
 BillToPay independently report USD30 across three unpaid bills. One USD5 unapplied service
-credit now verifies customer balance decreasing from USD25 to USD20. No transaction was resent.
+credit reduced customer balance to USD20. Applying USD3 of that credit left USD2 unused
+and the original invoice at USD7; customer balance remains USD20. No transaction was resent.
 
 ## M3â€“M7 sample implementation and qualification
 
@@ -30,28 +34,31 @@ credit now verifies customer balance decreasing from USD25 to USD20. No transact
   amounts through the durable lifecycle. Native USD5 and USD10 receipts settled the USD15
   invoice; a third USD5 receipt remained unapplied. Signed AppliedAmount, related invoice
   payments and customer-wide unused credits are handled without double-counting.
-- Latest validation: 794 full-suite tests and a final 22-test credit regression pass.
-  Lint, native request gates, 21-tool stdio checks and source/wheel builds pass.
-  An installed signed restore recovered all 17 jobs with valid integrity, foreign keys
-  and audit; no restored service started. CI53 passed the preceding supplier commit.
+- Latest validation: 815 full-suite tests passed, followed by 22 passing application
+  tests after the native sign correction and the added approval/dispatch acceptance test.
+  Lint, native request gates, 23-tool stdio checks and source/wheel builds pass.
+  An installed signed restore recovered 18 jobs with valid integrity and audit; the
+  restored service was not started. CI54 passed all nine jobs for the prior credit commit.
 - Supplier payments now pass exact vendor/AP/Bank mapping, partial/full settlement,
   independent saved allocation/payable checks and missing-response recovery tests.
   Native sample readbacks verified the bill balance decreasing 10 -> 5 -> 0.
 - Customer service credits enforce original-invoice/customer/AR identities, item limits
   after prior Bridge-linked credits and complete non-tax source evidence. One installed
   native USD5 credit passed saved-line, fully unapplied CreditRemaining and separate
-  customer-balance verification on its first attempt. Credit application and refunds
-  remain unfinished; this does not complete M3-06.
-- Current step: credit application/refunds and supplier credits, then remaining
+  customer-balance verification on its first attempt. A subsequent USD3 link-only
+  application now verifies invoice 10 -> 7, credit 5 -> 2 and customer balance unchanged
+  at 20. The native reciprocal link sign mismatch was corrected and reconciled without
+  resending. Refunds remain unfinished; this does not complete M3-06.
+- Current step: refunds and supplier credits, then remaining
   M3–M6 acceptance gates. Sample posting is paused between bounded tests.
 - The [first-release checklist](docs/FIRST_RELEASE_SCOPE.md) is the release target;
-  these qualified simple paths do not complete the wider tax/currency/advanced variants.
+  these qualified simple paths do not complete the wider currency/advanced variants.
   M3â€“M6 remain partial; final M7 follows their required acceptance gates.
 - New setup operators receive all currently supported permissions within explicitly
   assigned companies by default. Explicit restrictions are respected. Required reviews,
   company binding and production/sample posting gates remain enforced. General role
   management and separately configurable self-approval remain release work.
-- CLI sample invoice/bill/payment commands and 21 narrow MCP tools are implemented. Native
+- CLI sample invoice/bill/payment commands and 23 narrow MCP tools are implemented. Native
   attempts cannot enter simulation recovery; bill receipts are excluded from the
   historical invoice register. All company identity, sources and mappings stay private.
 
@@ -75,8 +82,8 @@ credit now verifies customer balance decreasing from USD25 to USD20. No transact
 
 | Milestone | Current implementation/evidence | Remaining scope |
 | --- | --- | --- |
-| M3 | Non-tax service/inventory/mixed invoices; expense/service/inventory bills and standard terms; customer/supplier payments and unapplied service credits; native readback, stock effects and recovery | Credits/refunds, broader terms, tax/currency variants, master-management interface and qualification |
-| M4 | Twenty-one narrow MCP tools; immutable source bytes/hash, explicit field confidence/review; installed Hermes discovery and actual MCP-to-SDK sample preparation | OCR quality, conversational model runs, draft correction/revision |
+| M3 | Non-tax service/inventory/mixed invoices; expense/service/inventory bills and standard terms; customer/supplier payments and unapplied service credits; native readback, stock effects and recovery | Credits/refunds, broader terms, currency variants, master-management interface and qualification |
+| M4 | Twenty-three narrow MCP tools; immutable source bytes/hash, explicit field confidence/review; installed Hermes discovery and actual MCP-to-SDK sample preparation | OCR quality, conversational model runs, draft correction/revision |
 | M5 | Local bounded schedules, occurrence deduplication, dependencies/cancellation, local-only outbox, versioned preferences, canonical delegation, read-only board | Native Hermes cron/channels/delegation/Kanban connections; external delivery |
 | M6 | Historical verified-invoice register with dates, source hashes, observation times, derived totals and private exports | Native QuickBooks financial reports and optional GUI fallback |
 | M7 | Signed quiescent snapshot, isolated restore/integrity/audit drill, private ACL inspection, package qualification | Production pilot authorization, dedicated service account, operational failover and external immutable audit retention |

@@ -15,7 +15,8 @@ as Bridge endpoints: they do not enforce Bridge company permissions or durable j
 
 The agreed [first-release scope and acceptance checklist](docs/FIRST_RELEASE_SCOPE.md)
 covers the remaining transactions, inputs, posting modes and reports. M3–M6 must meet
-their required gates before final M7 deployment qualification; the current sample
+their required gates before final M7 deployment qualification; tax functionality and
+tax reports are excluded from this release by operator choice; the current sample
 invoice path is only part of that release.
 
 - Explicit company context and per-company private SQLite databases.
@@ -38,7 +39,9 @@ full and unapplied amounts with independent read-back and reconciliation without
 with independent payable checks and a separate bounded sample gate.
 [Customer service credits](docs/CUSTOMER_CREDITS.md) reference an original invoice,
 check prior Bridge-linked credits and verify the saved unapplied amount and customer
-balance effect. Credit application, refunds and broader credit variants remain unfinished.
+balance effect. [Credit application](docs/CREDIT_APPLICATION.md) verifies both existing
+transaction links and balances without creating a payment. Refunds and broader credit
+variants remain unfinished.
 
 SDK/QBWC company binding and master/receipt reads have real sample-company evidence.
 The optional [Hermes MCP adapter](docs/HERMES_TOOLS.md) adds source capture, preparation
