@@ -562,7 +562,7 @@ class Bridge:
 
             require_review(config, policy, store, db, job)
             if action == "approve":
-                if actor == job["submitter"]:
+                if actor == job["submitter"] and not policy.allow_self_approval:
                     raise BridgeError("approval must come from a different principal")
                 db.execute(
                     "UPDATE jobs SET approval_by=?,approval_hash=? WHERE id=?",
@@ -584,6 +584,8 @@ class Bridge:
             if not job["approval_by"] or job["approval_hash"] != job["fingerprint"]:
                 raise BridgeError("approval required")
             config.authorize(job["approval_by"], policy.id, "approve")
+            if job["approval_by"] == job["submitter"] and not policy.allow_self_approval:
+                raise BridgeError("company self-approval policy no longer permits this approval")
 
     @audited
     def status(self, token: str, company: str, job_id: str | None = None) -> dict:

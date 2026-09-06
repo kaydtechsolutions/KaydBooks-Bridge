@@ -1,7 +1,7 @@
 # KaydBooks Bridge project status
 
 Tax functionality and tax reports are excluded from this release by operator instruction
-on 2026-09-07. Non-tax checks remain enforced. 35 acceptance gates remain unfinished; manual workflow gate M5-02 now passes.
+on 2026-09-07. Non-tax checks remain enforced. 34 acceptance gates remain unfinished; manual workflow M5-02 and company access M4-07 pass.
 
 Updated: 2026-09-07. Production posting: DISABLED. Four sample invoices (USD45 total)
 and five USD10 sample bills have verified receipts. Three customer receipts totaling USD20
@@ -20,6 +20,12 @@ vendor 23 and bank 508 unchanged. The generated zero-amount payment stub was
 independently queried and the original held attempt reconciled without resending.
 A subsequent USD10 inventory bill and supplier credit independently verified stock
 0 -> 2 -> 0 and vendor/net payables 23 -> 33 -> 23, both on their first attempts.
+
+Company user administration is installed-qualified: default full supported assigned-company
+permissions, combined preparer/approver/administrator roles, exact restrictions and empty
+grants. Self-approval is explicit and rechecked on submit/dispatch. The test principal is
+retained with no grants; other principals were preserved. No accounting writes occurred.
+The operator's new manage-users grant was an explicit local bootstrap under standing authorization.
 
 ## M3â€“M7 sample implementation and qualification
 
@@ -43,13 +49,13 @@ A subsequent USD10 inventory bill and supplier credit independently verified sto
   amounts through the durable lifecycle. Native USD5 and USD10 receipts settled the USD15
   invoice; a third USD5 receipt remained unapplied. Signed AppliedAmount, related invoice
   payments and customer-wide unused credits are handled without double-counting.
-- Latest validation: 95 inventory-bill/supplier-credit/application regression tests pass
-  after adding inventory returns; the preceding full suite passed 911 tests. Coverage includes
+- Latest validation: 939 full-suite tests pass, plus 26 access/MCP tests after the
+  final atomic-inspection and audit-detail changes. Coverage includes
   exact zero-payment-stub readback, lost-response recovery and compiled native gates.
-  Lint, 29-tool stdio checks and source/wheel builds pass. An installed signed restore
+  Lint, 30-tool stdio checks and source/wheel builds pass. An installed signed restore
   recovered 24 jobs and 1089 files with valid integrity/audit, paused and without starting
   the restored service. The restarted TLS service reports ready with live posting false.
-  CI57 passed the prior supplier-credit commit; current CI follows the PR update.
+  CI59 passed the inventory-return commit; current CI follows the PR update.
 - Supplier payments now pass exact vendor/AP/Bank mapping, partial/full settlement,
   independent saved allocation/payable checks and missing-response recovery tests.
   Native sample readbacks verified the bill balance decreasing 10 -> 5 -> 0.

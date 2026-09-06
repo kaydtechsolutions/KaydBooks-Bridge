@@ -44,6 +44,7 @@ class Company:
     items: tuple[str, ...]
     sources: tuple[str, ...]
     approval_required: bool
+    allow_self_approval: bool = False
     account_roles: dict[str, str] = field(default_factory=dict)
     invoice_masters: dict = field(default_factory=dict)
     invoice_evidence_max_age_seconds: int = 900
@@ -83,6 +84,7 @@ def company_policy_context(policy):
     if not value.get("sample_payment_posting"):
         value.pop("sample_payment_posting", None)
     for name in (
+        "allow_self_approval",
         "supplier_payment_masters",
         "sample_supplier_payment_posting",
         "sample_credit_posting",
@@ -137,6 +139,7 @@ class Config:
                     "approval_required",
                 },
                 {
+                    "allow_self_approval",
                     "account_roles",
                     "invoice_masters",
                     "invoice_evidence_max_age_seconds",
@@ -170,6 +173,8 @@ class Config:
                 raw[key] = tuple(raw[key])
             if type(raw["approval_required"]) is not bool:
                 raise BridgeError("approval_required must be boolean")
+            if type(raw.get("allow_self_approval", False)) is not bool:
+                raise BridgeError("allow_self_approval must be boolean")
             from .account_roles import validate_roles
 
             raw["account_roles"] = validate_roles(raw.get("account_roles", {}))
@@ -522,6 +527,7 @@ PERMISSIONS = frozenset(
         "post-sample",
         "review-source",
         "manage-workflows",
+        "manage-users",
         "report",
         "export",
         "backup",

@@ -45,8 +45,9 @@ countries or versions must get a precise capability result, not a silent substit
 - New setup currently writes a concrete list of all supported permission names.
   An explicit `permissions` list, including an empty list, restricts that new operator.
   Existing principal lists are never silently expanded when configuration is loaded.
-- The complete user-management interface and combinable role presets remain release
-  work. Creating a new setup operator does not claim that interface is implemented.
+- Company administration now exposes combinable role presets, exact permissions,
+  individual denials and self-approval policy through authenticated CLI/MCP contracts.
+  Browser forms remain separate work under M4-02.
 - A user with prepare and approve permissions may approve their own work only when
   company self-approval policy permits it. This remains a separate policy setting.
 - Manual posting is the default. Scheduled dispatch must wait for required approval.
@@ -134,9 +135,13 @@ qualification are separate evidence; a passing mock does not establish native su
 - [ ] **M4-06:** Draft correction/revision: preserve original evidence, create a new
   revision, invalidate prior approvals and stale previews, preserve canonical lineage,
   and forbid editing/resubmitting an unknown or already posted transaction.
-- [ ] **M4-07:** Company user management: full permissions by default for a new assigned
+- [x] **M4-07:** Company user management: full permissions by default for a new assigned
   user, combinable roles, explicit restrictions, revocation and separately configurable
-  self-approval. Test cross-company denial and queue behavior after restrictions change.
+  self-approval. Cross-company denial, queued-job revocation, stale/concurrent updates
+  and failed atomic replacement pass. Installed-package qualification exercised full
+  default access, two/all role presets, explicit two-permission access and revocation.
+  The test user was left with no grants, other principals unchanged and no accounting
+  writes. CLI/MCP administration is complete; manual browser forms are tracked in M4-02.
 
 ### M5 — Posting modes and Hermes messaging
 
