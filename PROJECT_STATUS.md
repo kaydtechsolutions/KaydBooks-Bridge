@@ -205,3 +205,23 @@ Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK discovery: PASS; QB
 - This is actual direct SDK discovery evidence, not a mock and not QBWC qualification.
   QBWC callbacks, binding persistence and real restart qualification remain unfinished.
   Bridge posting remains disabled; no accounting write requests were sent.
+
+## Operator-confirmed binding and restart verification
+
+- Operator explicitly confirmed the three private company identity claims. The expected
+  connector digest is now configured outside Git, with private confirmation evidence and
+  company-scoped audit intent/completion events. Audit chain verification passed.
+- Restarted the staged HTTPS Bridge process after the configuration update. Health
+  reports read-only discovery and live_posting=false. A fresh actual direct SDK session
+  returned HostRet/CompanyRet successfully, closed, and matched the persisted expected
+  binding using the shared Bridge verifier loaded in a new process.
+- Offline test with the captured real payload and a deliberately wrong expected digest
+  was rejected by the shared verifier. No production company was opened. This is a
+  real-payload offline test, not an actual mismatched-company QBWC callback test.
+- Focused regression suite: 23 passed (synthetic discovery/deployment tests). No source
+  changes in this milestone; changes are private configuration/evidence and documentation.
+- Remaining M2 blocker: real QBWC read-only registration/callback qualification. The
+  direct SDK diagnostic is not a production transport. Do not repeat withdrawn QWC
+  bootstrap/replacement workarounds or enable posting. Next implementation work should
+  bring any chosen direct SDK transport through the same authenticated, company-scoped
+  durable lifecycle before claiming full M2 integration qualification.
