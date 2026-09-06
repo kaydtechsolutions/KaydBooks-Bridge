@@ -2,6 +2,21 @@
 
 Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK and QBWC discovery, including QBWC post-restart update: PASS.
 
+## Latest qualification: actual QBWC exact-ID lookup passed
+
+- The queued exact-ID job completed against the previously confirmed sample company.
+  One active account matched the immutable requested ListID; response_result=100,
+  no last error, closed session, company binding verified and audit chain valid.
+- Initial connection was held by a QuickBooks icon-bar modal after screen resolution
+  changed. The prompt was dismissed and the operator acknowledged Web Connector's
+  retry dialog. No account request had been dispatched before that retry.
+- Result retrieval in a fresh Python process validated persisted response evidence.
+  Raw records, selectors and exact callback evidence remain private outside Git.
+- This qualifies successful real QBWC exact-ID lookup, not production accounting or
+  interrupted-query recovery. Previous full local suite: 273 passed; this update
+  changes documentation only. Direct SDK exact lookup and operation-specific account
+  rules remain next. Accounting posting stays disabled.
+
 ## Latest development: exact account selector through QBWC
 
 - Added optional immutable ListID selection to the authenticated account job CLI.
@@ -10,9 +25,9 @@ Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK and QBWC discovery,
   the requested active record, with existing company/permission/correlation checks.
 - Local suite: 273 passed; lint and format passed. New synthetic tests cover restart,
   selector changes, invalid IDs, missing/wrong/inactive records and successful lookup.
-- Real exact-ID qualification remains pending; previous real preview evidence does
-  not qualify the new selector. Direct SDK exact lookup and operation-specific account
-  rules remain next. Accounting posting stays disabled.
+- Real exact-ID qualification subsequently passed; see the latest qualification above.
+  Direct SDK exact lookup and operation-specific account rules remain next.
+  Accounting posting stays disabled.
 
 ## Latest fix: QBWC account lookup implemented and real-tested
 

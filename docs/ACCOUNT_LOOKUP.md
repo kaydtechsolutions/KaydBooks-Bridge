@@ -77,5 +77,8 @@ blocked rather than being interpreted as a successful no-match.
 The fixed request uses ListID instead of MaxReturned/ActiveStatus, following the
 Intuit AccountQuery choice schema linked above. This option is QBWC-only; direct SDK
 continues to provide the active-account preview. Exact lookup has synthetic callback
-and restart coverage, but has not yet been qualified against the running QuickBooks
-sample. It is not account-type approval for any posting operation. Posting stays disabled.
+and restart coverage. A real sample-company QBWC lookup also returned exactly the
+requested active account, completed with progress 100 and clean closure, and passed
+company-binding and audit verification. Fresh-process retrieval revalidated persisted
+evidence. Raw results remain private. It is not account-type approval for any posting
+operation, production qualification or interrupted-query recovery. Posting stays disabled.
