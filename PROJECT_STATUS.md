@@ -14,11 +14,12 @@ Updated: 2026-09-06. General live posting: DISABLED. One separately approved sam
 - Validation: 535 tests pass (532-test full regression plus three new CLI/grant cases).
   Original SDK receipt preservation, QBWC callback replay/errors, current policy, stale
   observations, queue exclusion and migration are covered. General posting stays disabled.
-- The staged service was restarted and health checked ready. The existing sample invoice
-  receipt query is queued; no new accounting write was issued.
-- BLOCKER: real QBWC receipt verification awaits one manual Web Connector update. Windows
-  automation failed twice with GetCursorPos access denied; no locked-session assumption.
-- NEXT: run the queued update, verify the exact receipt and retain the fresh audit proof.
+- Real qualification passed after the operator ran the queued Web Connector update.
+  The session closed successfully; the exact saved invoice matched through QBWC and the
+  fresh verification action appended its audit proof. The original SDK receipt and job
+  were preserved, the audit chain verified, and zero new accounting writes occurred.
+- BLOCKER: none for receipt parity. The staged service remains ready with posting disabled.
+- NEXT: a separately gated real transaction adapter with durable dispatch and reconciliation.
 
 ## Previous implementation: durable invoice receipts and shared job reconciliation
 

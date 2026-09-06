@@ -128,6 +128,8 @@ Unlike historical attachment replay, this action always checks freshness. A paym
 unsupported edit causes the check to fail; it does not erase the historical receipt.
 
 Synthetic callback, attachment, fresh-confirmation, migration and failure tests pass.
-The staged sample lookup is queued and the upgraded service is ready. Real QBWC receipt
-qualification remains pending a manual Web Connector update because Windows app automation
-returned an access-denied error; this is not reported as a successful real receipt check.
+Real QBWC receipt qualification passed after the operator ran the queued Web Connector
+update. The session closed successfully, the exact existing sample invoice matched, and
+the fresh verification action appended its audit proof while preserving the original SDK
+receipt and job. The audit chain verified; no new accounting writes occurred. The private
+qualification report contains the response and observation references.
