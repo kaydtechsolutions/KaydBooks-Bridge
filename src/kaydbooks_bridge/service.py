@@ -395,6 +395,10 @@ class Bridge:
             if row is None:
                 return None
             job = store.job(db, row["id"])
+            if db.execute(
+                "SELECT 1 FROM native_invoice_attempts WHERE job_id=?", (job["id"],)
+            ).fetchone():
+                raise BridgeError("native invoice cannot enter the simulator")
             # Initiator and worker both need current authority. Delegation adds none.
             config.authorize(job["submitter"], company, "submit")
             require_evidence(config, policy, store, db, job, self.clock())
@@ -530,6 +534,10 @@ class Bridge:
             job = store.job(db, job_id)
             if job["state"] not in {"unknown", "posted-unverified"}:
                 raise BridgeError("only uncertain outcomes can be reconciled")
+            if db.execute(
+                "SELECT 1 FROM native_invoice_attempts WHERE job_id=?", (job_id,)
+            ).fetchone():
+                raise BridgeError("native invoice requires sample reconciliation")
             if ledger.identity() != policy.simulation_identity:
                 raise BridgeError("connected company mismatch")
             matches = ledger.find(job["payload"])

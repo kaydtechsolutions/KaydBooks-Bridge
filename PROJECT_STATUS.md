@@ -1,6 +1,30 @@
 # KaydBooks Bridge project status
 
-Updated: 2026-09-06. General live posting: DISABLED. One separately approved sample invoice was saved and verified. Real direct SDK and QBWC discovery, including QBWC post-restart update: PASS.
+Updated: 2026-09-06. Production posting: DISABLED. One earlier sample invoice was saved and verified. The new native sample adapter is awaiting its QuickBooks permission dialog. Real SDK/QBWC discovery and receipt reads: PASS.
+
+## Current M3: durable controlled sample posting
+
+- Added an explicit `post-sample` grant and private expiring, reference-prefix, count-limited
+  authorization. Company amount limits still apply. The staged gate permits at most three
+  non-tax service test invoices in the confirmed sample company, bounded at USD100 each.
+- Exact request and attempt are persisted before a single native session rechecks company,
+  masters and duplicate reference. Parent authorization binds the validated request hash;
+  a per-attempt durable fence precedes InvoiceAdd. Unknown outcomes cannot be resent.
+- Independent read-only reconciliation resolves by reference and then verifies by TxnID,
+  preserving receipt provenance and original dispatch context. QBWC excludes uncertain
+  native writes. Simulation cannot consume a dispatched native job.
+- Validation: 547 tests passed; lint, formatting and complete native helper compilation
+  passed. Tests cover lost responses, restart reconciliation, duplicate prevention,
+  changed grants/policy/binding, and native request tampering. These posting tests are synthetic.
+- Real preparation passed with retained source bytes/hash and fresh native master evidence
+  for one USD10 non-tax service invoice. The new application permission dialog is open;
+  no native write authorization or accounting write intent has been published.
+- BLOCKER: operator action on the QuickBooks permission dialog. M3 real dispatch/recovery
+  qualification is incomplete; M4-M7 remain planned. No production, merge or release.
+- NEXT: complete native sample qualification, then Hermes tools/document intake.
+
+The following sections retain historical evidence; their older next-action and permission
+statements are superseded by this current section and the operator's M3-M7 authorization.
 
 ## Latest implementation: Web Connector receipt parity
 

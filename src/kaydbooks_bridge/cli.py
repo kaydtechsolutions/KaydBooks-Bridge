@@ -1,4 +1,4 @@
-"""Authenticated local CLI. No HTTP endpoint or live write switch in this milestone."""
+"""Authenticated local CLI with an explicit controlled-sample posting command."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from .service import Bridge
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="KaydBooks Bridge (simulation only)")
+    parser = argparse.ArgumentParser(description="KaydBooks Bridge (production posting disabled)")
     parser.add_argument("--config", default=os.environ.get("KAYDBOOKS_CONFIG"))
     parser.add_argument("--company", help="explicit company ID; never inferred")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -22,7 +22,7 @@ def main(argv=None) -> int:
     commands.add_parser("check-config")
     prepare = commands.add_parser("prepare")
     prepare.add_argument("input", type=Path, help="structured synthetic envelope JSON")
-    for action in ("validate", "approve", "submit", "reconcile"):
+    for action in ("validate", "approve", "submit", "reconcile", "post-sample", "reconcile-sample"):
         commands.add_parser(action).add_argument("job_id")
     commands.add_parser("status").add_argument("job_id", nargs="?")
     commands.add_parser("preview").add_argument("job_id")
@@ -60,6 +60,12 @@ def main(argv=None) -> int:
                 result = bridge.action(token, args.company, args.job_id, args.command)
             elif args.command == "reconcile":
                 result = bridge.reconcile(token, args.company, args.job_id)
+            elif args.command in ("post-sample", "reconcile-sample"):
+                from .sample_posting import post, reconcile
+
+                result = (post if args.command == "post-sample" else reconcile)(
+                    bridge, token, args.company, args.job_id
+                )
             elif args.command == "status":
                 result = bridge.status(token, args.company, args.job_id)
             elif args.command == "preview":

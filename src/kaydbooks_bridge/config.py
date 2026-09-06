@@ -47,6 +47,7 @@ class Company:
     account_roles: dict[str, str] = field(default_factory=dict)
     invoice_masters: dict = field(default_factory=dict)
     invoice_evidence_max_age_seconds: int = 900
+    sample_posting: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -99,7 +100,12 @@ class Config:
                     "sources",
                     "approval_required",
                 },
-                {"account_roles", "invoice_masters", "invoice_evidence_max_age_seconds"},
+                {
+                    "account_roles",
+                    "invoice_masters",
+                    "invoice_evidence_max_age_seconds",
+                    "sample_posting",
+                },
             )
             identifier(raw["simulation_identity"])
             if not isinstance(raw["currency"], str) or not re.fullmatch(
@@ -129,6 +135,24 @@ class Config:
             if type(age) is not int or not 60 <= age <= 86400:
                 raise BridgeError("invoice evidence age must be 60-86400 seconds")
             companies[name] = Company(id=name, **raw)
+            gate = companies[name].sample_posting
+            if not isinstance(gate, dict):
+                raise BridgeError("sample posting gate must be an object")
+            if gate:
+                strict_keys(
+                    gate, {"connector", "authorization", "ref_prefix", "max_invoices", "expires_at"}
+                )
+                identifier(gate["connector"])
+                if (
+                    not isinstance(gate["authorization"], str)
+                    or not 20 <= len(gate["authorization"]) <= 1000
+                    or not isinstance(gate["ref_prefix"], str)
+                    or not re.fullmatch(r"[A-Z0-9-]{3,8}", gate["ref_prefix"])
+                    or type(gate["max_invoices"]) is not int
+                    or not 1 <= gate["max_invoices"] <= 10
+                    or type(gate["expires_at"]) not in (int, float)
+                ):
+                    raise BridgeError("invalid controlled sample posting gate")
         principals = data["principals"]
         if not isinstance(principals, dict) or not principals:
             raise BridgeError("principals required")
@@ -276,5 +300,15 @@ STRONG_COMPANY_IDENTITY_FIELDS = COMPANY_IDENTITY_FIELDS - {
 
 
 PERMISSIONS = frozenset(
-    {"prepare", "read", "validate", "approve", "submit", "simulate", "recover", "pause"}
+    {
+        "prepare",
+        "read",
+        "validate",
+        "approve",
+        "submit",
+        "simulate",
+        "recover",
+        "pause",
+        "post-sample",
+    }
 )

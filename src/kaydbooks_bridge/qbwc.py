@@ -124,6 +124,13 @@ class DurableQBWCDiscoveryService:
         with store.transaction() as db:
             self._expire_active(db, store, now)
             if db.execute(
+                "SELECT 1 FROM native_invoice_attempts n JOIN jobs j ON j.id=n.job_id WHERE j.state IN ('in-flight','unknown')"
+            ).fetchone():
+                store.event(
+                    db, now, f"qbwc:{connector.id}", None, "qbwc_native_write_overlap_blocked", {}
+                )
+                return ["", BUSY]
+            if db.execute(
                 "SELECT 1 FROM sdk_discovery WHERE state IN ('prepared','dispatched')"
             ).fetchone():
                 store.event(db, now, f"qbwc:{connector.id}", None, "qbwc_sdk_overlap_blocked", {})

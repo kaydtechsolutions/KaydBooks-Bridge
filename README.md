@@ -1,8 +1,9 @@
 # KaydBooks Bridge
 
 A multi-company QuickBooks Desktop automation platform under development,
-with broad, optional Hermes integration. **This release is a simulation-only
-foundation. It cannot post to QuickBooks.**
+with broad, optional Hermes integration. **Production posting is disabled.**
+An explicit private gate permits bounded non-tax service invoice tests in an
+operator-confirmed sample company; see [controlled sample posting](docs/SAMPLE_POSTING.md).
 
 The application lives in `kaydbooks_bridge`. The inherited `qbwc_kit` SOAP,
 qbXML and Web Connector library remains available, with its MIT attribution.
@@ -21,10 +22,12 @@ as Bridge endpoints: they do not enforce Bridge company permissions or durable j
   with configured CompanyRet fingerprints, session isolation and replay-safe recovery.
 - Atomic duplicate checks, serialized company dispatch, append-only audit events,
   saved-record comparison, pause, crash recovery and reconciliation without retries.
-- A local CLI usable without Hermes or QuickBooks. Only a synthetic invoice adapter exists.
+- A local simulation CLI usable without Hermes or QuickBooks, plus SDK/QBWC master and
+  receipt checks and a separately gated native sample-invoice adapter.
 
-Native Hermes adapters, real SDK-qualified company binding, transaction/report support,
-document extraction, schedules, notifications, memory and GUI workflows remain planned.
+SDK/QBWC company binding and master/receipt reads have real sample-company evidence.
+Native Hermes adapters, broader transactions/reports, document extraction, schedules,
+notifications, memory and GUI workflows remain planned.
 An interface label in a test envelope does not mean that Hermes interface is connected.
 
 ## Development

@@ -244,6 +244,19 @@ class Store:
                   OR NEW.txn_id IS NOT NULL
                   OR NEW.detail != ''
                 BEGIN SELECT RAISE(ABORT, 'invalid initial job state'); END""")
+            db.execute("""CREATE TABLE IF NOT EXISTS native_invoice_attempts (
+                job_id TEXT PRIMARY KEY REFERENCES jobs(id), attempt TEXT NOT NULL UNIQUE,
+                connector TEXT NOT NULL, actor TEXT NOT NULL, created_at REAL NOT NULL,
+                request TEXT NOT NULL, context_hash TEXT NOT NULL, authorization TEXT NOT NULL)""")
+            for action in ("UPDATE", "DELETE"):
+                db.execute(f"""CREATE TRIGGER IF NOT EXISTS native_attempt_no_{action.lower()}
+                    BEFORE {action} ON native_invoice_attempts
+                    BEGIN SELECT RAISE(ABORT,'native dispatch identity is immutable'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS native_attempt_insert_guard
+                BEFORE INSERT ON native_invoice_attempts WHEN NOT EXISTS
+                (SELECT 1 FROM jobs WHERE id=NEW.job_id AND state='queued'
+                 AND submitter=NEW.actor AND attempt IS NULL)
+                BEGIN SELECT RAISE(ABORT,'native dispatch requires owned queued job'); END""")
             db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS one_unresolved_write
                 ON jobs ((1)) WHERE state IN ('in-flight', 'posted-unverified', 'unknown')""")
             db.execute("""CREATE TABLE IF NOT EXISTS idempotency_keys (
@@ -482,6 +495,13 @@ class Store:
         ).fetchone()
         if receipt:
             result["transaction_receipt"] = json.loads(receipt[0])
+        elif result["state"] == "verified":
+            native = db.execute(
+                "SELECT data FROM audit WHERE job_id=? AND event='native_invoice_verified' ORDER BY sequence DESC LIMIT 1",
+                (job_id,),
+            ).fetchone()
+            if native:
+                result["transaction_receipt"] = json.loads(native[0])
         return result
 
     def verify_audit(self, db) -> bool:
