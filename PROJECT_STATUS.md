@@ -172,3 +172,19 @@ Updated: 2026-09-06. Live posting: DISABLED. Real QuickBooks integration tests: 
 - Next: after operator confirmation, capture and privately review CompanyRet identity,
   configure its digest, restart the staged service, run the read-only update twice to
   exercise recovery/duplicate behavior, and retain actual callback evidence outside Git.
+
+## Direct SDK diagnostic follow-up
+
+- Installed QBXMLRP2 COM runtime and Intuit interop assembly were discovered. SDK
+  development-kit installation is not required for this diagnostic. Typed COM
+  activation and PutIsReadOnly(true) passed on Windows PowerShell/.NET Framework,
+  without opening a company session. PowerShell Core's legacy interop invocation
+  was unsuitable; the successful Framework probe is the prerequisite evidence.
+- A private diagnostic compiled against the actual installed interface. It requests
+  read-only/no-personal-data authorization, checks the granted preferences using the
+  session ticket, and can issue only fixed HostQuery/CompanyQuery requests. It saves
+  dispatch intent and exact response outside Git and does not change company bindings.
+- Direct SDK diagnostic launched; authorization/response outcome remains pending.
+  This is not a QBWC callback test, a supported Bridge transport, or an M2 pass.
+  There is no new operator QWC import requirement. All bootstrap/replacement retry
+  instructions remain withdrawn. Live posting remains disabled.

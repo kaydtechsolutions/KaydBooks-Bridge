@@ -109,3 +109,20 @@ existing registration and logs. Further work must establish supported QBWC metad
 permission requirements or a direct SDK read-only discovery route. A direct SDK test
 would not qualify QBWC callbacks. Broader QuickBooks permissions are not equivalent
 to QuickBooks-enforced read-only access and must not be silently substituted.
+
+
+## Separate direct SDK diagnostic
+
+The installed RequestProcessor2 COM runtime can be used independently of QBWC.
+Intuit documents read-only and no-personal-data authorization in its
+[SDK Programmer Guide](https://static.developer.intuit.com/resources/QBSDK_ProGuide.pdf).
+The actual local interop getters require a session ticket. The private diagnostic
+sets preferences before BeginSession and checks them before ProcessRequest.
+It opens only the currently open, operator-confirmed sample in single-user mode,
+then requests HostQuery/CompanyQuery. Exact responses and dispatch intent stay in
+private evidence, with binding unconfirmed. Do not interpret direct SDK success as
+QBWC callback qualification or expose this diagnostic as a production interface.
+
+Operator authorization, if prompted: select access only while the sample company
+is open; verify read-only access and no personal data. No Web Connector password,
+QWC import, unattended access, or write permission is needed for this diagnostic.
