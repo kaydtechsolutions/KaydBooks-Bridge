@@ -4,10 +4,30 @@ Updated: 2026-09-06. Production posting: DISABLED. Controlled sample posting/rec
 
 ## M3–M7 sample implementation and qualification
 
+### Current release plan: return to M3
+
+- The [first-release scope and acceptance checklist](docs/FIRST_RELEASE_SCOPE.md)
+  records the agreed transaction families, all four input methods, required reports,
+  combinable roles/full assigned-company permissions by default, three posting modes,
+  Hermes messaging and master creation/updates.
+- M3–M6 remain partial under that scope. Final M7 qualification follows their required
+  acceptance gates; existing setup and backup work remains supporting evidence.
+- Current step: M3-03 supplier-bill contract/lifecycle. The runtime still accepts only
+  invoice.create; supplier bills, payments and credits must not be presented as working.
+- The supplier-bill contract maps the reviewed Intuit request/query schemas to the
+  required policy, durable lifecycle, duplicate and read-back changes. This is design
+  evidence; no bill has been dispatched by the Bridge.
+- New setup operators now receive all currently supported Bridge permissions by
+  default. Explicit permission lists (including no access) are respected. Existing
+  configuration grants, required approvals and production/sample posting gates remain
+  enforced. General user/role management and self-approval configuration remain planned.
+- Validation: 589 local tests passed, including 21 setup/default/restriction cases;
+  lint, formatting and package builds passed. No new accounting transactions occurred.
+
 ### Reusable company onboarding
 
 - Added a private setup command with independent credentials, operator-only directory
-  permissions, unconfirmed identity, read-only grants and no posting gate. Existing
+  permissions, unconfirmed identity, full scoped grants by default and no posting gate. Existing
   configurations, company files and registrations are never overwritten or activated.
 - Added offline checks scoped to an explicit company, principal and connector.
   Missing credentials, missing file, unconfirmed binding, missing mappings, revoked

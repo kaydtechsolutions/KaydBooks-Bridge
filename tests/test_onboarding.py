@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from kaydbooks_bridge.config import BridgeError, Config
+from kaydbooks_bridge.config import PERMISSIONS, BridgeError, Config
 from kaydbooks_bridge.onboarding import initialize, inspect_setup, main
 
 
@@ -51,9 +51,12 @@ def test_new_users_get_independent_unbound_private_bundles(tmp_path, monkeypatch
             monkeypatch.setenv(name, token)
         actor = config.authenticate(credentials["KAYDBOOKS_OPERATOR_SECRET"])
         config.authorize(actor, company, "read")
-        for permission in ("submit", "approve", "post-sample", "validate", "simulate"):
+        assert set(config.principals[actor]["companies"][company]) == PERMISSIONS
+        for permission in PERMISSIONS:
+            config.authorize(actor, company, permission)
             with pytest.raises(BridgeError, match="permission denied"):
-                config.authorize(actor, company, permission)
+                config.authorize(actor, "unassigned-company", permission)
+        assert config.companies[company].approval_required
         assert not config.companies[company].sample_posting
         assert config.connectors["quickbooks"].identity_sha256 == "0" * 64
         report = inspect(root, company)
@@ -218,3 +221,44 @@ def test_unknown_connector_or_principal_is_rejected(tmp_path):
                 principal=principal,
                 connector_id=connector,
             )
+
+
+@pytest.mark.parametrize("permissions", [[], ["read"], ["read", "prepare", "approve"]])
+def test_explicit_restrictions_are_preserved(tmp_path, permissions):
+    request = request_file(tmp_path)
+    raw = json.loads(request.read_text())
+    raw["permissions"] = permissions
+    request.write_text(json.dumps(raw))
+    root = tmp_path / "bundle"
+    initialize(request, root)
+    config = Config.load(root / "bridge-config.json")
+    assert config.principals["operator"]["companies"]["company-a"] == sorted(permissions)
+    for permission in PERMISSIONS - set(permissions):
+        with pytest.raises(BridgeError, match="permission denied"):
+            config.authorize("operator", "company-a", permission)
+
+
+@pytest.mark.parametrize("permissions", [None, "full", ["*"], ["read", "read"], [{}]])
+def test_invalid_permission_override_creates_no_bundle(tmp_path, permissions):
+    request = request_file(tmp_path)
+    raw = json.loads(request.read_text())
+    raw["permissions"] = permissions
+    request.write_text(json.dumps(raw))
+    root = tmp_path / "bundle"
+    with pytest.raises(BridgeError, match="permissions must"):
+        initialize(request, root)
+    assert not root.exists()
+
+
+def test_loading_restricted_existing_configuration_never_expands_grants(tmp_path):
+    root = tmp_path / "bundle"
+    initialize(request_file(tmp_path), root)
+    path = root / "bridge-config.json"
+    raw = json.loads(path.read_text())
+    raw["principals"]["operator"]["companies"]["company-a"] = ["read"]
+    path.write_text(json.dumps(raw))
+    before = path.read_bytes()
+    config = Config.load(path)
+    assert config.principals["operator"]["companies"]["company-a"] == ["read"]
+    assert path.read_bytes() == before
+    assert not config.companies["company-a"].sample_posting

@@ -11,7 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from .config import BridgeError, Config, identifier, outside_repository, strict_keys
+from .config import PERMISSIONS, BridgeError, Config, identifier, outside_repository, strict_keys
 
 
 def private_path(value: str | Path) -> Path:
@@ -80,7 +80,14 @@ def restrict_directory(path: Path):
 
 def initialize(request_path: str | Path, destination: str | Path) -> dict:
     request = read_json(request_path)
-    strict_keys(request, {"target", "currency", "max_total"})
+    strict_keys(request, {"target", "currency", "max_total"}, {"permissions"})
+    permissions = request.get("permissions", sorted(PERMISSIONS))
+    if (
+        not isinstance(permissions, list)
+        or any(not isinstance(p, str) or p not in PERMISSIONS for p in permissions)
+        or len(permissions) != len(set(permissions))
+    ):
+        raise BridgeError("permissions must be a distinct list of supported Bridge permissions")
     target = target_values(request["target"])
     root = private_path(destination)
     if root.exists() or not root.parent.is_dir():
@@ -112,7 +119,7 @@ def initialize(request_path: str | Path, destination: str | Path) -> dict:
         "principals": {
             "operator": {
                 "token_env": "KAYDBOOKS_OPERATOR_SECRET",
-                "companies": {company: ["read"]},
+                "companies": {company: sorted(permissions)},
             }
         },
     }

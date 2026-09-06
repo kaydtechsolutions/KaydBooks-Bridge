@@ -2,6 +2,10 @@
 
 Status: planned requirements, not a claim of implemented functionality.
 
+The operator-approved [first-release checklist](docs/FIRST_RELEASE_SCOPE.md) defines
+which requirements are mandatory for the release and records the latest permission,
+posting-mode, input, report and messaging decisions. Use it for completion tracking.
+
 ## Product goal
 
 Build a reusable, multi-company QuickBooks Desktop automation platform with broad Hermes integration. Kanban is one optional interface, not the limit of the integration.

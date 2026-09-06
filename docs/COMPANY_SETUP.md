@@ -39,8 +39,9 @@ deletes an existing directory or overwrites another user's configuration.
 
 The resulting bundle contains:
 
-- `bridge-config.json`: simulation mode, unconfirmed identity, read-only operator
-  grant, approval required, placeholder aliases and no sample posting gate.
+- `bridge-config.json`: simulation mode, unconfirmed identity, full currently supported
+  operator permissions in the assigned company, approval required, placeholder aliases
+  and no sample posting gate.
 - `credentials.json`: two independently generated secrets, never printed.
 - `target.json`: the operator's intended name and file path, not verified evidence.
 
@@ -48,6 +49,15 @@ This command creates no QuickBooks transactions, database, service, certificate,
 QWC registration or global environment setting. It does not replace a running setup.
 Each deployment can create its own bundle; existing multi-company configurations
 remain supported. Do not reuse credentials or copy sample ListIDs to another company.
+
+Full Bridge access is the default for a new setup operator. To restrict it, add an
+explicit `permissions` array to the request, for example `"permissions": ["read"]`.
+An empty array grants no permissions. Unknown or duplicate names are rejected before
+creating the bundle. The generated config stores an explicit list; loading an existing
+restricted configuration does not expand it. Other companies remain inaccessible.
+Full permissions do not activate posting, override QuickBooks access or bypass approval.
+Role-management UI, self-approval policy and automated posting are tracked in the
+[first-release checklist](FIRST_RELEASE_SCOPE.md).
 
 ## Check configuration without connecting
 

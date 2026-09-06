@@ -13,6 +13,11 @@ as Bridge endpoints: they do not enforce Bridge company permissions or durable j
 
 ## What works now
 
+The agreed [first-release scope and acceptance checklist](docs/FIRST_RELEASE_SCOPE.md)
+covers the remaining transactions, inputs, posting modes and reports. M3–M6 must meet
+their required gates before final M7 deployment qualification; the current sample
+invoice path is only part of that release.
+
 - Explicit company context and per-company private SQLite databases.
 - Environment-backed credentials, deny-by-default company permissions, separate approval.
 - Strict synthetic invoice and source validation with decimal amounts and master allowlists.

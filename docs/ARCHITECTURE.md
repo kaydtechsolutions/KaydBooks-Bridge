@@ -93,6 +93,12 @@ signed checkpoints/immutable audit export are future production requirements.
 
 ## Milestones and acceptance gates
 
+The [first-release checklist](FIRST_RELEASE_SCOPE.md) is the current release gate.
+The table below records the narrower implementation evidence; it does not mean that
+partially implemented M3–M6 features can be skipped before final M7 qualification.
+New setup operators receive full supported permissions in their explicitly assigned
+company by default; explicit restrictions and existing grants remain authoritative.
+
 | Milestone | Deliverable and acceptance evidence | Status |
 | --- | --- | --- |
 | M0: prerequisites and inherited baseline | Isolated branch, incorporate unmerged PR #1, Windows TTL regression, prevent inherited publishing | Complete locally |
