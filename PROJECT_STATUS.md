@@ -4,6 +4,24 @@ Updated: 2026-09-06. Production posting: DISABLED. Controlled sample posting/rec
 
 ## M3–M7 sample implementation and qualification
 
+### Reusable company onboarding
+
+- Added a private setup command with independent credentials, operator-only directory
+  permissions, unconfirmed identity, read-only grants and no posting gate. Existing
+  configurations, company files and registrations are never overwritten or activated.
+- Added offline checks scoped to an explicit company, principal and connector.
+  Missing credentials, missing file, unconfirmed binding, missing mappings, revoked
+  read permission and reused secrets remain visible without exposing private values.
+- Actual private sample setup drill and a fresh native SDK company query passed.
+  The existing configured identity was verified; zero accounting writes occurred.
+  File existence is checked separately from live identity; native helpers use the
+  currently open company, not an automatic file switch.
+- Validation: 580 local tests pass, including 12 onboarding cases; lint, formatting,
+  package build and the separately installed setup entry point pass. The existing
+  HTTPS service remains ready with valid audit and no unresolved accounting writes.
+- See [company setup](docs/COMPANY_SETUP.md). Production authorization is not a blocker
+  for this reusable development and sample qualification path.
+
 | Milestone | Current implementation/evidence | Remaining scope |
 | --- | --- | --- |
 | M3 | Durable non-tax service invoice adapter; actual normal write/readback and abrupt-parent-exit recovery; duplicate dispatch refused | Taxable/inventory/broader transactions and production qualification |

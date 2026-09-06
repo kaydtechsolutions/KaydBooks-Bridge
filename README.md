@@ -50,6 +50,10 @@ The build workflow only creates review artifacts. Publishing is disabled.
 
 ## Try the foundation
 
+For your own company, start with [private company setup](docs/COMPANY_SETUP.md).
+The setup command generates independent credentials and an unbound configuration;
+the offline check lists missing prerequisites without contacting QuickBooks.
+
 Follow the [simulation quickstart](docs/OPERATIONS.md). Copy the synthetic config
 template to a private directory **outside every Git checkout**, set its absolute
 state directory, and supply temporary credentials through environment variables.

@@ -4,6 +4,10 @@ The implemented pilot is limited to the confirmed sample company, non-taxable se
 invoices, fixed SDK/QBWC read paths and the local tools/workflows described in this repo.
 Production posting and release publishing remain disabled.
 
+Use [private company setup](COMPANY_SETUP.md) for each deployment. No sample company
+name, QBW path, credential or master mapping is required in application code.
+General development and sample qualification do not require a production company.
+
 ## Snapshot and isolated restore drill
 
 Use a private `KAYDBOOKS_BACKUP_SIGNING_KEY` of at least 32 characters, retained separately
