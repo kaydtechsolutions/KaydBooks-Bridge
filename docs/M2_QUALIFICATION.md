@@ -43,7 +43,25 @@ The installed Web Connector major version matches Intuit's current
 Company identity comes only from the read-only `CompanyQuery` response documented in
 the official [CompanyQuery schema](https://static.developer.intuit.com/qbSDK-current/common/newosr/qbsdk/json/CompanyQueryRs.json?v=13).
 
-## Permission conflict: current repair proposal
+## Verified repair and restart qualification
+
+The operator-approved broader QuickBooks permission resolved AppLock registration.
+The old stamped OwnerID/FileID pair collided while QBWC had no registered application;
+one fresh stable registration was created, preserving the endpoint, credentials and
+confirmed Bridge company binding. Existing stamps and certificates were not removed.
+
+Two actual manual updates passed, the second after bridge service restart. Each
+persisted authenticate, sendRequestXML, receiveResponseXML and closeConnection, closed
+with progress 100 and no error, and matched the operator-confirmed company identity.
+Audit integrity passed. Raw XML and exact deployment details remain private.
+
+QuickBooks application permission is broader than read-only; the Bridge independently
+enforces query-only discovery and disabled accounting posting. Personal data and
+unattended access were not granted. Keep Auto-Run off for qualification. No additional
+manual update is needed for this milestone. Interrupted real callbacks and production
+posting remain unqualified. The sections below preserve the repair history.
+
+## Permission conflict: repair proposal history
 
 The original strict read-only import steps below are historical and cannot resolve
 the installed QBWC AppLock failure. Actual logs show SDK 3263 under IsReadOnly=true

@@ -1,6 +1,21 @@
 # KaydBooks Bridge project status
 
-Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK and QBWC discovery: PASS; QBWC post-restart update pending.
+Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK and QBWC discovery, including QBWC post-restart update: PASS.
+
+## Verified QBWC post-restart update
+
+- Operator ran a second manual update after the staged bridge process restarted.
+  A new ticket and correlation were durably recorded after that restart, with the
+  complete actual authenticate/sendRequestXML/receiveResponseXML/closeConnection cycle.
+- Both real sessions closed with response_result=100 and no last_error. The latest
+  CompanyRet matched the persisted, previously operator-confirmed company binding;
+  the earlier response also still verified. Audit chain and read-only health passed.
+- Raw responses and exact timestamps remain private. This qualifies normal actual
+  QBWC discovery across service restart in the operator-approved broader QuickBooks
+  permission mode; Bridge accounting writes remain disabled. It does not qualify
+  interrupted real QBWC callbacks, production posting, or Hermes integration.
+- No further operator update is required for this milestone. Next: inventory and
+  implement a narrowly supported read-only lookup through shared company controls.
 
 ## Verified actual QBWC discovery: registration blocker resolved
 
