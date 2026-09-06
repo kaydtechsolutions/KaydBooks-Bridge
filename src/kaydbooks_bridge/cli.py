@@ -31,6 +31,8 @@ def main(argv=None) -> int:
         "reconcile-sample",
         "post-sample-bill",
         "reconcile-sample-bill",
+        "post-sample-payment",
+        "reconcile-sample-payment",
     ):
         commands.add_parser(action).add_argument("job_id")
     commands.add_parser("status").add_argument("job_id", nargs="?")
@@ -77,11 +79,15 @@ def main(argv=None) -> int:
                 "reconcile-sample",
                 "post-sample-bill",
                 "reconcile-sample-bill",
+                "post-sample-payment",
+                "reconcile-sample-payment",
             ):
                 from .sample_posting import post, reconcile
 
                 if args.command.endswith("-bill"):
                     from .sample_bill_posting import post, reconcile
+                if args.command.endswith("-payment"):
+                    from .sample_payment_posting import post, reconcile
 
                 result = (post if args.command.startswith("post-") else reconcile)(
                     bridge, token, args.company, args.job_id

@@ -1,12 +1,14 @@
 # KaydBooks Bridge project status
 
 Updated: 2026-09-06. Production posting: DISABLED. Four sample invoices (USD45 total)
-and four USD10 sample bills have verified receipts. The newest mixed invoice independently
-verified stock decreasing from two units to zero. No uncertain transaction was resent.
+and four USD10 sample bills have verified receipts. Three customer receipts totaling USD20
+settled the mixed invoice and left USD5 unapplied. Fresh Customer Balance Summary and
+CustomerRet both report USD25, matching USD30 unpaid invoices minus USD5 unapplied.
+No uncertain transaction was resent.
 
-## M3–M7 sample implementation and qualification
+## M3â€“M7 sample implementation and qualification
 
-### Current release plan: complete M3–M6 before final M7
+### Current release plan: complete M3â€“M6 before final M7
 
 - RESOLVED: the balance discrepancy. BillRet.OpenAmount was USD20 while each sample
   bill's exact-vendor/AP BillToPayQuery reported USD10. VendorQuery independently
@@ -22,20 +24,23 @@ verified stock decreasing from two units to zero. No uncertain transaction was r
   A USD15 installed-package mixed invoice matched its balance and stock decrease from
   two to zero. Original stock baselines are retained; sold-out recovery never resends.
   Ambiguous or missing stock evidence keeps the transaction unverified.
-- Latest validation: 700 local tests passed, lint and source/wheel builds passed, and
-  the installed-package mixed-invoice test passed with valid audit. CI50 passed the
-  preceding inventory-bill commit. Earlier signed isolated restore recovered eight
-  jobs with valid integrity/audit; it predates the last three sample transactions.
-- Current step: customer receipt/payment allocation and independent balance checks,
-  then remaining M3–M6 acceptance gates. Sample posting is paused between bounded tests.
+- Customer payments support exact allocation, partial/full settlement and explicit unapplied
+  amounts through the durable lifecycle. Native USD5 and USD10 receipts settled the USD15
+  invoice; a third USD5 receipt remained unapplied. Signed AppliedAmount, related invoice
+  payments and customer-wide unused credits are handled without double-counting.
+- Latest validation: 742 local tests, lint, source/wheel builds and fresh native receipt
+  checks passed. An installed signed restore recovered all 14 jobs with valid integrity,
+  foreign keys and audit; restored state stayed paused with no service started.
+- Current step: supplier-payment allocation and independent payable checks, then remaining
+  M3–M6 acceptance gates. Sample posting is paused between bounded tests.
 - The [first-release checklist](docs/FIRST_RELEASE_SCOPE.md) is the release target;
   these qualified simple paths do not complete the wider tax/currency/advanced variants.
-  M3–M6 remain partial; final M7 follows their required acceptance gates.
+  M3â€“M6 remain partial; final M7 follows their required acceptance gates.
 - New setup operators receive all currently supported permissions within explicitly
   assigned companies by default. Explicit restrictions are respected. Required reviews,
   company binding and production/sample posting gates remain enforced. General role
   management and separately configurable self-approval remain release work.
-- CLI sample invoice/bill commands and 15 narrow MCP tools are implemented. Native
+- CLI sample invoice/bill/payment commands and 17 narrow MCP tools are implemented. Native
   attempts cannot enter simulation recovery; bill receipts are excluded from the
   historical invoice register. All company identity, sources and mappings stay private.
 
@@ -59,8 +64,8 @@ verified stock decreasing from two units to zero. No uncertain transaction was r
 
 | Milestone | Current implementation/evidence | Remaining scope |
 | --- | --- | --- |
-| M3 | Non-tax service/inventory/mixed invoices; expense/service/inventory bills and standard terms; native readback, stock effects and recovery | Payments/credits, broader terms, tax/currency variants, master-management interface and qualification |
-| M4 | Fifteen narrow MCP tools; immutable source bytes/hash, explicit field confidence/review; installed Hermes discovery and actual MCP-to-SDK sample preparation | OCR quality, conversational model runs, draft correction/revision |
+| M3 | Non-tax service/inventory/mixed invoices; expense/service/inventory bills and standard terms; customer receipts; native readback, stock effects and recovery | Supplier payments/credits, broader terms, tax/currency variants, master-management interface and qualification |
+| M4 | Seventeen narrow MCP tools; immutable source bytes/hash, explicit field confidence/review; installed Hermes discovery and actual MCP-to-SDK sample preparation | OCR quality, conversational model runs, draft correction/revision |
 | M5 | Local bounded schedules, occurrence deduplication, dependencies/cancellation, local-only outbox, versioned preferences, canonical delegation, read-only board | Native Hermes cron/channels/delegation/Kanban connections; external delivery |
 | M6 | Historical verified-invoice register with dates, source hashes, observation times, derived totals and private exports | Native QuickBooks financial reports and optional GUI fallback |
 | M7 | Signed quiescent snapshot, isolated restore/integrity/audit drill, private ACL inspection, package qualification | Production pilot authorization, dedicated service account, operational failover and external immutable audit retention |
@@ -526,7 +531,7 @@ statements are superseded by this current section and the operator's M3-M7 autho
   PR #1 is not assumed merged into main.
 - No repository or parent AGENTS.md found. Upstream MIT attribution retained.
 - Public repository; examples and tests must contain synthetic data only.
-- Review PR: [#2 — company-scoped foundation](https://github.com/kaydtechsolutions/KaydBooks-Bridge/pull/2).
+- Review PR: [#2 â€” company-scoped foundation](https://github.com/kaydtechsolutions/KaydBooks-Bridge/pull/2).
   Native Git push stalled; uploaded through the connected GitHub API. The uploaded
   milestone trees exactly matched the tested local trees. Original local commit
   history is preserved on `codex/foundation-local`; `codex/foundation` tracks the PR.
@@ -564,24 +569,24 @@ statements are superseded by this current section and the operator's M3-M7 autho
 - Actual subprocess termination after a synthetic external commit was tested:
   restart preserved in-flight state, recovery marked unknown, reconciliation found
   one saved record, and no second write occurred.
-- PowerShell CLI walkthrough completed prepare → validate → approve → submit →
-  simulate → verified, with valid audit. Runtime state/secrets remained outside Git.
+- PowerShell CLI walkthrough completed prepare â†’ validate â†’ approve â†’ submit â†’
+  simulate â†’ verified, with valid audit. Runtime state/secrets remained outside Git.
 - Distribution renamed to `kaydbooks-bridge` (`0.1.0.dev1`), preserving the upstream
   `qbwc_kit` namespace and license. Wheel/source build passed; no upload/release.
 - `twine check` passed for wheel and source archive. Clean isolated wheel install
   with no dependencies imported both namespaces and confirmed the disabled live gate.
   Source archive includes operational docs and synthetic examples.
-- CI uses the frozen uv lock on Windows/Linux across Python 3.10–3.13 and builds
+- CI uses the frozen uv lock on Windows/Linux across Python 3.10â€“3.13 and builds
   artifacts. [PR checks](https://github.com/kaydtechsolutions/KaydBooks-Bridge/pull/2/checks)
   are the live source for remote results; local passes do not establish remote success.
 - Initial remote CI passed all four Linux versions and lint/build, but exposed a
   Windows path-canonicalization race during concurrent first-company initialization.
   Directory creation now precedes canonical containment comparison; symlink escape
   protection has an additional regression test. Follow-up [CI run 33980287486](https://github.com/kaydtechsolutions/KaydBooks-Bridge/actions/runs/33980287486)
-  passed all eight Windows/Linux Python 3.10–3.13 combinations plus lint/build at
+  passed all eight Windows/Linux Python 3.10â€“3.13 combinations plus lint/build at
   commit `781c168c9a6e370e73f42689f6eeb7d9a1f99e41`. This subsequent status update
   changes documentation only.
-- Architecture, M0–M7 acceptance plan, capability evidence rules, onboarding,
+- Architecture, M0â€“M7 acceptance plan, capability evidence rules, onboarding,
   permissions, troubleshooting, pause/recovery, backup/upgrade and deployment gates
   are documented in `docs/`. One upstream Starlette/httpx deprecation warning remains.
 - Durable queue integrity is now enforced in SQLite after restart: immutable prepared
@@ -591,7 +596,7 @@ statements are superseded by this current section and the operator's M3-M7 autho
   inserts, requeue of unknown writes, mutation/deletion and receipt/approval rewrites
   are rejected. Dispatch attempt IDs are retained through reconciliation as evidence.
 - Queue-hardening CI run `33989477054` passed lint/build and all eight Windows/Linux
-  Python 3.10–3.13 jobs. No real Hermes or QuickBooks behavior was exercised.
+  Python 3.10â€“3.13 jobs. No real Hermes or QuickBooks behavior was exercised.
 - Durable read-only QBWC discovery now maps each authenticated connector identity to
   one configured company and rejects missing, ambiguous or inconsistent CompanyRet
   fingerprints. At least three official CompanyRet claims are required, including a
@@ -610,7 +615,7 @@ statements are superseded by this current section and the operator's M3-M7 autho
   suite, Ruff lint/format, wheel/source build and Twine metadata checks pass. The artifacts
   contain the new module and discovery documentation. No QuickBooks process was involved.
 - [QBWC discovery CI run 33990832056](https://github.com/kaydtechsolutions/KaydBooks-Bridge/actions/runs/33990832056)
-  passed lint/build and all eight Windows/Linux Python 3.10–3.13 jobs at feature commit
+  passed lint/build and all eight Windows/Linux Python 3.10â€“3.13 jobs at feature commit
   `da4bab2d179cf1d5f6a2efd21304979996d3c226`.
 - M2 qualification staging now has an HTTPS-only Bridge entry point, bounded callback
   bodies, health/support endpoints, environment-backed private credential loading and
@@ -622,7 +627,7 @@ statements are superseded by this current section and the operator's M3-M7 autho
   and source builds pass Twine metadata checks. The seven added tests are synthetic or
   local HTTP/TLS shape tests and do not count as QuickBooks integration evidence.
 - [M2 staging CI run 33991930089](https://github.com/kaydtechsolutions/KaydBooks-Bridge/actions/runs/33991930089)
-  passed lint/build and all eight Windows/Linux Python 3.10–3.13 jobs at commit
+  passed lint/build and all eight Windows/Linux Python 3.10â€“3.13 jobs at commit
   `fc1d9814060af8aa6744d76f56dd8eda84000db3`. GitHub reported PR #2 mergeable; it
   remains open and was not merged.
 - Documentation follow-up [CI run 33992022387](https://github.com/kaydtechsolutions/KaydBooks-Bridge/actions/runs/33992022387)

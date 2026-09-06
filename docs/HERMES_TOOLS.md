@@ -22,6 +22,8 @@ All calls require an explicit company. Config and grants are rechecked per opera
 | lookup_invoice_masters_v1 | Fixed read-only SDK account/customer/item/currency/commercial checks |
 | prepare_bill_v1 | Prepare an expense bill from an owned captured document with field confidence and bill master evidence |
 | lookup_bill_masters_v1 | Fixed read-only SDK supplier, payable/expense account and single-currency checks |
+| prepare_customer_payment_v1 | Prepare a captured customer receipt with exact allocation evidence |
+| check_customer_payment_v1 | Fixed read-only customer, AR, deposit, method and invoice-balance checks |
 | validate_v1 | Validate a draft against current policy and source/master evidence |
 | submit_v1 | Queue a validated transaction; never dispatch |
 | status_v1 | Read canonical job state |

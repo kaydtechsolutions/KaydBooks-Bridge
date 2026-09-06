@@ -1,7 +1,8 @@
 # Sample deployment qualification and production gate
 
-The implemented pilot is limited to the confirmed sample company, non-taxable service
-invoices, fixed SDK/QBWC read paths and the local tools/workflows described in this repo.
+The implemented pilot is limited to the confirmed sample company: non-tax service,
+simple inventory/mixed invoices, expense/service/inventory bills, customer receipts,
+fixed SDK/QBWC read paths and the local tools/workflows described in this repo.
 Production posting and release publishing remain disabled.
 
 Use [private company setup](COMPANY_SETUP.md) for each deployment. No sample company
@@ -37,7 +38,15 @@ generated, and no restored service is started. This is an isolated migration/res
 drill, not an operational failover implementation. A trusted OS administrator who has
 the signing key can rewrite evidence; HMAC is not a third-party immutable checkpoint.
 
-## Verified staging evidence
+## Latest staging evidence
+
+- 742 local tests pass. Three customer receipts total USD20: USD15 applied to the mixed
+  invoice and USD5 unapplied. Independent Customer Balance Summary matches USD25.
+- The latest installed-package signed restore recovers 14 jobs with valid integrity,
+  foreign keys and audit. It stays paused and launches no service.
+- The following earlier drills remain historical evidence; their counts predate later work.
+
+## Earlier verified staging evidence
 
 - Native helper compilation; normal sample posting and independent readback.
 - A second controlled sample invoice: abrupt parent exit after the native helper saved
@@ -66,7 +75,7 @@ No production approval is requested by the software itself. A production pilot n
 explicit operator authorization and a separate company-onboarding review, supported
 transaction/report scope, operational backup/failover procedures, dedicated least-
 privilege service identity, external immutable audit retention, monitoring and ownership.
-Taxable/inventory invoices and broader native financial reports need separate real
+Taxable and advanced-inventory variants and native financial-report APIs need separate real
 qualification. OCR quality, full Hermes conversational workflows and optional external
 collaboration have not been qualified. Current code rejects unsupported operations.
 

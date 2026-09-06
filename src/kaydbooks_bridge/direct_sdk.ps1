@@ -73,14 +73,15 @@ public static class PrivateReadOnlyDiscovery {
    var root=doc.DocumentElement;
    if(root.Name!="QBXML" || root.ChildNodes.Count!=1) throw new InvalidOperationException("Invalid discovery envelope");
    var batch=root.FirstChild;
+   bool paymentCheck=batch.ChildNodes.Count>=7 && batch.ChildNodes.Count<=28 && batch.ChildNodes[6].Name=="PaymentMethodQueryRq";
    bool billReceipt=batch.ChildNodes.Count>=4 && batch.ChildNodes.Count<=104 && batch.ChildNodes[2].Name=="BillQueryRq" && batch.ChildNodes[3].Name=="BillToPayQueryRq";
    bool invoiceReceipt=batch.ChildNodes.Count>=3 && batch.ChildNodes.Count<=23 && batch.ChildNodes[2].Name=="InvoiceQueryRq";
    bool billPreview=batch.ChildNodes.Count==5 && batch.ChildNodes[2].Name=="PreferencesQueryRq" && batch.ChildNodes[3].Name=="VendorQueryRq";
    bool billCheck=batch.ChildNodes.Count>=6 && batch.ChildNodes.Count<=406 && batch.ChildNodes[2].Name=="PreferencesQueryRq" && batch.ChildNodes[3].Name=="VendorQueryRq";
    bool commercial=batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=88 && batch.ChildNodes[2].Name=="PreferencesQueryRq" && batch.ChildNodes[2].InnerXml.Contains("<IncludeRetElement>SalesTaxPreferences</IncludeRetElement>");
    bool single=!commercial && batch.ChildNodes.Count>=7 && batch.ChildNodes.Count<=45 && batch.ChildNodes.Count%2==1 && batch.ChildNodes[3].Name=="AccountQueryRq";
-   bool invoice=!invoiceReceipt && !billReceipt && !commercial && !billCheck && (single || (batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=46 && batch.ChildNodes.Count%2==0));
-   if(batch.Name!="QBXMLMsgsRq" || (batch.ChildNodes.Count!=2 && batch.ChildNodes.Count!=3 && batch.ChildNodes.Count!=7 && !invoice && !commercial && !billPreview && !billCheck && !billReceipt && !invoiceReceipt)) throw new InvalidOperationException("Invalid discovery batch");
+   bool invoice=!paymentCheck && !invoiceReceipt && !billReceipt && !commercial && !billCheck && (single || (batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=46 && batch.ChildNodes.Count%2==0));
+   if(batch.Name!="QBXMLMsgsRq" || (batch.ChildNodes.Count!=2 && batch.ChildNodes.Count!=3 && batch.ChildNodes.Count!=7 && !invoice && !commercial && !billPreview && !billCheck && !billReceipt && !invoiceReceipt && !paymentCheck)) throw new InvalidOperationException("Invalid discovery batch");
    string[] names={"HostQueryRq","CompanyQueryRq"};
    for(int i=0;i<2;i++) {
     var node=batch.ChildNodes[i];
@@ -88,7 +89,32 @@ public static class PrivateReadOnlyDiscovery {
        !System.Text.RegularExpressions.Regex.IsMatch(node.Attributes["requestID"].Value,"^[0-9]+$"))
       throw new InvalidOperationException("Only fixed read-only discovery requests are permitted");
    }
-   if(invoiceReceipt) {
+   if(paymentCheck) {
+    FixedQuery(batch.ChildNodes[2],"Preferences","MultiCurrencyPreferences",false);
+    FixedQuery(batch.ChildNodes[3],"Customer","ListID,Name,IsActive,CurrencyRef",true);
+    for(int i=4;i<6;i++) FixedQuery(batch.ChildNodes[i],"Account","ListID,FullName,IsActive,AccountType,SpecialAccountType,CurrencyRef",true);
+    FixedQuery(batch.ChildNodes[6],"PaymentMethod","ListID,Name,IsActive,PaymentMethodType",true);
+    int paymentEnd=batch.ChildNodes.Count;
+    if(batch.LastChild.Name=="ReceivePaymentQueryRq") {
+     var query=batch.LastChild;var selector=query.FirstChild;
+     if(query.Attributes.Count!=1 || query.Attributes["requestID"]==null || !System.Text.RegularExpressions.Regex.IsMatch(query.Attributes["requestID"].Value,@"\A[1-9][0-9]{0,18}\z") || selector==null || selector.Name!="TxnID" || selector.Attributes.Count!=0 || selector.ChildNodes.Count!=1 || selector.FirstChild.NodeType!=System.Xml.XmlNodeType.Text || !System.Text.RegularExpressions.Regex.IsMatch(selector.InnerText,@"\A[A-Za-z0-9-]{1,31}\z")) throw new InvalidOperationException("Exact saved payment required");
+     string expected="<TxnID>"+selector.InnerText+"</TxnID><IncludeLineItems>true</IncludeLineItems>";
+     foreach(string field in "TxnID,EditSequence,CustomerRef,ARAccountRef,TxnDate,RefNumber,TotalAmount,CurrencyRef,ExchangeRate,PaymentMethodRef,DepositToAccountRef,UnusedPayment,UnusedCredits,AppliedToTxnRet".Split(',')) expected+="<IncludeRetElement>"+field+"</IncludeRetElement>";
+     if(query.InnerXml!=expected)throw new InvalidOperationException("Only fixed saved payment fields permitted");
+     paymentEnd--;
+    }
+    if(paymentEnd>27)throw new InvalidOperationException("Too many payment allocations");
+    for(int i=7;i<paymentEnd;i++) {
+     var query=batch.ChildNodes[i];var selector=query.FirstChild;
+     if(query.Name!="InvoiceQueryRq" || query.Attributes.Count!=1 || query.Attributes["requestID"]==null ||
+        !System.Text.RegularExpressions.Regex.IsMatch(query.Attributes["requestID"].Value,@"\A[1-9][0-9]{0,18}\z") ||
+        selector==null || selector.Name!="TxnID" || selector.Attributes.Count!=0 || selector.ChildNodes.Count!=1 || selector.FirstChild.NodeType!=System.Xml.XmlNodeType.Text ||
+        !System.Text.RegularExpressions.Regex.IsMatch(selector.InnerText,@"\A[A-Za-z0-9-]{1,31}\z")) throw new InvalidOperationException("Exact payment invoice required");
+     string expected="<TxnID>"+selector.InnerText+"</TxnID>";
+     foreach(string field in "TxnID,EditSequence,CustomerRef,ARAccountRef,TxnDate,RefNumber,IsPending,IsFinanceCharge,Subtotal,SalesTaxTotal,AppliedAmount,BalanceRemaining,IsPaid,CurrencyRef,ExchangeRate".Split(',')) expected+="<IncludeRetElement>"+field+"</IncludeRetElement>";
+     if(query.InnerXml!=expected) throw new InvalidOperationException("Only fixed payment invoice balance fields permitted");
+    }
+   } else if(invoiceReceipt) {
     var query=batch.ChildNodes[2];
     var selector=query.FirstChild;
     if(query.Attributes.Count!=1 || query.Attributes["requestID"]==null ||
@@ -102,6 +128,8 @@ public static class PrivateReadOnlyDiscovery {
      expected+="<IncludeRetElement>"+field+"</IncludeRetElement>";
     if(query.InnerXml!=expected) throw new InvalidOperationException("Only fixed invoice receipt fields permitted");
     for(int i=3;i<batch.ChildNodes.Count;i++) FixedQuery(batch.ChildNodes[i],"ItemInventory","ListID,Name,IsActive,AssetAccountRef,COGSAccountRef,IncomeAccountRef,QuantityOnHand,AverageCost,PurchaseCost,UnitOfMeasureSetRef,IsTaxIncluded",true);
+   } else if(batch.ChildNodes.Count==3 && batch.ChildNodes[2].Name=="PaymentMethodQueryRq") {
+    FixedQuery(batch.ChildNodes[2],"PaymentMethod","ListID,Name,IsActive,PaymentMethodType",false,true);
    } else if(batch.ChildNodes.Count==3 && batch.ChildNodes[2].Name=="StandardTermsQueryRq") {
     FixedQuery(batch.ChildNodes[2],"StandardTerms","ListID,Name,IsActive,StdDueDays,StdDiscountDays,DiscountPct",false,true);
    } else if(batch.ChildNodes.Count==3 && batch.ChildNodes[2].Name=="ItemServiceQueryRq") {
@@ -173,7 +201,7 @@ public static class PrivateReadOnlyDiscovery {
     }
     if(accountCount<2||accountCount>301||itemCount>100)throw new InvalidOperationException("Bounded bill masters required");
    }
-   if(batch.ChildNodes.Count==7 && !single && !billCheck) {
+   if(batch.ChildNodes.Count==7 && !single && !billCheck && !paymentCheck) {
     FixedQuery(batch.ChildNodes[2],"Preferences","MultiCurrencyPreferences",false);
     FixedQuery(batch.ChildNodes[3],"Currency","ListID,IsActive,CurrencyCode",false,true);
     FixedQuery(batch.ChildNodes[4],"Customer","ListID,IsActive,CurrencyRef",false,true);

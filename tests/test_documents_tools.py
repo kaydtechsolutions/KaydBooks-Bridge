@@ -150,8 +150,15 @@ def test_real_mcp_stdio_transport_without_model_calls(setup):
                 await session.initialize()
                 names = {tool.name for tool in (await session.list_tools()).tools}
                 assert (
-                    len(names) == 15
-                    and {"status_v1", "prepare_bill_v1", "lookup_bill_masters_v1"} <= names
+                    len(names) == 17
+                    and {
+                        "status_v1",
+                        "prepare_bill_v1",
+                        "lookup_bill_masters_v1",
+                        "prepare_customer_payment_v1",
+                        "check_customer_payment_v1",
+                    }
+                    <= names
                 )
                 assert not any(name.startswith(("post", "approve", "review")) for name in names)
                 result = await session.call_tool(

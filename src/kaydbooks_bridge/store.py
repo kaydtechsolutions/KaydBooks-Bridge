@@ -264,6 +264,29 @@ class Store:
             db.execute("INSERT OR IGNORE INTO idempotency_keys SELECT idempotency_key,id FROM jobs")
             db.execute("""CREATE TABLE IF NOT EXISTS bill_policy_bindings (
                 job_id TEXT PRIMARY KEY REFERENCES jobs(id), context TEXT NOT NULL)""")
+            db.execute("""CREATE TABLE IF NOT EXISTS native_payment_attempts (
+                job_id TEXT PRIMARY KEY REFERENCES jobs(id), attempt TEXT NOT NULL UNIQUE,
+                connector TEXT NOT NULL, actor TEXT NOT NULL, created_at REAL NOT NULL,
+                request TEXT NOT NULL, context_hash TEXT NOT NULL, authorization TEXT NOT NULL)""")
+            for action in ("UPDATE", "DELETE"):
+                db.execute(f"""CREATE TRIGGER IF NOT EXISTS native_payment_attempt_no_{action.lower()}
+                    BEFORE {action} ON native_payment_attempts
+                    BEGIN SELECT RAISE(ABORT,'native payment dispatch identity is immutable'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS native_payment_attempt_insert_guard
+                BEFORE INSERT ON native_payment_attempts WHEN NOT EXISTS
+                (SELECT 1 FROM jobs WHERE id=NEW.job_id AND operation='customer-payment.create' AND state='queued'
+                 AND submitter=NEW.actor AND attempt IS NULL)
+                BEGIN SELECT RAISE(ABORT,'native payment dispatch requires owned queued payment'); END""")
+            db.execute("""CREATE TABLE IF NOT EXISTS payment_evidence_links (
+                sequence INTEGER PRIMARY KEY AUTOINCREMENT, job_id TEXT NOT NULL REFERENCES jobs(id), evidence TEXT NOT NULL)""")
+            for action in ("UPDATE", "DELETE"):
+                db.execute(f"""CREATE TRIGGER IF NOT EXISTS payment_evidence_no_{action.lower()}
+                    BEFORE {action} ON payment_evidence_links
+                    BEGIN SELECT RAISE(ABORT,'payment evidence is append-only'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS payment_evidence_insert_guard
+                BEFORE INSERT ON payment_evidence_links WHEN NOT EXISTS
+                (SELECT 1 FROM jobs WHERE id=NEW.job_id AND state='draft' AND operation='customer-payment.create')
+                BEGIN SELECT RAISE(ABORT,'payment evidence requires draft payment'); END""")
             db.execute("""CREATE TABLE IF NOT EXISTS native_bill_attempts (
                 job_id TEXT PRIMARY KEY REFERENCES jobs(id), attempt TEXT NOT NULL UNIQUE,
                 connector TEXT NOT NULL, actor TEXT NOT NULL, created_at REAL NOT NULL,
@@ -551,7 +574,9 @@ class Store:
         if binding:
             result["bill_context"] = json.loads(binding[0])
         evidence_table = (
-            "bill_evidence_links"
+            "payment_evidence_links"
+            if result["operation"] == "customer-payment.create"
+            else "bill_evidence_links"
             if result["operation"] == "bill.create"
             else "invoice_evidence_links"
         )
@@ -568,7 +593,9 @@ class Store:
             result["transaction_receipt"] = json.loads(receipt[0])
         elif result["state"] == "verified":
             event = (
-                "native_bill_verified"
+                "native_payment_verified"
+                if result["operation"] == "customer-payment.create"
+                else "native_bill_verified"
                 if result["operation"] == "bill.create"
                 else "native_invoice_verified"
             )

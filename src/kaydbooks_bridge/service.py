@@ -21,6 +21,10 @@ SURFACES = frozenset(
 
 
 def validate_payload(operation, payload, policy):
+    if operation == "customer-payment.create":
+        from .customer_payments import validate_payload as validate_payment
+
+        return validate_payment(payload, policy)
     if operation == "bill.create":
         from .bills import validate_payload as validate_bill
 
@@ -31,6 +35,10 @@ def validate_payload(operation, payload, policy):
 
 
 def require_evidence(config, policy, store, db, job, now):
+    if job["operation"] == "customer-payment.create":
+        from .payment_evidence import require
+
+        return require(config, policy, store, db, job, now)
     if job["operation"] == "bill.create":
         from .bills import require_context
 
@@ -87,10 +95,12 @@ class Bridge:
             {"operation", "idempotency_key", "surface", "payload", "source"},
             {"master_evidence"},
         )
-        if envelope["operation"] not in ("invoice.create", "bill.create"):
-            raise BridgeError(
-                "operation unavailable; only invoice.create and bill.create are implemented"
-            )
+        if envelope["operation"] not in (
+            "invoice.create",
+            "bill.create",
+            "customer-payment.create",
+        ):
+            raise BridgeError("operation unavailable")
         if envelope["surface"] not in SURFACES:
             raise BridgeError("unsupported interface")
         identifier(envelope["idempotency_key"])
@@ -144,6 +154,8 @@ class Bridge:
                 resolver = resolve_evidence
                 if bill_context is not None:
                     from .bill_evidence import resolve as resolver
+                if envelope["operation"] == "customer-payment.create":
+                    from .payment_evidence import resolve as resolver
                 evidence = resolver(
                     config,
                     policy,
@@ -154,7 +166,9 @@ class Bridge:
                     envelope["master_evidence"],
                     self.clock(),
                 )
-            elif policy.invoice_masters and bill_context is None:
+            elif envelope["operation"] == "customer-payment.create" or (
+                policy.invoice_masters and bill_context is None
+            ):
                 raise BridgeError("verified invoice master evidence required")
             if matches:
                 job_id = matches[0]["id"]
@@ -226,6 +240,9 @@ class Bridge:
     def _link_evidence(self, store, db, actor, job_id, evidence):
         bill = store.job(db, job_id)["operation"] == "bill.create"
         table = "bill_evidence_links" if bill else "invoice_evidence_links"
+        payment = store.job(db, job_id)["operation"] == "customer-payment.create"
+        if payment:
+            table = "payment_evidence_links"
         db.execute(
             f"INSERT INTO {table}(job_id,evidence) VALUES (?,?)",
             (job_id, canonical(evidence)),
@@ -235,7 +252,11 @@ class Bridge:
             self.clock(),
             actor,
             job_id,
-            "bill_evidence_linked" if bill else "invoice_evidence_linked",
+            "payment_evidence_linked"
+            if payment
+            else "bill_evidence_linked"
+            if bill
+            else "invoice_evidence_linked",
             evidence,
         )
 
@@ -313,6 +334,8 @@ class Bridge:
                 )
             if job["operation"] == "bill.create":
                 from .bill_receipt_evidence import resolve
+            if job["operation"] == "customer-payment.create":
+                raise BridgeError("use dedicated native payment reconciliation")
             evidence = resolve(
                 config, policy, store, db, actor, job["payload"], reference, self.clock()
             )
@@ -359,6 +382,30 @@ class Bridge:
                     actor,
                     job_id,
                     "bill_previewed",
+                    {"preview_sha256": result["preview_sha256"]},
+                )
+                return result
+            if job["operation"] == "customer-payment.create":
+                from .source_review import require as require_review
+
+                require_review(config, policy, store, db, job)
+                result = {
+                    "schema": "customer-payment-review-v1",
+                    "job": job_id,
+                    "company": company,
+                    "payload": job["payload"],
+                    "balances": job["master_evidence"]["balances"],
+                    "total": job["payload"]["total_amount"],
+                    "live_posting": False,
+                    "posting_authorized_by_preview": False,
+                }
+                result["preview_sha256"] = digest(result)
+                store.event(
+                    db,
+                    self.clock(),
+                    actor,
+                    job_id,
+                    "payment_previewed",
                     {"preview_sha256": result["preview_sha256"]},
                 )
                 return result
@@ -465,6 +512,8 @@ class Bridge:
             if row is None:
                 return None
             job = store.job(db, row["id"])
+            if job["operation"] == "customer-payment.create":
+                raise BridgeError("payment requires dedicated native dispatch or reconciliation")
             if db.execute(
                 "SELECT 1 FROM native_invoice_attempts WHERE job_id=? UNION ALL SELECT 1 FROM native_bill_attempts WHERE job_id=?",
                 (job["id"], job["id"]),
@@ -607,6 +656,8 @@ class Bridge:
         # read intents and fenced callbacks, not a database transaction over the network.
         with store.transaction() as db:
             job = store.job(db, job_id)
+            if job["operation"] == "customer-payment.create":
+                raise BridgeError("payment requires dedicated native dispatch or reconciliation")
             if job["state"] not in {"unknown", "posted-unverified"}:
                 raise BridgeError("only uncertain outcomes can be reconciled")
             if job["operation"] == "bill.create":

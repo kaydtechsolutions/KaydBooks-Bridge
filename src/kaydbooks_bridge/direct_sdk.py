@@ -93,12 +93,34 @@ def discover(
     bill_receipt_check: dict | None = None,
     bill_terms: bool = False,
     bill_services: bool = False,
+    payment_check: dict | None = None,
+    payment_methods: bool = False,
+    payment_receipt_check: dict | None = None,
 ) -> dict:
     """Run/resume fixed US qbXML 17 discovery under company permissions and audit.
 
     Unknown reads are held unless recover_read is explicit. This API cannot write.
     Real SDK results are recorded separately from QBWC callback sessions.
     """
+    if type(payment_methods) is not bool:
+        raise BridgeError("invalid payment method preview mode")
+    if (payment_check is not None or payment_methods or payment_receipt_check is not None) and (
+        accounts
+        or list_id is not None
+        or invoice_check is not None
+        or master_preview
+        or commercial_preview
+        or receipt_check is not None
+        or bill_preview
+        or bill_check is not None
+        or expense_accounts
+        or bill_receipt_check is not None
+        or bill_terms
+        or bill_services
+        or (payment_check is not None and payment_methods)
+        or (payment_receipt_check is not None and (payment_check is not None or payment_methods))
+    ):
+        raise BridgeError("payment check cannot be combined with another lookup")
     if type(bill_preview) is not bool:
         raise BridgeError("invalid bill preview mode")
     if type(bill_terms) is not bool or type(bill_services) is not bool:
@@ -181,6 +203,39 @@ def discover(
     context_hash = None
     receipt_policy = None
     bill_plan = None
+    payment_plan = None
+    payment_policy = None
+    if payment_receipt_check is not None:
+        from .config import strict_keys
+        from .payment_receipt import append_lookup, lookup_context
+
+        strict_keys(payment_receipt_check, {"payload", "txn_id"})
+        payment_policy = config.authorize(actor, connector.company, "validate")
+        context_hash = lookup_context(
+            payment_policy, payment_receipt_check["payload"], payment_receipt_check["txn_id"]
+        )
+        request = append_lookup(
+            request,
+            run_id,
+            payment_policy,
+            payment_receipt_check["payload"],
+            payment_receipt_check["txn_id"],
+        )
+        operation = "customer-payment-receipt-check"
+    if payment_methods:
+        from .customer_payments import append_methods
+
+        request = append_methods(request, run_id)
+        operation = "payment-method-preview"
+    if payment_check is not None:
+        from .customer_payments import append_check
+        from .customer_payments import plan as payment_master_plan
+
+        company = config.authorize(actor, connector.company, "validate")
+        payment_plan = payment_master_plan(company, payment_check)
+        context_hash = payment_plan["context_sha256"]
+        request = append_check(request, run_id, payment_plan)
+        operation = "customer-payment-check"
     if bill_terms or bill_services:
         from .bill_lookup import append_terms_preview
 
@@ -299,6 +354,27 @@ def discover(
             account_records = None
             master_records = None
             receipt = None
+            payment_balances = None
+            if payment_policy is not None:
+                from .payment_receipt import validate_lookup
+
+                discovery_response, receipt = validate_lookup(
+                    response,
+                    run_id,
+                    payment_policy,
+                    payment_receipt_check["payload"],
+                    payment_receipt_check["txn_id"],
+                )
+            if payment_methods:
+                from .customer_payments import validate_methods
+
+                discovery_response, master_records = validate_methods(response, run_id)
+            if payment_plan is not None:
+                from .customer_payments import validate_check
+
+                discovery_response, payment_balances = validate_check(
+                    response, run_id, payment_plan
+                )
             if bill_terms or bill_services:
                 from .bill_lookup import validate_terms_preview
 
@@ -388,6 +464,13 @@ def discover(
                 compatibility="matched",
                 context_sha256=context_hash,
             )
+        if payment_plan is not None:
+            result.update(
+                operation=operation,
+                scope="payment-allocation-review-only",
+                balances=payment_balances,
+                context_sha256=context_hash,
+            )
         if check is not None:
             result.update(
                 operation=operation,
@@ -403,7 +486,7 @@ def discover(
                 if check["currency_id"] is None
                 else "verified-home-currency",
             )
-        if master_preview or bill_preview or bill_terms or bill_services:
+        if master_preview or bill_preview or bill_terms or bill_services or payment_methods:
             result.update(
                 operation=operation, masters=master_records, complete=False, limit_per_entity=20
             )
@@ -427,6 +510,12 @@ def main(argv=None):
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--recover-read", action="store_true")
     modes = parser.add_mutually_exclusive_group()
+    modes.add_argument(
+        "--payment-methods", action="store_true", help="preview at most 20 active payment methods"
+    )
+    modes.add_argument(
+        "--payment-check", type=Path, help="check exact customer payment allocations; no posting"
+    )
     modes.add_argument("--accounts", action="store_true", help="preview at most 20 active accounts")
     modes.add_argument(
         "--bill-terms", action="store_true", help="preview at most 20 active standard terms"
@@ -500,6 +589,10 @@ def main(argv=None):
             invoice_check=json.loads(args.invoice_check.read_text(encoding="utf-8"))
             if args.invoice_check
             else None,
+            payment_check=json.loads(args.payment_check.read_text(encoding="utf-8"))
+            if args.payment_check
+            else None,
+            payment_methods=args.payment_methods,
         )
         print(json.dumps(result))
         return 0

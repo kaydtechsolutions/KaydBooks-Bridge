@@ -2,7 +2,7 @@
 
 A multi-company QuickBooks Desktop automation platform under development,
 with broad, optional Hermes integration. **Production posting is disabled.**
-An explicit private gate permits bounded non-tax service invoice tests in an
+Explicit private gates permit bounded invoice, supplier-bill and customer-receipt tests in an
 operator-confirmed sample company; see [controlled sample posting](docs/SAMPLE_POSTING.md).
 
 The application lives in `kaydbooks_bridge`. The inherited `qbwc_kit` SOAP,
@@ -19,7 +19,8 @@ their required gates before final M7 deployment qualification; the current sampl
 invoice path is only part of that release.
 
 - Explicit company context and per-company private SQLite databases.
-- Environment-backed credentials, deny-by-default company permissions, separate approval.
+- Environment-backed credentials, explicit company assignment, full supported permissions
+  for newly assigned setup users unless restricted, and separate transaction approval.
 - Strict synthetic invoice and source validation with decimal amounts and master allowlists.
 - Durable draft, validated, queued, in-flight, posted-unverified, verified, blocked,
   failed and unknown state vocabulary. `failed` is reserved; uncertain outcomes stay held.
@@ -28,7 +29,11 @@ invoice path is only part of that release.
 - Atomic duplicate checks, serialized company dispatch, append-only audit events,
   saved-record comparison, pause, crash recovery and reconciliation without retries.
 - A local simulation CLI usable without Hermes or QuickBooks, plus SDK/QBWC master and
-  receipt checks and a separately gated native sample-invoice adapter.
+  receipt checks and separately gated native sample invoice, bill and payment adapters.
+
+Non-tax service/inventory/mixed invoices and expense/service/inventory bills have native
+sample evidence. [Customer receipts](docs/CUSTOMER_PAYMENTS.md) support explicit partial,
+full and unapplied amounts with independent read-back and reconciliation without resend.
 
 SDK/QBWC company binding and master/receipt reads have real sample-company evidence.
 The optional [Hermes MCP adapter](docs/HERMES_TOOLS.md) adds source capture, preparation

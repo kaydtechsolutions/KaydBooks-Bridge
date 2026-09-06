@@ -56,7 +56,7 @@ class Tools:
         if name == "capture_document_v1":
             strict_keys(arguments, {"namespace", "reference", "media_type", "content_base64"})
             return capture(self.bridge, self.token, company, **arguments)
-        if name in {"prepare_invoice_v1", "prepare_bill_v1"}:
+        if name in {"prepare_invoice_v1", "prepare_bill_v1", "prepare_customer_payment_v1"}:
             strict_keys(
                 arguments,
                 {"document_id", "idempotency_key", "payload", "confidence"},
@@ -67,7 +67,11 @@ class Tools:
                 self.token,
                 company,
                 **arguments,
-                operation="bill.create" if name == "prepare_bill_v1" else "invoice.create",
+                operation="customer-payment.create"
+                if name == "prepare_customer_payment_v1"
+                else "bill.create"
+                if name == "prepare_bill_v1"
+                else "invoice.create",
             )
         if name in {"validate_v1", "submit_v1"}:
             strict_keys(arguments, {"job_id"})
@@ -87,7 +91,11 @@ class Tools:
             return self.bridge.verify_receipt(
                 self.token, company, arguments["job_id"], arguments["reference"]
             )
-        if name in {"lookup_invoice_masters_v1", "lookup_bill_masters_v1"}:
+        if name in {
+            "lookup_invoice_masters_v1",
+            "lookup_bill_masters_v1",
+            "check_customer_payment_v1",
+        }:
             strict_keys(arguments, {"connector", "payload"})
             config = Config.load(self.bridge.config_path)
             actor = config.authenticate(self.token)
@@ -104,7 +112,9 @@ class Tools:
                 os.environ.get(connector.password_env, ""),
                 run,
                 **{
-                    "bill_check"
+                    "payment_check"
+                    if name == "check_customer_payment_v1"
+                    else "bill_check"
                     if name == "lookup_bill_masters_v1"
                     else "invoice_check": arguments["payload"]
                 },
@@ -195,6 +205,35 @@ def server(config_path, token):
         """Fresh read-only SDK supplier, payable, expense-account and single-currency checks."""
         return tools.call(
             "lookup_bill_masters_v1", company, {"connector": connector, "payload": payload}
+        )
+
+    @app.tool()
+    def prepare_customer_payment_v1(
+        company: str,
+        document_id: str,
+        idempotency_key: str,
+        payload: dict,
+        confidence: dict,
+        master_evidence: dict,
+    ) -> dict:
+        """Prepare an accounting payment draft from retained source and exact invoice allocations; never transfer money or post."""
+        return tools.call(
+            "prepare_customer_payment_v1",
+            company,
+            {
+                "document_id": document_id,
+                "idempotency_key": idempotency_key,
+                "payload": payload,
+                "confidence": confidence,
+                "master_evidence": master_evidence,
+            },
+        )
+
+    @app.tool()
+    def check_customer_payment_v1(company: str, connector: str, payload: dict) -> dict:
+        """Read exact customer, deposit account, method and current invoice balances for explicit allocations."""
+        return tools.call(
+            "check_customer_payment_v1", company, {"connector": connector, "payload": payload}
         )
 
     @app.tool()

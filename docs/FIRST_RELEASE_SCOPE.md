@@ -79,6 +79,9 @@ qualification are separate evidence; a passing mock does not establish native su
   Advanced inventory, discounted/date-driven terms and broader variants remain unchecked.
 - [ ] **M3-04:** Customer receipts: exact customer/invoice allocation, full and partial
   settlement, supported deposits/unapplied amounts, and independent balance read-back.
+  Single-currency partial/full cash receipts and an explicit unapplied receipt are
+  sample-qualified. Fresh Customer Balance Summary and customer balance independently
+  reconcile unpaid invoices minus unapplied funds. Broader variants remain unchecked.
 - [ ] **M3-05:** Supplier payments: exact vendor/bill allocation, partial settlement,
   source account and supported payment method; compare saved allocation and balances.
 - [ ] **M3-06:** Customer credit notes and refunds: reference the intended customer,
