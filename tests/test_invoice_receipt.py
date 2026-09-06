@@ -141,9 +141,7 @@ def test_ambiguous_or_unsupported_receipts_fail(receipt_case, case):
         validate_receipt(xml, policy, payload, "981")
 
 
-@pytest.mark.parametrize(
-    "case", ["taxable", "currency", "inventory", "no-commercial", "correlation"]
-)
+@pytest.mark.parametrize("case", ["taxable", "currency", "no-commercial", "correlation"])
 def test_request_refuses_unqualified_modes(receipt_case, case):
     from dataclasses import replace
 
@@ -152,10 +150,6 @@ def test_request_refuses_unqualified_modes(receipt_case, case):
         policy.invoice_masters["commercial"]["tax_item_id"] = "tax-item"
     elif case == "currency":
         policy.invoice_masters["currency_id"] = "usd-id"
-    elif case == "inventory":
-        next(iter(policy.invoice_masters["items"].values())).update(
-            kind="Inventory", cogs_account_id="cogs-id", asset_account_id="asset-id"
-        )
     elif case == "no-commercial":
         policy = replace(policy, invoice_masters={})
     with pytest.raises(BridgeError):

@@ -28,7 +28,9 @@ def append_request(request, correlation, check):
     if "txn_id" in check:
         from .invoice_receipt import append_lookup
 
-        return append_lookup(request, correlation, check["txn_id"])
+        return append_lookup(
+            request, correlation, check["txn_id"], check["receipt_policy"], check["payload"]
+        )
     from .invoice_compatibility import append_queries
 
     return append_queries(request, correlation, check)

@@ -1,69 +1,43 @@
 # KaydBooks Bridge project status
 
-Updated: 2026-09-06. Production posting: DISABLED. Four USD10 sample bills (two expense-only, one mixed expense/service and one inventory) are verified through exact saved-field and independent BillToPay checks. Three sample invoices retain their historical verified receipts. No uncertain transaction was resent.
+Updated: 2026-09-06. Production posting: DISABLED. Four sample invoices (USD45 total)
+and four USD10 sample bills have verified receipts. The newest mixed invoice independently
+verified stock decreasing from two units to zero. No uncertain transaction was resent.
 
-## M3�M7 sample implementation and qualification
+## M3–M7 sample implementation and qualification
 
-### Current release plan: return to M3
+### Current release plan: complete M3–M6 before final M7
 
-- RESOLVED: BillRet.OpenAmount returned the vendor's USD20 aggregate in the qualified
-  sample version. A separate exact-vendor/AP BillToPayQuery returned USD10 for each
-  bill, matching their TxnIDs, dates, references and AP account. VendorQuery independently
-  returned USD20. The bridge now uses BillToPay for outstanding amount and preserves
-  BillRet.OpenAmount as an observation only, not a per-bill balance.
-- The held Net30 bill was reconciled without sending BillAdd again. Fresh independent
-  checks passed for both bills; the audit remains valid. Required payable proof is
-  versioned into receipt context so old three-response evidence cannot satisfy it.
-- Standard zero-discount terms and due dates are qualified in the sample. Native
-  write fences, company identity, source review, permission and duplicate checks remain.
-- Validation: 660 local tests passed; actual read-only reconciliation and both fresh
-  bill-specific payable checks passed. Lint, native allowlist tests and wheel build pass.
-- Purchased service and mixed expense/service bills now use exact private item-to-expense
-  mappings, reviewed quantity/cost/amounts and fresh service/account checks. A controlled
-  USD10 mixed Net30 bill passed installed-package native posting and independent payable
-  verification. One isolated purchase-service test master was created and verified.
-- Latest validation: 682 local tests passed; native allowlists, source/wheel builds and
-  the installed-package mixed-bill run passed. CI48 passed all nine jobs for the preceding
-  balance-fix commit. The resolved eight-job state passed a signed isolated restore drill.
-- Simple inventory bills are implemented and sample-qualified through the installed
-  package: one USD10 bill received two isolated test units; exact saved lines, payable
-  and native stock increase from zero to two all matched. No uncertain write was resent.
-- Latest inventory validation: 695 local tests passed; native account/field gates and
-  source/wheel builds passed. CI49 passed the preceding purchased-service commit.
-- Current step: inventory sales invoices, then remaining M3�M6 acceptance gates.
-  Production posting remains disabled; sample posting is paused between controlled runs.
-
-- The [first-release scope and acceptance checklist](docs/FIRST_RELEASE_SCOPE.md)
-  records the agreed transaction families, all four input methods, required reports,
-  combinable roles/full assigned-company permissions by default, three posting modes,
-  Hermes messaging and master creation/updates.
-- M3–M6 remain partial under that scope. Final M7 qualification follows their required
-  acceptance gates; existing setup and backup work remains supporting evidence.
-- Current step: M3-03 supplier bills. Base-currency expense bills now share the durable
-  lifecycle with typed master evidence, supplier-scoped references, controlled native
-  attempts and independent saved-bill read-back. Item/inventory bills, payments and
-  credits remain unfinished.
-- Actual sample qualification: one USD10 expense bill verified. The initial request
-  returned SDK3210 for NotBillable without a reimbursable customer. The corrected
-  builder omits that field; the first job was permanently failed after fresh absence
-  confirmation, and a new reference was used. No business records were deleted.
-- CLI bill sample commands and two narrow MCP bill tools are implemented. Bill native
-  attempts cannot enter invoice dispatch or simulation recovery, and bill receipts
-  are excluded from the historical invoice register. All company mappings stay private.
-- New setup operators now receive all currently supported Bridge permissions by
-  default. Explicit permission lists (including no access) are respected. Existing
-  configuration grants, required approvals and production/sample posting gates remain
-  enforced. General user/role management and self-approval configuration remain planned.
-- Validation: 641 local tests passed; lint, formatting, source/wheel builds and a
-  separate installed-wheel qualification passed. Bill tests
-  cover duplicates, approval, mapping/permission changes, stale evidence, missing
-  responses, recovery and native request allowlists. Final regression/build results
-  include real expense-bill read-back and 15 discovered MCP tools. A signed 373-file
-  snapshot restored seven jobs with valid SQLite integrity/audit in isolation.
-  The historical invoice register remains three invoices totaling USD30.
-  CI46 passed all nine Windows/Linux Python3.10–3.13 and lint/build jobs for that
-  expense-bill commit. Subsequent terms/balance regression validation is recorded
-  separately; the seven-job restore predates the additional held Net30 bill.
+- RESOLVED: the balance discrepancy. BillRet.OpenAmount was USD20 while each sample
+  bill's exact-vendor/AP BillToPayQuery reported USD10. VendorQuery independently
+  reported USD20. The bridge now requires bill-specific payable evidence; OpenAmount
+  remains diagnostic. The held Net30 bill was reconciled without resending BillAdd.
+- Supplier bills support base-currency expense, purchased-service, mixed and simple
+  inventory lines, private account mappings and standard zero-discount Net30 terms.
+  Four USD10 bills passed native saved-line and independent payable verification.
+  The inventory bill also verified quantity increasing from zero to two, average cost
+  USD5 observed. One isolated purchase-service and one zero-stock item were created.
+- Non-tax service, simple inventory and mixed sales invoices share source/master checks,
+  durable authorization, native attempts and independent saved-line verification.
+  A USD15 installed-package mixed invoice matched its balance and stock decrease from
+  two to zero. Original stock baselines are retained; sold-out recovery never resends.
+  Ambiguous or missing stock evidence keeps the transaction unverified.
+- Latest validation: 700 local tests passed, lint and source/wheel builds passed, and
+  the installed-package mixed-invoice test passed with valid audit. CI50 passed the
+  preceding inventory-bill commit. Earlier signed isolated restore recovered eight
+  jobs with valid integrity/audit; it predates the last three sample transactions.
+- Current step: customer receipt/payment allocation and independent balance checks,
+  then remaining M3–M6 acceptance gates. Sample posting is paused between bounded tests.
+- The [first-release checklist](docs/FIRST_RELEASE_SCOPE.md) is the release target;
+  these qualified simple paths do not complete the wider tax/currency/advanced variants.
+  M3–M6 remain partial; final M7 follows their required acceptance gates.
+- New setup operators receive all currently supported permissions within explicitly
+  assigned companies by default. Explicit restrictions are respected. Required reviews,
+  company binding and production/sample posting gates remain enforced. General role
+  management and separately configurable self-approval remain release work.
+- CLI sample invoice/bill commands and 15 narrow MCP tools are implemented. Native
+  attempts cannot enter simulation recovery; bill receipts are excluded from the
+  historical invoice register. All company identity, sources and mappings stay private.
 
 ### Reusable company onboarding
 
@@ -85,8 +59,8 @@ Updated: 2026-09-06. Production posting: DISABLED. Four USD10 sample bills (two 
 
 | Milestone | Current implementation/evidence | Remaining scope |
 | --- | --- | --- |
-| M3 | Non-tax service invoices and base-currency expense bills; controlled native writes/readback, durable attempts, duplicate refusal and recovery tests | Item/inventory bills/invoices, terms, payments/credits, tax/currency variants and broader qualification |
-| M4 | Thirteen narrow MCP tools; immutable source bytes/hash, explicit field confidence/review; installed Hermes discovery and actual MCP-to-SDK sample preparation | OCR quality, conversational model runs, draft correction/revision |
+| M3 | Non-tax service/inventory/mixed invoices; expense/service/inventory bills and standard terms; native readback, stock effects and recovery | Payments/credits, broader terms, tax/currency variants, master-management interface and qualification |
+| M4 | Fifteen narrow MCP tools; immutable source bytes/hash, explicit field confidence/review; installed Hermes discovery and actual MCP-to-SDK sample preparation | OCR quality, conversational model runs, draft correction/revision |
 | M5 | Local bounded schedules, occurrence deduplication, dependencies/cancellation, local-only outbox, versioned preferences, canonical delegation, read-only board | Native Hermes cron/channels/delegation/Kanban connections; external delivery |
 | M6 | Historical verified-invoice register with dates, source hashes, observation times, derived totals and private exports | Native QuickBooks financial reports and optional GUI fallback |
 | M7 | Signed quiescent snapshot, isolated restore/integrity/audit drill, private ACL inspection, package qualification | Production pilot authorization, dedicated service account, operational failover and external immutable audit retention |

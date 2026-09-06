@@ -1,22 +1,25 @@
 """Explicitly gated sample-company invoices. Production posting is unavailable."""
 
 import hashlib
+import json
 import math
 import os
 import subprocess
 import time
 import uuid
 from dataclasses import asdict
+from decimal import Decimal
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from qbwc_kit._xml import fromstring
+from qbwc_kit.qbxml import parse_response
 
 from .config import BridgeError, Config
 from .direct_sdk import company_lock, discover
 from .invoice_compatibility import append_queries, plan, validate_response
 from .invoice_evidence import require
-from .invoice_receipt import RECEIPT_FIELDS, add_request, validate_receipt
+from .invoice_receipt import RECEIPT_FIELDS, add_request, inventory_specs, validate_receipt
 from .qbwc import DurableQBWCDiscoveryService
 from .service import Bridge, audited
 from .validation import digest, validate_source
@@ -57,7 +60,7 @@ def preflight(policy, payload, run):
     return '<?xml version="1.0"?><?qbxml version="17.0"?>' + ET.tostring(root, encoding="unicode")
 
 
-def check_preflight(response, policy, payload, connector, run):
+def check_preflight(response, policy, payload, connector, run, *, recovering=False):
     root = fromstring(response)
     if root.tag != "QBXML" or len(root) != 1 or root[0].tag != "QBXMLMsgsRs" or not len(root[0]):
         raise BridgeError("invalid native preflight envelope")
@@ -65,7 +68,13 @@ def check_preflight(response, policy, payload, connector, run):
     if collision.tag != "InvoiceQueryRs" or collision.get("requestID") != run + "999":
         raise BridgeError("uncorrelated invoice duplicate query")
     root[0].remove(collision)
-    discovery = validate_response(ET.tostring(root), run, plan(policy, payload))
+    check = plan(policy, payload)
+    check["skip_inventory_availability"] = recovering or len(collision) > 0
+    discovery = validate_response(ET.tostring(root), run, check)
+    if inventory_specs(policy, payload):
+        from .bill_lookup import validate_inventory_preferences
+
+        validate_inventory_preferences(list(parse_response(response))[2].records[0])
     DurableQBWCDiscoveryService._verify_discovery_response(
         discovery, {"correlation": run, "country": "US", "qbxml_version": "17.0"}, connector
     )
@@ -258,7 +267,21 @@ def post(bridge, token, company, job_id, *, exchange=windows_exchange, read_exch
                     actor,
                     job_id,
                     "sample_write_authorized" if matched is None else "sample_duplicate_found",
-                    {"preflight_hash": digest(response)},
+                    {
+                        "preflight_hash": digest(response),
+                        **(
+                            {
+                                "inventory_before": {
+                                    record["ListID"]: record["QuantityOnHand"]
+                                    for rs in parse_response(response)
+                                    if rs.entity == "ItemInventory"
+                                    for record in rs.records
+                                }
+                            }
+                            if inventory_specs(current_policy, current["payload"])
+                            else {}
+                        ),
+                    },
                 )
             return matched is None
 
@@ -328,7 +351,9 @@ def reconcile(bridge, token, company, job_id, *, exchange=windows_exchange, read
 
         def receive(response):
             nonlocal matched
-            matched = check_preflight(response, policy, job["payload"], connector, run)
+            matched = check_preflight(
+                response, policy, job["payload"], connector, run, recovering=True
+            )
             return False
 
         folder = store.path.parent / ("native-reconcile-" + uuid.uuid4().hex)
@@ -396,9 +421,52 @@ def reconcile(bridge, token, company, job_id, *, exchange=windows_exchange, read
         ).fetchone():
             dispatched = False
         proof.update(origin="native-attempt-readback", bridge_dispatched=dispatched)
+        if "stock_observations" in proof["receipt"]:
+            baseline = db.execute(
+                "SELECT data FROM audit WHERE job_id=? AND event='sample_write_authorized' ORDER BY sequence",
+                (job_id,),
+            ).fetchall()
+            if len(baseline) != 1:
+                raise BridgeError("inventory invoice requires original native stock baseline")
+            proof["receipt"]["stock_effects"] = verify_stock_effect(
+                latest_policy,
+                current["payload"],
+                json.loads(baseline[0]["data"]).get("inventory_before"),
+                proof["receipt"]["stock_observations"],
+            )
         db.execute(
             "UPDATE jobs SET state='verified',txn_id=?,detail='native_invoice_verified' WHERE id=?",
             (matched["txn_id"], job_id),
         )
         store.event(db, bridge.clock(), actor, job_id, "native_invoice_verified", proof)
         return store.job(db, job_id)
+
+
+def verify_stock_effect(policy, payload, before, after):
+    from .invoice_commercial import decimal_evidence
+
+    inventory = inventory_specs(policy, payload)
+    if (
+        not isinstance(before, dict)
+        or set(before) != set(inventory)
+        or set(after) != set(inventory)
+    ):
+        raise BridgeError("inventory invoice stock evidence differs")
+    result = {}
+    for item_id in inventory:
+        sold = sum(
+            Decimal(line["quantity"])
+            for line in payload["lines"]
+            if policy.invoice_masters["items"][line["item_id"]]["list_id"] == item_id
+        )
+        prior = decimal_evidence(before[item_id])
+        current = decimal_evidence(after[item_id]["quantity_on_hand"])
+        if current < 0 or current != prior - sold:
+            raise BridgeError("inventory sale stock effect differs; no retry authorized")
+        result[item_id] = {
+            "before": str(prior),
+            "sold": str(sold),
+            "after": str(current),
+            "verification": "matched-native-stock-decrease",
+        }
+    return result

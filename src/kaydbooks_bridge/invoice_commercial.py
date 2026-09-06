@@ -161,7 +161,11 @@ def validate_commercial(records, ar_index, check):
             on_hand = decimal_evidence(item.get("QuantityOnHand"))
             committed = decimal_evidence(item.get("QuantityOnSalesOrder"))
             needed = sum(positive_decimal(line["quantity"]) for line in lines)
-            if committed < 0 or on_hand - committed < needed:
+            if (
+                committed < 0
+                or on_hand < 0
+                or (not check.get("skip_inventory_availability") and on_hand - committed < needed)
+            ):
                 raise BridgeError("insufficient uncommitted inventory on hand")
         else:
             sale = item.get("SalesOrPurchase")

@@ -55,6 +55,9 @@ def response(request, *, inventory=False, taxable=True, mutate=None):
         "PurchasesAndVendorsPreferences": {"IsUsingInventory": "true"},
         "MultiLocationInventoryPreferences": {"IsMultiLocationInventoryEnabled": "false"},
         "ItemsAndInventoryPreferences": {
+            "EnhancedInventoryReceivingEnabled": "false",
+            "FIFOEnabled": "false",
+            "IsInventoryExpirationDateEnabled": "false",
             "IsTrackingSerialOrLotNumber": "None",
             "IsRSBEnabled": "false",
         },
@@ -111,6 +114,7 @@ def response(request, *, inventory=False, taxable=True, mutate=None):
             "COGSAccountRef": ref("cogs-id"),
             "AssetAccountRef": ref("asset-id"),
             "QuantityOnHand": "5",
+            "AverageCost": "5.00",
             "QuantityOnSalesOrder": "1",
         },
         ("SalesTaxCode", "tax-code"): {

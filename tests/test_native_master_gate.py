@@ -74,11 +74,11 @@ def test_native_invoice_receipt_gate(tmp_path):
     from kaydbooks_bridge.qbwc import DurableQBWCDiscoveryService
 
     source = (Path(__file__).parents[1] / "src/kaydbooks_bridge/direct_sdk.ps1").read_text()
-    start = source.index(
-        '   if(batch.ChildNodes.Count==3 && batch.ChildNodes[2].Name=="InvoiceQueryRq")'
-    )
-    end = source.index("   if(billPreview)", start)
-    gate = source[start:end]
+    gate = source[
+        source.index("   var root=doc.DocumentElement;") : source.index(
+            '   Save(dir,"request.xml",request);'
+        )
+    ]
     request = append_lookup(
         DurableQBWCDiscoveryService._discovery_request("1234", "17.0"), "1234", "saved-id"
     )
@@ -92,7 +92,7 @@ def test_native_invoice_receipt_gate(tmp_path):
             source.index(" static void FixedQuery(") : source.index(" public static void Run(")
         ]
         + "public static bool Allowed(string xml) { try {\n"
-        + "var doc=new System.Xml.XmlDocument(); doc.LoadXml(xml); var batch=doc.DocumentElement.FirstChild; bool billReceipt=false;\n"
+        + "var doc=new System.Xml.XmlDocument(); doc.LoadXml(xml);\n"
         + gate
         + "return true; } catch { return false; } } }\n'@\n"
         + "$query=[System.IO.File]::ReadAllText($args[0])\n"

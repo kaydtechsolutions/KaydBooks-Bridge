@@ -68,6 +68,9 @@ qualification are separate evidence; a passing mock does not establish native su
   recovery and refusal to resend a dispatched invoice.
 - [ ] **M3-02:** Inventory and mixed invoices: fresh items/accounts, supported inventory
   settings, quantity/price/tax calculations, saved-line and stock-effect comparison.
+  The non-tax, single-currency simple-inventory/mixed path is sample-qualified: a USD15
+  mixed invoice matched saved lines/balance and stock decrease from two to zero. Broader
+  tax/currency and inventory settings remain separate unqualified variants.
 - [ ] **M3-03:** Supplier bills: vendor binding, expense/service/inventory lines,
   payable and expense/asset accounts, due dates, terms and reference checks. Verify
   saved lines, totals and liability effects; preserve an unknown outcome without retry.

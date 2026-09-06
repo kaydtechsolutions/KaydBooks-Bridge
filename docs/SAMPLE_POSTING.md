@@ -1,7 +1,7 @@
 # Controlled sample invoice posting
 
 Production posting remains unavailable. An optional company `sample_posting` policy enables
-only explicitly authorized non-taxable service invoice tests through the native SDK.
+only explicitly authorized non-taxable service and simple inventory invoice tests through the native SDK.
 It requires a confirmed connector, an operator authorization statement, a reference prefix,
 an expiry timestamp and an attempt quota of 1–10. The company's normal invoice total limit,
 master mappings, source checks and approval policy still apply. Each initiator needs current
@@ -48,3 +48,20 @@ Real sample qualification passed for a normal native posting and a second invoic
 parent exited after the helper saved its response. A fresh process reconciled the second
 invoice and refused another dispatch. Exact receipts and authorization remain private.
 Production access is outside this qualification.
+
+Simple inventory and mixed invoices use exact private item/asset/COGS/income mappings.
+Fresh preflight checks require supported inventory settings and sufficient uncommitted
+stock. Advanced inventory, serial/lot tracking, multiple locations, units of measure,
+FIFO and tax-inclusive items are rejected by this sample path. The authorized native
+preflight stores each inventory item's starting quantity in immutable audit evidence.
+Independent receipt queries must match saved lines and the exact expected stock decrease.
+Missing stock proof or a different decrease keeps the job unverified and prevents resend.
+Concurrent external stock activity can require investigation; the comparison does not
+claim transaction isolation from other QuickBooks users or general-ledger valuation.
+
+Recovery checks the saved invoice without requiring stock still available for another
+sale. It still requires the original stock baseline and independent current quantity.
+A pre-existing inventory invoice with no owned native baseline cannot be promoted to
+stock-effect-verified. Lost-response tests cover selling all remaining stock and recovery
+without a second write. A real installed-package USD15 mixed sample invoice matched both
+saved lines, outstanding balance and stock decrease from two units to zero.

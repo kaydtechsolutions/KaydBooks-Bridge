@@ -1,4 +1,4 @@
-"""Pure non-taxable service invoice request/receipt helpers; no dispatch capability."""
+"""Non-tax service/inventory invoice request and receipt validation; no dispatch."""
 
 import re
 from decimal import Decimal
@@ -6,6 +6,7 @@ from xml.etree import ElementTree as ET
 
 from qbwc_kit._xml import fromstring
 
+from .bill_lookup import INVENTORY_FIELDS, validate_inventory_item
 from .config import BridgeError
 from .invoice_commercial import decimal_evidence
 from .invoice_compatibility import plan, required_id
@@ -45,11 +46,29 @@ def lookup_context(policy, payload, txn_id):
     required_id(txn_id)
     check = _check(policy, payload)
     return digest(
-        {"operation": "invoice-receipt-check", "invoice": check["context_sha256"], "txn_id": txn_id}
+        {
+            "operation": "invoice-receipt-check",
+            "invoice": check["context_sha256"],
+            "txn_id": txn_id,
+            **({"stock_contract": "native-sale-v1"} if inventory_specs(policy, payload) else {}),
+        }
     )
 
 
-def append_lookup(discovery, correlation, txn_id):
+def inventory_specs(policy, payload):
+    return {
+        s["list_id"]: {
+            "list_id": s["list_id"],
+            "asset_list_id": s["asset_account_id"],
+            "cogs_list_id": s["cogs_account_id"],
+            "income_list_id": s["income_account_id"],
+        }
+        for s in plan(policy, payload)["item_specs"]
+        if s.get("kind") == "Inventory"
+    }
+
+
+def append_lookup(discovery, correlation, txn_id, policy=None, payload=None):
     _request_id(correlation)
     required_id(txn_id)
     root = fromstring(discovery)
@@ -59,19 +78,49 @@ def append_lookup(discovery, correlation, txn_id):
     ET.SubElement(query, "IncludeLinkedTxns").text = "true"
     for field in RECEIPT_FIELDS:
         ET.SubElement(query, "IncludeRetElement").text = field
+    inventory = inventory_specs(policy, payload) if policy is not None else {}
+    for index, item_id in enumerate(sorted(inventory), 4):
+        node = ET.SubElement(root[0], "ItemInventoryQueryRq", requestID=f"{correlation}{index}")
+        ET.SubElement(node, "ListID").text = item_id
+        for field in INVENTORY_FIELDS:
+            ET.SubElement(node, "IncludeRetElement").text = field
     return '<?xml version="1.0"?><?qbxml version="17.0"?>' + ET.tostring(root, encoding="unicode")
 
 
 def validate_lookup(xml, correlation, policy, payload, txn_id):
     root = fromstring(xml)
-    if root.tag != "QBXML" or len(root) != 1 or root[0].tag != "QBXMLMsgsRs" or len(root[0]) != 3:
+    inventory = inventory_specs(policy, payload)
+    if (
+        root.tag != "QBXML"
+        or len(root) != 1
+        or root[0].tag != "QBXMLMsgsRs"
+        or len(root[0]) != 3 + len(inventory)
+    ):
         raise BridgeError("receipt lookup requires discovery and one invoice response")
     invoice_root = ET.Element("QBXML")
     ET.SubElement(invoice_root, "QBXMLMsgsRs").append(root[0][2])
     receipt = validate_receipt(
         ET.tostring(invoice_root), policy, payload, f"{correlation}3", txn_id=txn_id
     )
-    root[0].remove(root[0][2])
+    if inventory:
+        from qbwc_kit.qbxml import parse_response
+
+        responses = list(parse_response(xml))
+        stock = {}
+        for index, item_id in enumerate(sorted(inventory), 4):
+            rs = responses[index - 1]
+            if (
+                rs.entity != "ItemInventory"
+                or rs.request_id != f"{correlation}{index}"
+                or rs.status_code != 0
+                or rs.status_severity != "Info"
+                or len(rs.records) != 1
+            ):
+                raise BridgeError("inventory invoice receipt status or identity mismatch")
+            stock[item_id] = validate_inventory_item(rs.records[0], inventory[item_id])
+        receipt["stock_observations"] = stock
+    for node in list(root[0])[2:]:
+        root[0].remove(node)
     return ET.tostring(root, encoding="unicode"), receipt
 
 
@@ -83,11 +132,8 @@ def _check(policy, payload):
         or commercial["tax_item_id"] is not None
         or Decimal(commercial["tax_rate"]) != 0
         or check["currency_id"] is not None
-        or any(s.get("kind", "Service") != "Service" for s in check["item_specs"])
     ):
-        raise BridgeError(
-            "receipt qualification supports only non-taxable single-currency services"
-        )
+        raise BridgeError("receipt qualification requires non-taxable single-currency items")
     return check
 
 

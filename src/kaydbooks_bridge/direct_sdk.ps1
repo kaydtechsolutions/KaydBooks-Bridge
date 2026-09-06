@@ -74,12 +74,13 @@ public static class PrivateReadOnlyDiscovery {
    if(root.Name!="QBXML" || root.ChildNodes.Count!=1) throw new InvalidOperationException("Invalid discovery envelope");
    var batch=root.FirstChild;
    bool billReceipt=batch.ChildNodes.Count>=4 && batch.ChildNodes.Count<=104 && batch.ChildNodes[2].Name=="BillQueryRq" && batch.ChildNodes[3].Name=="BillToPayQueryRq";
+   bool invoiceReceipt=batch.ChildNodes.Count>=3 && batch.ChildNodes.Count<=23 && batch.ChildNodes[2].Name=="InvoiceQueryRq";
    bool billPreview=batch.ChildNodes.Count==5 && batch.ChildNodes[2].Name=="PreferencesQueryRq" && batch.ChildNodes[3].Name=="VendorQueryRq";
    bool billCheck=batch.ChildNodes.Count>=6 && batch.ChildNodes.Count<=406 && batch.ChildNodes[2].Name=="PreferencesQueryRq" && batch.ChildNodes[3].Name=="VendorQueryRq";
    bool commercial=batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=88 && batch.ChildNodes[2].Name=="PreferencesQueryRq" && batch.ChildNodes[2].InnerXml.Contains("<IncludeRetElement>SalesTaxPreferences</IncludeRetElement>");
    bool single=!commercial && batch.ChildNodes.Count>=7 && batch.ChildNodes.Count<=45 && batch.ChildNodes.Count%2==1 && batch.ChildNodes[3].Name=="AccountQueryRq";
-   bool invoice=!billReceipt && !commercial && !billCheck && (single || (batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=46 && batch.ChildNodes.Count%2==0));
-   if(batch.Name!="QBXMLMsgsRq" || (batch.ChildNodes.Count!=2 && batch.ChildNodes.Count!=3 && batch.ChildNodes.Count!=7 && !invoice && !commercial && !billPreview && !billCheck && !billReceipt)) throw new InvalidOperationException("Invalid discovery batch");
+   bool invoice=!invoiceReceipt && !billReceipt && !commercial && !billCheck && (single || (batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=46 && batch.ChildNodes.Count%2==0));
+   if(batch.Name!="QBXMLMsgsRq" || (batch.ChildNodes.Count!=2 && batch.ChildNodes.Count!=3 && batch.ChildNodes.Count!=7 && !invoice && !commercial && !billPreview && !billCheck && !billReceipt && !invoiceReceipt)) throw new InvalidOperationException("Invalid discovery batch");
    string[] names={"HostQueryRq","CompanyQueryRq"};
    for(int i=0;i<2;i++) {
     var node=batch.ChildNodes[i];
@@ -87,7 +88,7 @@ public static class PrivateReadOnlyDiscovery {
        !System.Text.RegularExpressions.Regex.IsMatch(node.Attributes["requestID"].Value,"^[0-9]+$"))
       throw new InvalidOperationException("Only fixed read-only discovery requests are permitted");
    }
-   if(batch.ChildNodes.Count==3 && batch.ChildNodes[2].Name=="InvoiceQueryRq") {
+   if(invoiceReceipt) {
     var query=batch.ChildNodes[2];
     var selector=query.FirstChild;
     if(query.Attributes.Count!=1 || query.Attributes["requestID"]==null ||
@@ -100,6 +101,7 @@ public static class PrivateReadOnlyDiscovery {
     foreach(string field in "TxnID,EditSequence,CustomerRef,ARAccountRef,TxnDate,RefNumber,IsPending,IsFinanceCharge,Subtotal,SalesTaxTotal,AppliedAmount,BalanceRemaining,CurrencyRef,ExchangeRate,IsPaid,IsToBePrinted,IsToBeEmailed,IsTaxIncluded,CustomerSalesTaxCodeRef,ItemSalesTaxRef,LinkedTxn,InvoiceLineRet,InvoiceLineGroupRet,DiscountLineRet,SalesTaxLineRet,ShippingLineRet".Split(','))
      expected+="<IncludeRetElement>"+field+"</IncludeRetElement>";
     if(query.InnerXml!=expected) throw new InvalidOperationException("Only fixed invoice receipt fields permitted");
+    for(int i=3;i<batch.ChildNodes.Count;i++) FixedQuery(batch.ChildNodes[i],"ItemInventory","ListID,Name,IsActive,AssetAccountRef,COGSAccountRef,IncomeAccountRef,QuantityOnHand,AverageCost,PurchaseCost,UnitOfMeasureSetRef,IsTaxIncluded",true);
    } else if(batch.ChildNodes.Count==3 && batch.ChildNodes[2].Name=="StandardTermsQueryRq") {
     FixedQuery(batch.ChildNodes[2],"StandardTerms","ListID,Name,IsActive,StdDueDays,StdDiscountDays,DiscountPct",false,true);
    } else if(batch.ChildNodes.Count==3 && batch.ChildNodes[2].Name=="ItemServiceQueryRq") {
