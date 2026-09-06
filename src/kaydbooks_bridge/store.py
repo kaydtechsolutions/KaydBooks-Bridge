@@ -86,6 +86,12 @@ class Store:
                 request TEXT NOT NULL, state TEXT NOT NULL
                 CHECK(state IN ('prepared','dispatched','verified','blocked')),
                 response TEXT, error TEXT NOT NULL DEFAULT '')""")
+            sdk_columns = {r[1] for r in db.execute("PRAGMA table_info(sdk_discovery)")}
+            if "context_hash" not in sdk_columns:
+                db.execute("ALTER TABLE sdk_discovery ADD COLUMN context_hash TEXT")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS sdk_context_immutable
+                BEFORE UPDATE ON sdk_discovery WHEN NEW.context_hash IS NOT OLD.context_hash
+                BEGIN SELECT RAISE(ABORT,'immutable SDK context'); END""")
             db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS one_active_sdk_discovery
                 ON sdk_discovery((1)) WHERE state IN ('prepared','dispatched')""")
             db.execute("""CREATE TRIGGER IF NOT EXISTS sdk_identity_immutable

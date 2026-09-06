@@ -83,6 +83,8 @@ def discover(
     recover_read: bool = False,
     accounts: bool = False,
     list_id: str | None = None,
+    invoice_check: dict | None = None,
+    master_preview: bool = False,
 ) -> dict:
     """Run/resume fixed US qbXML 17 discovery under company permissions and audit.
 
@@ -101,7 +103,7 @@ def discover(
         raise BridgeError("company binding is not operator-confirmed")
     store = service._stores[connector.company]
     request = service._discovery_request(run_id, "17.0")
-    if type(accounts) is not bool:
+    if type(accounts) is not bool or type(master_preview) is not bool:
         raise BridgeError("invalid lookup mode")
     from .account_lookup import append_query, validate_list_id
 
@@ -116,6 +118,25 @@ def discover(
     )
     if lookup:
         request = append_query(request, run_id, list_id=list_id)
+    if master_preview and (lookup or invoice_check is not None):
+        raise BridgeError("master preview cannot be combined with another mode")
+    if master_preview:
+        from .invoice_compatibility import preview_request
+
+        request = preview_request(request, run_id)
+        operation = "invoice-master-preview"
+    check = None
+    context_hash = None
+    if invoice_check is not None:
+        if lookup:
+            raise BridgeError("select account lookup or invoice compatibility, not both")
+        from .invoice_compatibility import append_queries, plan
+
+        company = config.authorize(actor, connector.company, "validate")
+        check = plan(company, invoice_check)
+        context_hash = check["context_sha256"]
+        request = append_queries(request, run_id, check)
+        operation = "invoice-master-compatibility"
     with company_lock(store.path.with_suffix(".sdk.lock")):
         with store.transaction() as db:
             service._expire_active(db, store, time.time())
@@ -131,8 +152,8 @@ def discover(
                 ).fetchone():
                     raise BridgeError("resume the existing SDK discovery first")
                 db.execute(
-                    "INSERT INTO sdk_discovery(id,connector,actor,request,state) VALUES(?,?,?,?,'prepared')",
-                    (run_id, connector_id, actor, request),
+                    "INSERT INTO sdk_discovery(id,connector,actor,request,state,context_hash) VALUES(?,?,?,?,'prepared',?)",
+                    (run_id, connector_id, actor, request, context_hash),
                 )
                 store.event(
                     db,
@@ -145,6 +166,7 @@ def discover(
                         "connector": connector_id,
                         "transport": "direct-sdk",
                         "operation": operation,
+                        "context_hash": context_hash,
                     },
                 )
                 row = db.execute("SELECT * FROM sdk_discovery WHERE id=?", (run_id,)).fetchone()
@@ -152,6 +174,7 @@ def discover(
                 row["connector"] != connector_id
                 or row["actor"] != actor
                 or row["request"] != request
+                or row["context_hash"] != context_hash
             ):
                 raise BridgeError("SDK run ownership mismatch")
             if row["state"] == "blocked":
@@ -182,10 +205,19 @@ def discover(
         try:
             discovery_response = response
             account_records = None
+            master_records = None
             if lookup:
                 from .account_lookup import validate_response
 
                 discovery_response, account_records = validate_response(response, run_id, list_id)
+            if master_preview:
+                from .invoice_compatibility import preview_response
+
+                discovery_response, master_records = preview_response(response, run_id)
+            if check is not None:
+                from .invoice_compatibility import validate_response as validate_masters_response
+
+                discovery_response = validate_masters_response(response, run_id, check)
             identity, host = service._verify_discovery_response(
                 discovery_response,
                 {"correlation": run_id, "country": "US", "qbxml_version": "17.0"},
@@ -223,6 +255,21 @@ def discover(
                 complete=False,
                 operation=operation,
             )
+        if check is not None:
+            result.update(
+                operation=operation,
+                scope="master-evidence-only",
+                compatibility="matched",
+                context_sha256=context_hash,
+                service_item_count=check["item_count"],
+                currency_basis="configured-single-currency"
+                if check["currency_id"] is None
+                else "verified-home-currency",
+            )
+        if master_preview:
+            result.update(
+                operation=operation, masters=master_records, complete=False, limit_per_entity=20
+            )
         return result
 
 
@@ -245,6 +292,12 @@ def main(argv=None):
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument("--accounts", action="store_true", help="preview at most 20 active accounts")
     modes.add_argument("--list-id", help="read one exact active account by ListID")
+    modes.add_argument(
+        "--invoice-check", type=Path, help="private invoice payload JSON for master compatibility"
+    )
+    modes.add_argument(
+        "--master-preview", action="store_true", help="bounded private invoice master preview"
+    )
     args = parser.parse_args(argv)
     try:
         load_secret_file(args.credentials)
@@ -259,7 +312,11 @@ def main(argv=None):
             args.run_id,
             recover_read=args.recover_read,
             accounts=args.accounts,
+            master_preview=args.master_preview,
             list_id=args.list_id,
+            invoice_check=json.loads(args.invoice_check.read_text(encoding="utf-8"))
+            if args.invoice_check
+            else None,
         )
         print(json.dumps(result))
         return 0

@@ -2,6 +2,29 @@
 
 Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK and QBWC discovery, including QBWC post-restart update: PASS.
 
+## Latest implementation: invoice currency/customer/service-item compatibility
+
+- Added direct SDK --invoice-check using private exact customer/item/income mappings,
+  existing invoice payload policy and read+validate permission. Supports up to 20
+  distinct service items, active exact masters and receivables/income account checks.
+- Currency modes are explicit: configured-single-currency requires multicurrency off;
+  verified-home-currency requires an exact currency code and matching HomeCurrencyRef,
+  customer and AR references. Missing/foreign/ambiguous evidence blocks the check.
+- Durable context hash binds payload and policy; saved replay revalidates with no
+  dispatch. Native allowlist covers only fixed projected read queries. Posting disabled.
+- Added bounded private master preview to obtain exact sample mappings. CurrencyQuery
+  3250 is tolerated for preview only when preferences explicitly report multicurrency
+  off; currency records remain absent and no verified home currency is inferred.
+- Actual sample preview and new exact compatibility check passed. Customer/service item,
+  AR/income references, company binding and audit verified. Currency basis is explicitly
+  configured-single-currency; the base code is operator policy. Fresh-process replay
+  passed without querying. All raw evidence and sample mappings remain private.
+- Validation: 337 full-suite tests passed plus one native C# allowlist test; lint,
+  formatting and build passed. Explicit CurrencyRef mode is synthetic-only.
+- Scope: direct SDK service items only. QBWC invoice compatibility, inventory/tax/price
+  rules and invoice preparation linkage remain future work. No full invoice approval.
+  See docs/INVOICE_COMPATIBILITY.md. Next: QBWC parity for these bounded master checks.
+
 ## Latest qualification: staged account-role blocker cleared
 
 - On explicit operator request, added only validate to the staged operator's sample

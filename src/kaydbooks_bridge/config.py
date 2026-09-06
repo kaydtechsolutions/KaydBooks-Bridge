@@ -45,6 +45,7 @@ class Company:
     sources: tuple[str, ...]
     approval_required: bool
     account_roles: dict[str, str] = field(default_factory=dict)
+    invoice_masters: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -97,7 +98,7 @@ class Config:
                     "sources",
                     "approval_required",
                 },
-                {"account_roles"},
+                {"account_roles", "invoice_masters"},
             )
             identifier(raw["simulation_identity"])
             if not isinstance(raw["currency"], str) or not re.fullmatch(
@@ -118,6 +119,11 @@ class Config:
             from .account_roles import validate_roles
 
             raw["account_roles"] = validate_roles(raw.get("account_roles", {}))
+            from .invoice_compatibility import validate_masters
+
+            raw["invoice_masters"] = validate_masters(
+                raw.get("invoice_masters", {}), raw["customers"], raw["items"]
+            )
             companies[name] = Company(id=name, **raw)
         principals = data["principals"]
         if not isinstance(principals, dict) or not principals:

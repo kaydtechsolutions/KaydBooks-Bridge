@@ -43,3 +43,8 @@ matched the configured active receivables account; both role checks and company 
 verified. A fresh-process direct SDK CLI check also passed. Only `validate` was added;
 no submit, approve or posting permission was granted. Exact mapping and evidence stay
 private. Currency/customer/item compatibility is still outside this role-only check.
+
+
+Direct SDK [invoice master compatibility](INVOICE_COMPATIBILITY.md) now adds explicit
+currency, customer and service-item checks. It remains a separate read-only preflight,
+with no invoice state transition or posting approval.

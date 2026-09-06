@@ -17,6 +17,23 @@ public static class PrivateReadOnlyDiscovery {
    var bytes=Encoding.UTF8.GetBytes(value); file.Write(bytes,0,bytes.Length); file.Flush(true);
   }
  }
+ static void FixedQuery(System.Xml.XmlNode node,string name,string fields,bool exact,bool preview=false) {
+  if(node.Name!=name+"QueryRq" || node.Attributes.Count!=1 || node.Attributes["requestID"]==null ||
+     !System.Text.RegularExpressions.Regex.IsMatch(node.Attributes["requestID"].Value,@"\A[0-9]+\z"))
+   throw new InvalidOperationException("Invalid fixed master query");
+  string expected="";
+  if(exact) {
+   var id=node.FirstChild;
+   if(id==null || id.Name!="ListID" || id.Attributes.Count!=0 || id.ChildNodes.Count!=1 ||
+      id.FirstChild.NodeType!=System.Xml.XmlNodeType.Text ||
+      !System.Text.RegularExpressions.Regex.IsMatch(id.InnerText,@"\A[A-Za-z0-9-]{1,31}\z"))
+    throw new InvalidOperationException("Exact master selector required");
+   expected="<ListID>"+id.InnerText+"</ListID>";
+  }
+  if(preview) expected="<MaxReturned>20</MaxReturned><ActiveStatus>ActiveOnly</ActiveStatus>";
+  foreach(string field in fields.Split(',')) expected+="<IncludeRetElement>"+field+"</IncludeRetElement>";
+  if(node.InnerXml!=expected) throw new InvalidOperationException("Only fixed projected master fields permitted");
+ }
  public static void Run(string dir, string requestFile, string outputFile) {
   IRequestProcessor4 rp=null; string ticket=null; bool opened=false; string response=null;
   Save(dir,"started.txt",DateTime.UtcNow.ToString("o")+" direct SDK diagnostic; transport evidence; binding validation required");
@@ -42,7 +59,9 @@ public static class PrivateReadOnlyDiscovery {
    var root=doc.DocumentElement;
    if(root.Name!="QBXML" || root.ChildNodes.Count!=1) throw new InvalidOperationException("Invalid discovery envelope");
    var batch=root.FirstChild;
-   if(batch.Name!="QBXMLMsgsRq" || (batch.ChildNodes.Count!=2 && batch.ChildNodes.Count!=3)) throw new InvalidOperationException("Invalid discovery batch");
+   bool single=batch.ChildNodes.Count>=7 && batch.ChildNodes.Count<=45 && batch.ChildNodes.Count%2==1 && batch.ChildNodes[3].Name=="AccountQueryRq";
+   bool invoice=single || (batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=46 && batch.ChildNodes.Count%2==0);
+   if(batch.Name!="QBXMLMsgsRq" || (batch.ChildNodes.Count!=2 && batch.ChildNodes.Count!=3 && batch.ChildNodes.Count!=7 && !invoice)) throw new InvalidOperationException("Invalid discovery batch");
    string[] names={"HostQueryRq","CompanyQueryRq"};
    for(int i=0;i<2;i++) {
     var node=batch.ChildNodes[i];
@@ -63,6 +82,24 @@ public static class PrivateReadOnlyDiscovery {
     if(account.Name!="AccountQueryRq" || account.Attributes.Count!=1 || account.Attributes["requestID"]==null ||
        !System.Text.RegularExpressions.Regex.IsMatch(account.Attributes["requestID"].Value,"^[0-9]+$") || account.InnerXml!=expected)
      throw new InvalidOperationException("Only fixed account preview or exact-ID query is permitted");
+   }
+   if(batch.ChildNodes.Count==7 && !single) {
+    FixedQuery(batch.ChildNodes[2],"Preferences","MultiCurrencyPreferences",false);
+    FixedQuery(batch.ChildNodes[3],"Currency","ListID,IsActive,CurrencyCode",false,true);
+    FixedQuery(batch.ChildNodes[4],"Customer","ListID,IsActive,CurrencyRef",false,true);
+    FixedQuery(batch.ChildNodes[5],"ItemService","ListID,IsActive,SalesOrPurchase,SalesAndPurchase",false,true);
+    FixedQuery(batch.ChildNodes[6],"Account","ListID,IsActive,AccountType,CurrencyRef",false,true);
+   }
+   if(invoice) {
+    FixedQuery(batch.ChildNodes[2],"Preferences","MultiCurrencyPreferences",false);
+    int ar=single ? 3 : 4;
+    if(!single) FixedQuery(batch.ChildNodes[3],"Currency","ListID,IsActive,CurrencyCode",true);
+    FixedQuery(batch.ChildNodes[ar],"Account","ListID,IsActive,AccountType,CurrencyRef",true);
+    FixedQuery(batch.ChildNodes[ar+1],"Customer","ListID,IsActive,CurrencyRef",true);
+    for(int i=ar+2;i<batch.ChildNodes.Count;i+=2) {
+     FixedQuery(batch.ChildNodes[i],"ItemService","ListID,IsActive,SalesOrPurchase,SalesAndPurchase",true);
+     FixedQuery(batch.ChildNodes[i+1],"Account","ListID,IsActive,AccountType,CurrencyRef",true);
+    }
    }
    Save(dir,"request.xml",request);
    Save(dir,"dispatch-intent.txt",DateTime.UtcNow.ToString("o"));
