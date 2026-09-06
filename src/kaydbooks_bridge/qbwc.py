@@ -312,7 +312,7 @@ class DurableQBWCDiscoveryService:
                         raise BridgeError("account lookup requires verified HCP and US qbXML 4+")
                     from .account_lookup import append_query
 
-                    request = append_query(request, row["correlation"], version)
+                    request = append_query(request, row["correlation"], version, lookup["list_id"])
             except (BridgeError, ValueError, TypeError) as exc:
                 self._block(db, store, row, now, str(exc))
                 self._callback(
@@ -416,7 +416,9 @@ class DurableQBWCDiscoveryService:
                         from .account_lookup import validate_response
 
                         self.config.authorize(lookup["actor"], connector.company, "read")
-                        payload, _ = validate_response(response, row["correlation"])
+                        payload, _ = validate_response(
+                            response, row["correlation"], lookup["list_id"]
+                        )
                     identity_hash, host_evidence = self._verify_discovery_response(
                         payload, row, connector
                     )

@@ -63,3 +63,19 @@ Result retrieval revalidates the binding before returning projected records.
 
 No extra QWC import or permission grant is required for an already-qualified connector.
 Keep Auto-Run disabled and trigger one manual update for each explicitly queued test.
+
+
+## Exact account lookup through QBWC
+
+Add `--list-id` when enqueueing to request one exact account instead of the preview.
+The selector is immutable for the job; use a new job ID to select another account.
+Result retrieval can omit the selector and uses the persisted one. Only the requested
+active account is released, after the same company, permission and correlation checks.
+Missing, inactive, extra or different records fail closed. SDK warning statuses remain
+blocked rather than being interpreted as a successful no-match.
+
+The fixed request uses ListID instead of MaxReturned/ActiveStatus, following the
+Intuit AccountQuery choice schema linked above. This option is QBWC-only; direct SDK
+continues to provide the active-account preview. Exact lookup has synthetic callback
+and restart coverage, but has not yet been qualified against the running QuickBooks
+sample. It is not account-type approval for any posting operation. Posting stays disabled.

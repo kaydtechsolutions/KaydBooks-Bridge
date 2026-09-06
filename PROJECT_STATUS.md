@@ -2,6 +2,18 @@
 
 Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK and QBWC discovery, including QBWC post-restart update: PASS.
 
+## Latest development: exact account selector through QBWC
+
+- Added optional immutable ListID selection to the authenticated account job CLI.
+  Existing preview jobs migrate with a null selector and retain preview behavior.
+- Fixed requests select ListID instead of preview filters. Results require exactly
+  the requested active record, with existing company/permission/correlation checks.
+- Local suite: 273 passed; lint and format passed. New synthetic tests cover restart,
+  selector changes, invalid IDs, missing/wrong/inactive records and successful lookup.
+- Real exact-ID qualification remains pending; previous real preview evidence does
+  not qualify the new selector. Direct SDK exact lookup and operation-specific account
+  rules remain next. Accounting posting stays disabled.
+
 ## Latest fix: QBWC account lookup implemented and real-tested
 
 - Added an authenticated CLI to queue/read one bounded account preview for a connector's

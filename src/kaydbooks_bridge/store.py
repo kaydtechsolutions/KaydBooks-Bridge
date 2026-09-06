@@ -64,6 +64,12 @@ class Store:
             db.execute("""CREATE TABLE IF NOT EXISTS qbwc_account_jobs (
                 id TEXT PRIMARY KEY, actor TEXT NOT NULL, connector TEXT NOT NULL,
                 ticket TEXT UNIQUE)""")
+            columns = {r[1] for r in db.execute("PRAGMA table_info(qbwc_account_jobs)")}
+            if "list_id" not in columns:
+                db.execute("ALTER TABLE qbwc_account_jobs ADD COLUMN list_id TEXT")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS account_selector_immutable
+                BEFORE UPDATE ON qbwc_account_jobs WHEN NEW.list_id IS NOT OLD.list_id
+                BEGIN SELECT RAISE(ABORT,'immutable account selector'); END""")
             db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS one_pending_account_job
                 ON qbwc_account_jobs(connector) WHERE ticket IS NULL""")
             db.execute("""CREATE TRIGGER IF NOT EXISTS account_job_immutable

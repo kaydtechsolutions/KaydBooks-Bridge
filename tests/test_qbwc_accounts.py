@@ -80,3 +80,49 @@ def test_wrong_company_never_releases_accounts(direct):  # noqa: F811
     )(request)
     assert receive(svc, ticket, response) == -1
     assert "accounts" not in account_job(svc, token, "connector-company-a", "preview")
+
+
+@pytest.mark.parametrize("returned", ["match", "wrong", "missing", "inactive"])
+def test_exact_account_selection_and_restart(direct, returned):  # noqa: F811
+    path, token = direct
+    svc = DurableQBWCDiscoveryService.from_path(path)
+    target = ACCOUNT["ListID"]
+    account_job(svc, token, "connector-company-a", "exact", enqueue=True, list_id=target)
+    with pytest.raises(BridgeError, match="selector mismatch"):
+        account_job(svc, token, "connector-company-a", "exact", enqueue=True, list_id="other")
+    ticket, _ = authenticate(svc)
+    request = send(svc, ticket, hcp=hcp_for())
+    assert f"<ListID>{target}</ListID>" in request
+    assert "MaxReturned" not in request and "ActiveStatus" not in request
+    svc = DurableQBWCDiscoveryService.from_path(path)
+    assert send(svc, ticket, hcp=hcp_for()) == request
+    records = [dict(ACCOUNT)]
+    if returned == "wrong":
+        records[0]["ListID"] = "other"
+    elif returned == "missing":
+        records = []
+    elif returned == "inactive":
+        records[0]["IsActive"] = "false"
+    response = FakeQuickBooks(
+        entities={"Host": [HOST], "Company": [COMPANY_A], "Account": records}
+    )(request)
+    # Inject after fake filtering to test a malicious wrong-ID response.
+    if returned == "wrong":
+        response = FakeQuickBooks(
+            entities={"Host": [HOST], "Company": [COMPANY_A], "Account": [ACCOUNT]}
+        )(request)
+        response = response.replace(target, "other")
+    assert receive(svc, ticket, response) == (100 if returned == "match" else -1)
+    result = account_job(svc, token, "connector-company-a", "exact")
+    if returned == "match":
+        assert result["accounts"] == [ACCOUNT] and result["lookup"] == "exact"
+    else:
+        assert "accounts" not in result
+
+
+@pytest.mark.parametrize("value", ["", "x" * 32, "<ListID/>", "a b", "é"])
+def test_invalid_exact_selector(direct, value):  # noqa: F811
+    path, token = direct
+    svc = DurableQBWCDiscoveryService.from_path(path)
+    with pytest.raises(BridgeError, match="invalid account ListID"):
+        account_job(svc, token, "connector-company-a", "exact", enqueue=True, list_id=value)
