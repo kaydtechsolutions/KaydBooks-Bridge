@@ -1,7 +1,7 @@
 # KaydBooks Bridge project status
 
 Tax functionality and tax reports are excluded from this release by operator instruction
-on 2026-09-07. Non-tax checks remain enforced. 34 acceptance gates remain unfinished; manual workflow M5-02 and company access M4-07 pass.
+on 2026-09-07. Non-tax checks remain enforced. 33 acceptance gates remain unfinished; manual workflow M5-02, company access M4-07 and draft revisions M4-06 pass.
 
 Updated: 2026-09-07. Production posting: DISABLED. Four sample invoices (USD45 total)
 and five USD10 sample bills have verified receipts. Three customer receipts totaling USD20
@@ -49,13 +49,13 @@ The operator's new manage-users grant was an explicit local bootstrap under stan
   amounts through the durable lifecycle. Native USD5 and USD10 receipts settled the USD15
   invoice; a third USD5 receipt remained unapplied. Signed AppliedAmount, related invoice
   payments and customer-wide unused credits are handled without double-counting.
-- Latest validation: 939 full-suite tests pass, plus 26 access/MCP tests after the
-  final atomic-inspection and audit-detail changes. Coverage includes
-  exact zero-payment-stub readback, lost-response recovery and compiled native gates.
-  Lint, 30-tool stdio checks and source/wheel builds pass. An installed signed restore
-  recovered 24 jobs and 1089 files with valid integrity/audit, paused and without starting
-  the restored service. The restarted TLS service reports ready with live posting false.
-  CI59 passed the inventory-return commit; current CI follows the PR update.
+- Latest validation: 953 full-suite tests pass, plus 16 revision/evidence tests after
+  the final bounded-reason change and fresh-evidence regression. Lint, 31-tool stdio
+  checks and source/wheel builds pass. Installed sample draft correction retained the
+  original, rejected stale evidence and preview, required a fresh matching native check,
+  and left its successor validated with zero accounting writes. Signed isolated restore
+  recovered 26 jobs and 1109 files with valid integrity/audit, paused, without activating
+  the restored service. CI60 passed company access; revision CI follows the PR update.
 - Supplier payments now pass exact vendor/AP/Bank mapping, partial/full settlement,
   independent saved allocation/payable checks and missing-response recovery tests.
   Native sample readbacks verified the bill balance decreasing 10 -> 5 -> 0.
@@ -74,16 +74,16 @@ The operator's new manage-users grant was an explicit local bootstrap under stan
   CreditToApply unused amounts and net payable/vendor balance checks. Two native tests
   passed on the first attempt. Supplier-credit application and simple average-cost
   inventory returns are now sample-qualified. Broader currency/cost/settings remain partial.
-- Current step: supplier credit applications and broader adjustment variants, then remaining
+- Current step: spreadsheet intake and broader adjustment variants, then remaining
   M3–M6 acceptance gates. Sample posting is paused between bounded tests.
 - The [first-release checklist](docs/FIRST_RELEASE_SCOPE.md) is the release target;
   these qualified simple paths do not complete the wider currency/advanced variants.
   M3â€“M6 remain partial; final M7 follows their required acceptance gates.
 - New setup operators receive all currently supported permissions within explicitly
   assigned companies by default. Explicit restrictions are respected. Required reviews,
-  company binding and production/sample posting gates remain enforced. General role
-  management and separately configurable self-approval remain release work.
-- CLI sample invoice/bill/payment commands and 27 narrow MCP tools are implemented. Native
+  company binding and production/sample posting gates remain enforced. Role management
+  and separately configurable self-approval pass through CLI/MCP; browser forms remain work.
+- CLI sample invoice/bill/payment commands and 31 narrow MCP tools are implemented. Native
   attempts cannot enter simulation recovery; bill receipts are excluded from the
   historical invoice register. All company identity, sources and mappings stay private.
 

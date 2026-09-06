@@ -20,6 +20,9 @@ def main(argv=None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("capabilities")
     commands.add_parser("check-config")
+    revise = commands.add_parser("revise-document")
+    revise.add_argument("job_id")
+    revise.add_argument("input", type=Path)
     prepare = commands.add_parser("prepare")
     prepare.add_argument("input", type=Path, help="structured synthetic envelope JSON")
     for action in (
@@ -82,6 +85,26 @@ def main(argv=None) -> int:
                 # A local invocation always attributes itself as CLI.
                 envelope["surface"] = "cli"
                 result = bridge.prepare(token, args.company, envelope)
+            elif args.command == "revise-document":
+                from .config import strict_keys
+                from .documents import revise
+
+                if args.input.stat().st_size > 131072:
+                    raise BridgeError("revision request too large")
+                values = json.loads(args.input.read_text(encoding="utf-8"))
+                strict_keys(
+                    values,
+                    {
+                        "parent_fingerprint",
+                        "reason",
+                        "document_id",
+                        "idempotency_key",
+                        "payload",
+                        "confidence",
+                    },
+                    {"master_evidence"},
+                )
+                result = revise(bridge, token, args.company, args.job_id, **values)
             elif args.command in {"validate", "approve", "submit"}:
                 result = bridge.action(token, args.company, args.job_id, args.command)
             elif args.command == "reconcile":

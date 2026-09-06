@@ -73,6 +73,23 @@ class Tools:
             return getattr(workflows, action)(
                 self.bridge, self.token, company, **arguments["parameters"]
             )
+        if name == "revise_document_v1":
+            from .documents import revise
+
+            strict_keys(
+                arguments,
+                {
+                    "parent_id",
+                    "parent_fingerprint",
+                    "reason",
+                    "document_id",
+                    "idempotency_key",
+                    "payload",
+                    "confidence",
+                },
+                {"master_evidence"},
+            )
+            return revise(self.bridge, self.token, company, **arguments)
         if name == "capture_document_v1":
             strict_keys(arguments, {"namespace", "reference", "media_type", "content_base64"})
             return capture(self.bridge, self.token, company, **arguments)
@@ -198,6 +215,34 @@ def server(config_path, token):
         """Manage assigned-company users/roles or self-approval using manage-users permission and a reviewed configuration revision. Never change credentials or another company."""
         return tools.call(
             "company_access_v1", company, {"action": action, "parameters": parameters}
+        )
+
+    @app.tool()
+    def revise_document_v1(
+        company: str,
+        parent_id: str,
+        parent_fingerprint: str,
+        reason: str,
+        document_id: str,
+        idempotency_key: str,
+        payload: dict,
+        confidence: dict,
+        master_evidence: dict | None = None,
+    ) -> dict:
+        """Correct an owned undispatched draft while retaining its original sources/history. Requires fresh evidence and new review/approval; never resend an uncertain transaction."""
+        return tools.call(
+            "revise_document_v1",
+            company,
+            {
+                "parent_id": parent_id,
+                "parent_fingerprint": parent_fingerprint,
+                "reason": reason,
+                "document_id": document_id,
+                "idempotency_key": idempotency_key,
+                "payload": payload,
+                "confidence": confidence,
+                "master_evidence": master_evidence,
+            },
         )
 
     @app.tool()

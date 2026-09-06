@@ -262,6 +262,9 @@ class Store:
             db.execute("""CREATE TABLE IF NOT EXISTS idempotency_keys (
                 key TEXT PRIMARY KEY, job_id TEXT NOT NULL REFERENCES jobs(id))""")
             db.execute("INSERT OR IGNORE INTO idempotency_keys SELECT idempotency_key,id FROM jobs")
+            from .revisions import schema as revision_schema
+
+            revision_schema(db)
             db.execute("""CREATE TABLE IF NOT EXISTS bill_policy_bindings (
                 job_id TEXT PRIMARY KEY REFERENCES jobs(id), context TEXT NOT NULL)""")
             db.execute("""CREATE TABLE IF NOT EXISTS native_payment_attempts (
@@ -767,6 +770,9 @@ class Store:
             ).fetchone()
             if native:
                 result["transaction_receipt"] = json.loads(native[0])
+        from .revisions import decorate
+
+        decorate(db, result)
         return result
 
     def verify_audit(self, db) -> bool:

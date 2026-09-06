@@ -115,6 +115,7 @@ def prepare(
     master_evidence=None,
     *,
     operation="invoice.create",
+    revision_of=None,
 ):
     _, actor, _, store = bridge._context(token, company, "prepare")
     if not isinstance(document_id, str) or not re.fullmatch(r"[a-f0-9]{64}", document_id):
@@ -165,4 +166,43 @@ def prepare(
     }
     if master_evidence is not None:
         envelope["master_evidence"] = master_evidence
+    if revision_of is not None:
+        envelope["revision_of"] = revision_of
     return bridge.prepare(token, company, envelope)
+
+
+@audited
+def revise(
+    bridge,
+    token,
+    company,
+    parent_id,
+    parent_fingerprint,
+    reason,
+    document_id,
+    idempotency_key,
+    payload,
+    confidence,
+    master_evidence=None,
+):
+    _, actor, _, store = bridge._context(token, company, "prepare")
+    with store.transaction() as db:
+        parent = store.job(db, parent_id)
+        if parent["submitter"] != actor:
+            raise BridgeError("owned parent revision required")
+    return prepare(
+        bridge,
+        token,
+        company,
+        document_id,
+        idempotency_key,
+        payload,
+        confidence,
+        master_evidence,
+        operation=parent["operation"],
+        revision_of={
+            "parent_id": parent_id,
+            "parent_fingerprint": parent_fingerprint,
+            "reason": reason,
+        },
+    )

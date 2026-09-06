@@ -142,7 +142,7 @@ class Bridge:
         strict_keys(
             envelope,
             {"operation", "idempotency_key", "surface", "payload", "source"},
-            {"master_evidence"},
+            {"master_evidence", "revision_of"},
         )
         if envelope["operation"] not in (
             "invoice.create",
@@ -175,10 +175,12 @@ class Bridge:
                 ["bill.create", bill_context["vendor_list_id"], payload["ref_number"].casefold()]
             )
         with store.transaction() as db:
-            matches = db.execute(
-                "SELECT id,fingerprint FROM jobs WHERE id IN (SELECT job_id FROM idempotency_keys WHERE key=?) OR source_key=? OR business_key=?",
-                (envelope["idempotency_key"], source_key, business_key),
-            ).fetchall()
+            from .revisions import record as record_revision
+            from .revisions import resolve as resolve_revision
+
+            matches, revision, source_key, business_key = resolve_revision(
+                db, store, actor, envelope, fingerprint, source_key, business_key
+            )
             if matches:
                 if len(matches) != 1 or matches[0]["fingerprint"] != fingerprint:
                     raise BridgeError(
@@ -293,6 +295,16 @@ class Bridge:
             db.execute(
                 "INSERT INTO idempotency_keys VALUES (?,?)", (envelope["idempotency_key"], job_id)
             )
+            record_revision(db, job_id, revision, source_key, business_key)
+            if revision:
+                store.event(
+                    db,
+                    self.clock(),
+                    actor,
+                    job_id,
+                    "draft_revised",
+                    {k: v for k, v in revision.items() if k not in ("source_key", "business_key")},
+                )
             if bill_context is not None:
                 db.execute(
                     "INSERT INTO bill_policy_bindings VALUES (?,?)",
@@ -602,7 +614,7 @@ class Bridge:
                     "jobs": [
                         dict(row)
                         for row in db.execute(
-                            "SELECT id,state,operation,detail,txn_id FROM jobs ORDER BY rowid"
+                            "SELECT j.id,CASE WHEN r.child_id IS NULL THEN j.state ELSE 'superseded' END AS state,j.operation,j.detail,j.txn_id FROM jobs j LEFT JOIN job_revisions r ON r.parent_id=j.id ORDER BY j.rowid"
                         )
                     ],
                     "audit_valid": store.verify_audit(db),

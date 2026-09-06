@@ -132,9 +132,12 @@ qualification are separate evidence; a passing mock does not establish native su
   hashes and stable duplicate identity across re-imports and partial batches.
 - [ ] **M4-05:** Hermes chat: operation/company clarification, retained intent and
   review, actual conversational test, no arbitrary shell/SQL/qbXML write interface.
-- [ ] **M4-06:** Draft correction/revision: preserve original evidence, create a new
+- [x] **M4-06:** Draft correction/revision: preserve original evidence, create a new
   revision, invalidate prior approvals and stale previews, preserve canonical lineage,
-  and forbid editing/resubmitting an unknown or already posted transaction.
+  and forbid editing/resubmitting an unknown or already posted transaction. Installed
+  sample correction retained the original, rejected stale evidence/preview, required a
+  fresh exact master check and left the successor validated with zero accounting writes.
+  Signed isolated restore preserved all 26 jobs and valid audit without service activation.
 - [x] **M4-07:** Company user management: full permissions by default for a new assigned
   user, combinable roles, explicit restrictions, revocation and separately configurable
   self-approval. Cross-company denial, queued-job revocation, stale/concurrent updates
@@ -229,5 +232,5 @@ edition/version support and saved-record projections. Do not infer support from 
 request names in the inherited library. Current supported operation families are listed in the project status; each new
 family requires policy, evidence, durable dispatch and independent native readback.
 
-Current step: **M3-07, supplier credits**, then broader adjustment variants and the
+Current step: **M4-04, spreadsheet intake**, then broader adjustment variants and the
 remaining non-tax acceptance gates. No real company details belong here.
