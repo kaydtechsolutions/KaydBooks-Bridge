@@ -1,6 +1,6 @@
 # KaydBooks Bridge project status
 
-Updated: 2026-09-06. Live posting: DISABLED. Real QuickBooks integration tests: NONE.
+Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK discovery: PASS; QBWC qualification: BLOCKED.
 
 ## Scope and branch
 
@@ -188,3 +188,20 @@ Updated: 2026-09-06. Live posting: DISABLED. Real QuickBooks integration tests: 
   This is not a QBWC callback test, a supported Bridge transport, or an M2 pass.
   There is no new operator QWC import requirement. All bootstrap/replacement retry
   instructions remain withdrawn. Live posting remains disabled.
+
+## Verified direct SDK read-only discovery
+
+- Real sample-company diagnostic: QuickBooks granted read-only access and excluded
+  personal data; granted preferences were checked before any query. The initial
+  qbXML 1.0 request failed with COM 0x80040400 (XML parse error). No CompanyRet was
+  returned by that attempt. The exact cause within the 1.0 format remains unverified.
+- A fresh read-only session confirmed request-processor support for qbXML 17.0.
+  The fixed HostQuery/CompanyQuery batch using 17.0 succeeded: one successful HostRet
+  and one successful CompanyRet; session closure completed. Exact XML, permissions,
+  dispatch intent, supported versions, and closure evidence are retained privately.
+- Private operator review contains only the three configured identity claims. All
+  are present; candidate digest is calculated but configuration remains unconfirmed.
+  Operator confirmation is required before binding. No identity details are in Git.
+- This is actual direct SDK discovery evidence, not a mock and not QBWC qualification.
+  QBWC callbacks, binding persistence and real restart qualification remain unfinished.
+  Bridge posting remains disabled; no accounting write requests were sent.
