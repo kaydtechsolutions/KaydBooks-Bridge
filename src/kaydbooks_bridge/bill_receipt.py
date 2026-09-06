@@ -70,12 +70,16 @@ def add_request(policy, payload, request_id):
     return render(root)
 
 
-def append_lookup(discovery, run, txn_id):
+def append_lookup(discovery, run, txn_id, policy, payload):
     required_id(txn_id)
     root = fromstring(discovery)
     query = ET.SubElement(root[0], "BillQueryRq", requestID=correlation(run + "3"))
     ET.SubElement(query, "TxnID").text = txn_id
     query_fields(query)
+    binding = plan(policy, payload)["binding"]
+    payable = ET.SubElement(root[0], "BillToPayQueryRq", requestID=correlation(run + "4"))
+    for name, key in (("PayeeEntityRef", "vendor_list_id"), ("APAccountRef", "payable_list_id")):
+        ET.SubElement(ET.SubElement(payable, name), "ListID").text = binding[key]
     return render(root)
 
 
@@ -91,6 +95,7 @@ def lookup_context(policy, payload, txn_id):
     return digest(
         {
             "operation": "bill-receipt-check",
+            "balance_contract": "bill-to-pay-v1",
             "bill": plan(policy, payload)["context_sha256"],
             "txn_id": txn_id,
         }
@@ -99,13 +104,79 @@ def lookup_context(policy, payload, txn_id):
 
 def validate_lookup(xml, run, policy, payload, txn_id):
     root = fromstring(xml)
-    if root.tag != "QBXML" or len(root) != 1 or root[0].tag != "QBXMLMsgsRs" or len(root[0]) != 3:
-        raise BridgeError("bill receipt requires discovery and one exact response")
+    if root.tag != "QBXML" or len(root) != 1 or root[0].tag != "QBXMLMsgsRs" or len(root[0]) != 4:
+        raise BridgeError("bill receipt requires discovery, exact bill and payable responses")
     receipt_root = ET.Element("QBXML")
     ET.SubElement(receipt_root, "QBXMLMsgsRs").append(root[0][2])
     proof = validate_receipt(ET.tostring(receipt_root), policy, payload, run + "3", txn_id=txn_id)
+    validate_payable(root[0][3], policy, payload, run + "4", txn_id)
+    proof.update(
+        balance_verification="matched-bill-to-pay",
+        outstanding_amount=proof["total"],
+        scope="unpaid-expense-bill-receipt",
+    )
+    root[0].remove(root[0][3])
     root[0].remove(root[0][2])
     return ET.tostring(root, encoding="unicode"), proof
+
+
+def validate_payable(rs, policy, payload, request_id, txn_id):
+    """Match one unpaid bill in a complete vendor/AP-scoped payment query."""
+    if (
+        rs.tag != "BillToPayQueryRs"
+        or rs.get("requestID") != correlation(request_id)
+        or rs.get("statusCode") != "0"
+        or rs.get("statusSeverity") != "Info"
+        or rs.get("iteratorRemainingCount") not in (None, "0")
+        or not 1 <= len(rs) <= 1000
+    ):
+        raise BridgeError("bill payable query is incomplete or unsuccessful")
+    binding = plan(policy, payload)["binding"]
+    matches, seen = [], set()
+    for entry in rs:
+        if (
+            entry.tag != "BillToPayRet"
+            or len(entry) != 1
+            or entry[0].tag not in ("BillToPay", "CreditToApply")
+        ):
+            raise BridgeError("ambiguous bill payable entry")
+        row = entry[0]
+        ids = row.findall("TxnID")
+        if len(ids) != 1 or len(ids[0]):
+            raise BridgeError("missing bill payable identity")
+        actual = required_id(ids[0].text)
+        if actual in seen:
+            raise BridgeError("duplicate bill payable identity")
+        seen.add(actual)
+        if actual == txn_id:
+            matches.append(row)
+    if len(matches) != 1 or matches[0].tag != "BillToPay":
+        raise BridgeError("exact unpaid bill is absent or ambiguous")
+    row = matches[0]
+    expected = {
+        "TxnType": "Bill",
+        "APAccountRef/ListID": binding["payable_list_id"],
+        "TxnDate": payload["txn_date"],
+        "DueDate": payload["due_date"],
+        "RefNumber": payload["ref_number"],
+    }
+    for path, value in expected.items():
+        nodes = row.findall(path)
+        if len(nodes) != 1 or len(nodes[0]) or nodes[0].text != value:
+            raise BridgeError("bill payable identity or dates differ")
+    total = sum(Decimal(line["amount"]) for line in payload["lines"])
+    for field, amount in (
+        ("AmountDue", total),
+        ("ExchangeRate", Decimal(1)),
+        ("AmountDueInHomeCurrency", total),
+    ):
+        nodes = row.findall(field)
+        if field != "AmountDue" and not nodes:
+            continue
+        if len(nodes) != 1 or len(nodes[0]) or decimal_evidence(nodes[0].text) != amount:
+            raise BridgeError("bill payable amount differs")
+    if row.find("CurrencyRef") is not None:
+        raise BridgeError("unsupported bill payable currency")
 
 
 def validate_receipt(xml, policy, payload, request_id, *, operation="BillQuery", txn_id=None):
@@ -184,9 +255,12 @@ def validate_receipt(xml, policy, payload, request_id, *, operation="BillQuery",
         number(row, "ExchangeRate", "1")
     total = sum(Decimal(line["amount"]) for line in payload["lines"])
     number(row, "AmountDue", total)
-    # OpenAmount is returned by supported queries, but not all BillAdd responses.
-    if operation == "BillQuery" or row.find("OpenAmount") is not None:
-        number(row, "OpenAmount", total)
+    # BillRet.OpenAmount can reflect the vendor balance in the qualified Desktop
+    # version. Preserve it as an observation, never as this bill's outstanding
+    # amount. Only validate_lookup's independently matched BillToPay can prove that.
+    observed_open = None
+    if row.find("OpenAmount") is not None:
+        observed_open = format(decimal_evidence(value(row, "OpenAmount")), ".2f")
     if row.find("AmountDueInHomeCurrency") is not None:
         number(row, "AmountDueInHomeCurrency", total)
     lines = row.findall("ExpenseLineRet")
@@ -219,5 +293,7 @@ def validate_receipt(xml, policy, payload, request_id, *, operation="BillQuery",
         "total": format(total, ".2f"),
         "line_ids": ids,
         "verification": "matched-saved-bill",
-        "scope": "unpaid-expense-bill-receipt",
+        "scope": "expense-bill-fields",
+        "observed_billret_open_amount": observed_open,
+        "balance_verification": "requires-bill-to-pay",
     }

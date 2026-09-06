@@ -212,7 +212,8 @@ def discover(
         context_hash = lookup_context(
             receipt_policy, receipt_check["payload"], receipt_check["txn_id"]
         )
-        request = append_lookup(request, run_id, receipt_check["txn_id"])
+        args = (receipt_policy, receipt_check["payload"]) if bill_receipt_check is not None else ()
+        request = append_lookup(request, run_id, receipt_check["txn_id"], *args)
         operation = "invoice-receipt-check"
         if bill_receipt_check is not None:
             operation = "bill-receipt-check"

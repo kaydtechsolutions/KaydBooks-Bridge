@@ -96,11 +96,31 @@ def receipt_exchange(request, dest):
     from test_direct_sdk import transport
 
     root = ET.fromstring(request)
+    payable = root[0][-1]
+    root[0].remove(payable)
     query = root[0][-1]
     root[0].remove(query)
     transport()(ET.tostring(root, encoding="unicode"), dest)
     result = ET.fromstring(dest.read_text())
     result[0].append(saved_bill(query.get("requestID"))[0][0])
+    rs = ET.SubElement(
+        result[0],
+        "BillToPayQueryRs",
+        requestID=payable.get("requestID"),
+        statusCode="0",
+        statusSeverity="Info",
+    )
+    row = ET.SubElement(ET.SubElement(rs, "BillToPayRet"), "BillToPay")
+    for name, value in {
+        "TxnID": "saved-bill",
+        "TxnType": "Bill",
+        "TxnDate": "2026-09-06",
+        "DueDate": "2026-10-06",
+        "RefNumber": "BILL-001",
+        "AmountDue": "10.00",
+    }.items():
+        ET.SubElement(row, name).text = value
+    ET.SubElement(ET.SubElement(row, "APAccountRef"), "ListID").text = "AP-A"
     dest.write_text(ET.tostring(result, encoding="unicode"))
 
 
@@ -291,8 +311,7 @@ def test_bill_authority_rechecked_before_write(queued_bill, change):
         ("AmountDue>10.00", "AmountDue>11.00"),
         ("V-A", "WRONG"),
         ("IsPaid>false", "IsPaid>true"),
-        ("OpenAmount>10.00", "OpenAmount>1.00"),
-        ("OpenAmount>10.00", "OpenAmount>20.00"),
+        ("OpenAmount>10.00", "OpenAmount>NaN"),
         ("NotBillable", "Billable"),
         ("E-A", "CHANGED"),
     ],

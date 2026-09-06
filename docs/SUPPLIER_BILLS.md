@@ -1,32 +1,36 @@
 # M3 supplier-bill implementation contract
 
 Status: base-currency expense-bill preparation, simulated lifecycle and controlled
-native sample posting/read-back are implemented. Initial one-bill qualification passed;
-a second same-vendor bill exposed an unresolved balance discrepancy. M3-03 remains partial
+native sample posting/read-back are implemented. Both same-vendor bills pass
+independent saved-field and bill-specific payable verification. M3-03 remains partial
 in the [release checklist](FIRST_RELEASE_SCOPE.md): item/inventory bills, discounted/date-driven terms,
 tax/currency variants and broader liability-effect testing remain unfinished.
 
-## Current qualification blocker
+## Resolved balance verification error
 
-An additional USD10 bill with explicit Net30 terms was saved successfully, but its
-response reported AmountDue10/OpenAmount20. Independent exact-ID queries then returned
-AmountDue10/OpenAmount20 for both same-vendor test bills, with no linked transactions
-and IsPaid=false. Intuit's [OpenAmount definition](https://static.developer.intuit.com/qbSDK-current/common/newosr/qbsdk/html/OpenAmount.html)
-describes amount due after credits/discounts; this observed result does not satisfy
-that bill-level comparison. The relationship to vendor balance is a hypothesis,
-not a verified interpretation of this SDK behavior.
+The qualified Desktop version returns USD20 in BillRet.OpenAmount for each of two
+USD10 same-vendor bills. Exact VendorQuery independently reports a USD20 balance.
+Intuit's generic [OpenAmount definition](https://static.developer.intuit.com/qbSDK-current/common/newosr/qbsdk/html/OpenAmount.html)
+does not explain this observed BillRet behavior. It is not a reliable per-bill
+outstanding amount in this deployment and is retained only as diagnostic evidence.
 
-The second bill remains unknown/unverified, its exact native request and response
-are retained, and sample posting is paused. No retry, deletion or artificial receipt
-success is authorized by this state. The first receipt remains historical evidence;
-its latest balance check also failed. Resolve this discrepancy before qualifying
-payments or claiming current balances. Tests retain the mismatch rejection.
+The Bridge now requires an additional [BillToPayQuery](https://developer.intuit.com/app/developer/qbdesktop/docs/api-reference/qbdesktop/billtopayquery)
+scoped to the approved vendor and AP account. A complete successful response must
+contain exactly one matching Bill TxnID, AP account, dates, reference and AmountDue.
+Missing, duplicate, partial, paid or mismatched evidence keeps the bill unverified.
+The query has no date/limit filter that could silently omit the target bill.
+The 1,000-entry validation cap fails explicitly, rather than treating truncation as absence.
 
-Standard terms support is implemented: optional private `bill_masters.terms` aliases,
+Both actual bills returned USD10 due in BillToPayQuery, alongside their exact saved
+lines and totals. The previously held Net30 bill was reconciled without resending,
+and fresh proofs passed for both bills. Historical receipts and all failed diagnostic
+responses remain immutable. New receipt evidence includes a versioned balance contract;
+old evidence without BillToPay cannot satisfy current verification.
+
+Standard terms support includes optional private `bill_masters.terms` aliases,
 payload `terms_id`, bounded `--bill-terms` preview, exact active standard-term evidence,
-NetDays/due-date comparison and exact saved TermsRef. Discounted terms remain rejected.
-The actual term lookup passed, but the full additional native bill is not qualified
-because of the balance error above.
+NetDays/due-date comparison and exact saved TermsRef. The actual zero-discount Net30
+bill is qualified; discounted and date-driven terms remain separate release work.
 
 ## Implemented expense-bill path
 
@@ -137,6 +141,5 @@ invoice and bill evidence cannot be attached to each other's jobs.
 7. Qualify one controlled expense bill in the authorized sample and retain a private
    receipt/audit proof. Do not perform supplier payment or delete that business record.
 
-The initial controlled expense bill passed qualification. The subsequent balance
-discrepancy above blocks further native bill qualification; remaining release bill
-variants still require their own implementation and native qualification.
+The two controlled expense bills, including standard Net30 terms, passed qualification.
+Remaining release bill variants require their own implementation and native qualification.

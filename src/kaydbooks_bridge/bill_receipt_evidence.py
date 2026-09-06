@@ -42,7 +42,11 @@ def resolve(config, policy, store, db, actor, payload, reference, now):
         raise BridgeError("receipt evidence ownership mismatch")
     context_hash = lookup_context(policy, payload, txn_id)
     expected = append_lookup(
-        DurableQBWCDiscoveryService._discovery_request(correlation, "17.0"), correlation, txn_id
+        DurableQBWCDiscoveryService._discovery_request(correlation, "17.0"),
+        correlation,
+        txn_id,
+        policy,
+        payload,
     )
     if row["context_hash"] != context_hash or request != expected:
         raise BridgeError("receipt evidence payload, policy or request changed")

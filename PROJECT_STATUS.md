@@ -1,23 +1,25 @@
 # KaydBooks Bridge project status
 
-Updated: 2026-09-06. Production posting: DISABLED. Sample posting: PAUSED. Three sample invoices and one USD10 expense bill have historical verified receipts. A second USD10 bill was saved but is held unverified because exact SDK queries return inconsistent OpenAmount values. One rejected attempt is permanently failed after read-only absence confirmation.
+Updated: 2026-09-06. Production posting: DISABLED. Both USD10 sample expense bills are now verified through exact saved-field and independent BillToPay checks. Three sample invoices retain their historical verified receipts. No uncertain transaction was resent.
 
-## M3â€“M7 sample implementation and qualification
+## M3–M7 sample implementation and qualification
 
 ### Current release plan: return to M3
 
-- BLOCKER: Both same-vendor USD10 bills now return AmountDue10/OpenAmount20, with
-  no linked payments/credits. The new Net30 bill remains unknown; the earlier bill's
-  historical receipt is retained but its fresh balance verification fails. Posting
-  is paused, audit remains valid, and no uncertain attempt will be resent.
-- Standard terms/due-date support is implemented and the actual Net30 lookup passed.
-  Native terms-bill qualification remains blocked by the balance discrepancy, not
-  by missing permission. See [supplier-bill evidence](docs/SUPPLIER_BILLS.md).
-- Latest validation: 646 local tests pass, including native helper compilation and
-  the OpenAmount mismatch regression; lint/formatting and source/wheel builds pass.
-  Current private state has eight jobs: five historical completed/failed records,
-  two undispatched jobs and the held Net30 bill. No further write was sent after
-  the discrepancy; the HTTPS service is available with company posting paused.
+- RESOLVED: BillRet.OpenAmount returned the vendor's USD20 aggregate in the qualified
+  sample version. A separate exact-vendor/AP BillToPayQuery returned USD10 for each
+  bill, matching their TxnIDs, dates, references and AP account. VendorQuery independently
+  returned USD20. The bridge now uses BillToPay for outstanding amount and preserves
+  BillRet.OpenAmount as an observation only, not a per-bill balance.
+- The held Net30 bill was reconciled without sending BillAdd again. Fresh independent
+  checks passed for both bills; the audit remains valid. Required payable proof is
+  versioned into receipt context so old three-response evidence cannot satisfy it.
+- Standard zero-discount terms and due dates are qualified in the sample. Native
+  write fences, company identity, source review, permission and duplicate checks remain.
+- Validation: 660 local tests passed; actual read-only reconciliation and both fresh
+  bill-specific payable checks passed. Lint, native allowlist tests and wheel build pass.
+- Current step: extend supplier-bill coverage, then continue the remaining M3–M6
+  acceptance gates. Production posting remains disabled.
 
 - The [first-release scope and acceptance checklist](docs/FIRST_RELEASE_SCOPE.md)
   records the agreed transaction families, all four input methods, required reports,

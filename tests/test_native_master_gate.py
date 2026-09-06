@@ -92,7 +92,7 @@ def test_native_invoice_receipt_gate(tmp_path):
             source.index(" static void FixedQuery(") : source.index(" public static void Run(")
         ]
         + "public static bool Allowed(string xml) { try {\n"
-        + "var doc=new System.Xml.XmlDocument(); doc.LoadXml(xml); var batch=doc.DocumentElement.FirstChild;\n"
+        + "var doc=new System.Xml.XmlDocument(); doc.LoadXml(xml); var batch=doc.DocumentElement.FirstChild; bool billReceipt=false;\n"
         + gate
         + "return true; } catch { return false; } } }\n'@\n"
         + "$query=[System.IO.File]::ReadAllText($args[0])\n"
