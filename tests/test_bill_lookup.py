@@ -43,7 +43,22 @@ def exact_response(request):
         entities={
             "Host": [{**HOST, "SupportedQBXMLVersion": ["17.0"]}],
             "Company": [COMPANY_A],
-            "Preferences": [{"MultiCurrencyPreferences": {"IsMultiCurrencyOn": "false"}}],
+            "Preferences": [
+                {
+                    "MultiCurrencyPreferences": {"IsMultiCurrencyOn": "false"},
+                    "PurchasesAndVendorsPreferences": {"IsUsingInventory": "true"},
+                    "MultiLocationInventoryPreferences": {
+                        "IsMultiLocationInventoryEnabled": "false"
+                    },
+                    "ItemsAndInventoryPreferences": {
+                        "EnhancedInventoryReceivingEnabled": "false",
+                        "IsTrackingSerialOrLotNumber": "None",
+                        "FIFOEnabled": "false",
+                        "IsRSBEnabled": "false",
+                        "IsInventoryExpirationDateEnabled": "false",
+                    },
+                }
+            ],
             "StandardTerms": [
                 {
                     "ListID": "T-A",
@@ -67,6 +82,9 @@ def exact_response(request):
                 }
             ],
             "Account": [
+                {"ListID": "AS-A", "IsActive": "true", "AccountType": "OtherCurrentAsset"},
+                {"ListID": "CG-A", "IsActive": "true", "AccountType": "CostOfGoodsSold"},
+                {"ListID": "IN-A", "IsActive": "true", "AccountType": "Income"},
                 {
                     "ListID": "AP-A",
                     "FullName": "Synthetic AP",
@@ -79,6 +97,19 @@ def exact_response(request):
                     "IsActive": "true",
                     "AccountType": "Expense",
                 },
+            ],
+            "ItemInventory": [
+                {
+                    "ListID": "INV-A",
+                    "Name": "Synthetic stock",
+                    "IsActive": "true",
+                    "AssetAccountRef": {"ListID": "AS-A"},
+                    "COGSAccountRef": {"ListID": "CG-A"},
+                    "IncomeAccountRef": {"ListID": "IN-A"},
+                    "QuantityOnHand": "0",
+                    "AverageCost": "0.00",
+                    "PurchaseCost": "5.00",
+                }
             ],
         }
     )(request)

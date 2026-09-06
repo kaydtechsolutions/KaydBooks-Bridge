@@ -24,6 +24,25 @@ SERVICE_FIELDS = (
     "UnitOfMeasureSetRef",
     "IsTaxIncluded",
 )
+INVENTORY_FIELDS = (
+    "ListID",
+    "Name",
+    "IsActive",
+    "AssetAccountRef",
+    "COGSAccountRef",
+    "IncomeAccountRef",
+    "QuantityOnHand",
+    "AverageCost",
+    "PurchaseCost",
+    "UnitOfMeasureSetRef",
+    "IsTaxIncluded",
+)
+INVENTORY_PREFS = (
+    "MultiCurrencyPreferences",
+    "PurchasesAndVendorsPreferences",
+    "MultiLocationInventoryPreferences",
+    "ItemsAndInventoryPreferences",
+)
 
 
 def append_preview(discovery, run):
@@ -95,10 +114,19 @@ def plan(policy, payload):
         ("Vendor", binding["vendor_list_id"]),
         ("Account", binding["payable_list_id"]),
     ]
-    queries.extend(("Account", key) for key in sorted(set(binding["expense_list_ids"])))
+    expense_ids = set(binding["expense_list_ids"]) - {None}
+    inventory = binding.get("inventory_items", {})
+    inventory_accounts = {
+        item[k]
+        for item in inventory.values()
+        for k in ("asset_list_id", "cogs_list_id", "income_list_id")
+    }
+    queries.extend(("Account", key) for key in sorted(expense_ids | inventory_accounts))
     queries.extend(
-        ("ItemService", key) for key in sorted(set(binding.get("item_list_ids", [])) - {None})
+        ("ItemService", key)
+        for key in sorted(set(binding.get("item_list_ids", [])) - {None} - set(inventory))
     )
+    queries.extend(("ItemInventory", key) for key in sorted(inventory))
     if "terms_list_id" in binding:
         queries.append(("StandardTerms", binding["terms_list_id"]))
     return {
@@ -123,7 +151,11 @@ def append_check(discovery, run, check):
         if list_id is not None:
             ET.SubElement(node, "ListID").text = list_id
         for field in (
-            TERMS_FIELDS
+            INVENTORY_PREFS
+            if entity == "Preferences" and check.get("binding", {}).get("inventory_items")
+            else INVENTORY_FIELDS
+            if entity == "ItemInventory"
+            else TERMS_FIELDS
             if entity == "StandardTerms"
             else SERVICE_FIELDS
             if entity == "ItemService"
@@ -164,18 +196,29 @@ def validate_check(payload, run, check):
         raise BridgeError("initial expense bills require a verified single-currency company")
     if records[4].get("AccountType") != "AccountsPayable":
         raise BridgeError("bill payable account type mismatch")
-    expense_end = 5 + len(set(check["binding"]["expense_list_ids"]))
-    if any(
-        row.get("AccountType") not in ("Expense", "OtherExpense") for row in records[5:expense_end]
-    ):
-        raise BridgeError("bill expense account type mismatch")
+    inventory = check["binding"].get("inventory_items", {})
+    account_records = {
+        record["ListID"]: record
+        for (entity, key), record in zip(expected[5:], records[5:], strict=True)
+        if entity == "Account"
+    }
+    for key in set(check["binding"]["expense_list_ids"]) - {None}:
+        if account_records[key].get("AccountType") not in ("Expense", "OtherExpense"):
+            raise BridgeError("bill expense account type mismatch")
+    for spec in inventory.values():
+        for key, kind in (
+            ("asset_list_id", "OtherCurrentAsset"),
+            ("cogs_list_id", "CostOfGoodsSold"),
+            ("income_list_id", "Income"),
+        ):
+            if account_records[spec[key]].get("AccountType") != kind:
+                raise BridgeError("inventory bill account type mismatch")
+    expense_end = 5 + len(account_records)
+    service_ids = sorted(set(check["binding"].get("item_list_ids", [])) - {None} - set(inventory))
     items = dict(
         zip(
-            sorted(set(check["binding"].get("item_list_ids", [])) - {None}),
-            records[
-                expense_end : expense_end
-                + len(set(check["binding"].get("item_list_ids", [])) - {None})
-            ],
+            service_ids,
+            records[expense_end : expense_end + len(service_ids)],
             strict=True,
         )
     )
@@ -184,7 +227,7 @@ def validate_check(payload, run, check):
         check["binding"]["expense_list_ids"],
         strict=True,
     ):
-        if item_id is None:
+        if item_id is None or item_id in inventory:
             continue
         item = items[item_id]
         if "UnitOfMeasureSetRef" in item or item.get("IsTaxIncluded", "false") != "false":
@@ -198,6 +241,13 @@ def validate_check(payload, run, check):
             raise BridgeError("ambiguous service purchase account")
         if not isinstance(purchase_account, dict) or purchase_account.get("ListID") != expense_id:
             raise BridgeError("service purchase expense account differs")
+    if inventory:
+        validate_inventory_preferences(records[2])
+        stock = records[
+            expense_end + len(service_ids) : expense_end + len(service_ids) + len(inventory)
+        ]
+        for item in stock:
+            validate_inventory_item(item, inventory[item["ListID"]])
     if "terms_list_id" in check["binding"]:
         import re
         from datetime import date, timedelta
@@ -219,6 +269,47 @@ def validate_check(payload, run, check):
     for node in list(root[0])[2:]:
         root[0].remove(node)
     return ET.tostring(root, encoding="unicode")
+
+
+def validate_inventory_preferences(record):
+    required = {
+        "PurchasesAndVendorsPreferences": {"IsUsingInventory": "true"},
+        "MultiLocationInventoryPreferences": {"IsMultiLocationInventoryEnabled": "false"},
+        "ItemsAndInventoryPreferences": {
+            "EnhancedInventoryReceivingEnabled": "false",
+            "IsTrackingSerialOrLotNumber": "None",
+            "FIFOEnabled": "false",
+            "IsRSBEnabled": "false",
+            "IsInventoryExpirationDateEnabled": "false",
+        },
+    }
+    for group, fields in required.items():
+        row = record.get(group)
+        if not isinstance(row, dict) or any(row.get(k) != v for k, v in fields.items()):
+            raise BridgeError(
+                "inventory bills require verified simple average-cost inventory settings"
+            )
+
+
+def validate_inventory_item(item, spec):
+    from .invoice_commercial import decimal_evidence
+
+    if item.get("ListID") != spec["list_id"] or item.get("IsActive") != "true":
+        raise BridgeError("inventory bill item identity or active state differs")
+    for field, key in (
+        ("AssetAccountRef", "asset_list_id"),
+        ("COGSAccountRef", "cogs_list_id"),
+        ("IncomeAccountRef", "income_list_id"),
+    ):
+        ref = item.get(field)
+        if not isinstance(ref, dict) or ref.get("ListID") != spec[key]:
+            raise BridgeError("inventory bill item account differs")
+    if "UnitOfMeasureSetRef" in item or item.get("IsTaxIncluded", "false") != "false":
+        raise BridgeError("inventory bill units or tax are unsupported")
+    for field in ("QuantityOnHand", "AverageCost"):
+        if decimal_evidence(item.get(field)) < 0:
+            raise BridgeError("negative inventory quantity or cost is not qualified")
+    return {"quantity_on_hand": item["QuantityOnHand"], "average_cost": item["AverageCost"]}
 
 
 def append_terms_preview(discovery, run, *, services=False):

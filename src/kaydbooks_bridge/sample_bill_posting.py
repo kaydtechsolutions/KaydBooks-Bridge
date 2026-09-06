@@ -1,16 +1,19 @@
 """Explicitly gated sample-company bills. Production posting is unavailable."""
 
 import hashlib
+import json
 import math
 import os
 import subprocess
 import time
 import uuid
 from dataclasses import asdict
+from decimal import Decimal
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from qbwc_kit._xml import fromstring
+from qbwc_kit.qbxml import parse_response
 
 from .bill_lookup import append_check as append_queries
 from .bill_lookup import plan
@@ -282,13 +285,22 @@ def post(bridge, token, company, job_id, *, exchange=windows_exchange, read_exch
                 matched = check_preflight(
                     response, current_policy, current["payload"], connector, run
                 )
+                inventory_before = {
+                    record["ListID"]: record["QuantityOnHand"]
+                    for rs in parse_response(response)
+                    if rs.entity == "ItemInventory"
+                    for record in rs.records
+                }
                 store.event(
                     db,
                     bridge.clock(),
                     actor,
                     job_id,
                     "sample_write_authorized" if matched is None else "sample_duplicate_found",
-                    {"preflight_hash": digest(response)},
+                    {
+                        "preflight_hash": digest(response),
+                        **({"inventory_before": inventory_before} if inventory_before else {}),
+                    },
                 )
             return matched is None
 
@@ -484,9 +496,52 @@ def reconcile(bridge, token, company, job_id, *, exchange=windows_exchange, read
         ).fetchone():
             dispatched = False
         proof.update(origin="native-attempt-readback", bridge_dispatched=dispatched)
+        if "stock_observations" in proof["receipt"]:
+            baseline = db.execute(
+                "SELECT data FROM audit WHERE job_id=? AND event='sample_write_authorized' ORDER BY sequence",
+                (job_id,),
+            ).fetchall()
+            if len(baseline) != 1:
+                raise BridgeError("inventory receipt requires original native stock baseline")
+            before = json.loads(baseline[0]["data"]).get("inventory_before")
+            proof["receipt"]["stock_effects"] = verify_stock_effect(
+                latest_policy, current["payload"], before, proof["receipt"]["stock_observations"]
+            )
         db.execute(
             "UPDATE jobs SET state='verified',txn_id=?,detail='native_bill_verified' WHERE id=?",
             (matched["txn_id"], job_id),
         )
         store.event(db, bridge.clock(), actor, job_id, "native_bill_verified", proof)
         return store.job(db, job_id)
+
+
+def verify_stock_effect(policy, payload, before, after):
+    """An uncertain inventory write cannot pass from bill fields alone."""
+    from .invoice_commercial import decimal_evidence
+
+    binding = plan(policy, payload)["binding"]
+    inventory = binding.get("inventory_items", {})
+    if (
+        not isinstance(before, dict)
+        or set(before) != set(inventory)
+        or set(after) != set(inventory)
+    ):
+        raise BridgeError("inventory stock baseline or observation differs")
+    result = {}
+    for item_id in inventory:
+        quantity = sum(
+            Decimal(line["quantity"])
+            for line, key in zip(payload["lines"], binding["item_list_ids"], strict=True)
+            if key == item_id
+        )
+        prior = decimal_evidence(before[item_id])
+        current = decimal_evidence(after[item_id]["quantity_on_hand"])
+        if prior < 0 or current != prior + quantity:
+            raise BridgeError("inventory stock effect differs; no retry authorized")
+        result[item_id] = {
+            "before": str(prior),
+            "received": str(quantity),
+            "after": str(current),
+            "verification": "matched-native-stock-increase",
+        }
+    return result

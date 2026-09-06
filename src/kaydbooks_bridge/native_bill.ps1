@@ -79,7 +79,7 @@ public static class ControlledSampleBill {
    var batch=Parse(request).SelectSingleNode("/QBXML/QBXMLMsgsRq");
    if(batch==null||batch.ChildNodes.Count<3)throw new Exception("Preflight required");
    foreach(XmlNode q in batch.ChildNodes)
-    if(Array.IndexOf(new string[]{"HostQueryRq","CompanyQueryRq","PreferencesQueryRq","AccountQueryRq","VendorQueryRq","BillQueryRq","StandardTermsQueryRq","ItemServiceQueryRq"},q.Name)<0)throw new Exception("Unsupported preflight request");
+    if(Array.IndexOf(new string[]{"HostQueryRq","CompanyQueryRq","PreferencesQueryRq","AccountQueryRq","VendorQueryRq","BillQueryRq","StandardTermsQueryRq","ItemServiceQueryRq","ItemInventoryQueryRq"},q.Name)<0)throw new Exception("Unsupported preflight request");
    string write=readOnly?null:File.ReadAllText(Path.Combine(root,"write.request.xml"));
    if(!readOnly)CheckWrite(write,hash);
    rp=(IRequestProcessor4)new RequestProcessor2Class();var auth=rp.AuthPreferences;

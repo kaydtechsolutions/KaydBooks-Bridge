@@ -1,4 +1,4 @@
-"""Base-currency expense-bill policy and simulation contracts; no native writes."""
+"""Base-currency supplier-bill policy and simulation contracts; no native writes."""
 
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
@@ -18,7 +18,8 @@ def validate_masters(value):
     validate_list_id(value["payable"])
     kinds = ("vendors", "expenses") + (("terms",) if "terms" in value else ())
     for kind in kinds:
-        if not isinstance(value[kind], dict) or not 1 <= len(value[kind]) <= 1000:
+        minimum = 0 if kind == "expenses" and value.get("items") else 1
+        if not isinstance(value[kind], dict) or not minimum <= len(value[kind]) <= 1000:
             raise BridgeError("nonempty bounded bill master mappings required")
         for alias, list_id in value[kind].items():
             identifier(alias)
@@ -33,13 +34,29 @@ def validate_masters(value):
             raise BridgeError("nonempty bounded bill item mappings required")
         for alias, item in items.items():
             identifier(alias)
-            strict_keys(item, {"list_id", "type", "expense_id"})
+            if not isinstance(item, dict):
+                raise BridgeError("invalid bill item mapping")
+            strict_keys(
+                item,
+                {"list_id", "type", "asset_list_id", "cogs_list_id", "income_list_id"}
+                if item.get("type") == "inventory"
+                else {"list_id", "type", "expense_id"},
+            )
             if item["list_id"] is None:
                 raise BridgeError("bill item requires an exact ListID")
             validate_list_id(item["list_id"])
-            identifier(item["expense_id"])
-            if item["type"] != "service" or item["expense_id"] not in value["expenses"]:
-                raise BridgeError("bill item requires a supported service expense mapping")
+            if item["type"] == "inventory":
+                accounts = [item[k] for k in ("asset_list_id", "cogs_list_id", "income_list_id")]
+                for account in accounts:
+                    if account is None:
+                        raise BridgeError("inventory bill requires explicit account IDs")
+                    validate_list_id(account)
+                if len(set(accounts + [value["payable"]])) != 4:
+                    raise BridgeError("inventory account roles must differ")
+            else:
+                identifier(item["expense_id"])
+                if item["type"] != "service" or item["expense_id"] not in value["expenses"]:
+                    raise BridgeError("bill item requires a supported service expense mapping")
     return {
         "payable": value["payable"],
         **{k: dict(value[k]) for k in kinds},
@@ -117,12 +134,23 @@ def validate_payload(payload, policy):
 
 def context(policy, payload):
     bill = validate_payload(payload, policy)
+    inventory = {
+        policy.bill_masters["items"][line["item_id"]]["list_id"]: policy.bill_masters["items"][
+            line["item_id"]
+        ]
+        for line in bill["lines"]
+        if "item_id" in line
+        and policy.bill_masters["items"][line["item_id"]]["type"] == "inventory"
+    }
     return {
         "schema": "bill-policy-context-v1",
         "vendor_list_id": policy.bill_masters["vendors"][bill["vendor_id"]],
         "payable_list_id": policy.bill_masters["payable"],
         "expense_list_ids": [
-            policy.bill_masters["expenses"][
+            None
+            if "item_id" in line
+            and policy.bill_masters["items"][line["item_id"]]["type"] == "inventory"
+            else policy.bill_masters["expenses"][
                 line.get("expense_id")
                 or policy.bill_masters["items"][line["item_id"]]["expense_id"]
             ]
@@ -141,6 +169,7 @@ def context(policy, payload):
             else {}
         ),
         "currency": policy.currency,
+        **({"inventory_items": inventory} if inventory else {}),
         **(
             {"terms_list_id": policy.bill_masters["terms"][bill["terms_id"]]}
             if "terms_id" in bill
@@ -171,7 +200,9 @@ def preview(policy, job):
     binding = context(policy, job["payload"])
     result = {
         "schema": "bill-review-v1",
-        "scope": "review-only-service-expense-bill"
+        "scope": "review-only-inventory-bill"
+        if "inventory_items" in binding
+        else "review-only-service-expense-bill"
         if "item_list_ids" in binding
         else "review-only-expense-bill",
         "job": job["id"],

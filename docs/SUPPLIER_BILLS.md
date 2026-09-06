@@ -3,7 +3,7 @@
 Status: base-currency expense-bill preparation, simulated lifecycle and controlled
 native sample posting/read-back are implemented. Both same-vendor bills pass
 independent saved-field and bill-specific payable verification. M3-03 remains partial
-in the [release checklist](FIRST_RELEASE_SCOPE.md): inventory bills, discounted/date-driven terms,
+in the [release checklist](FIRST_RELEASE_SCOPE.md): advanced inventory, discounted/date-driven terms,
 tax/currency variants and broader liability-effect testing remain unfinished.
 
 ## Resolved balance verification error
@@ -93,6 +93,33 @@ installed package posted one USD10 mixed Net30 bill (USD5 expense plus two USD2.
 service units). Saved lines and a USD10 BillToPay amount matched. BillRet.OpenAmount
 returned USD30 after this third same-vendor bill and remained diagnostic only.
 The audit is valid; no record was deleted or uncertain transaction resent.
+
+## Simple inventory bills
+
+An inventory entry in private `bill_masters.items` uses `type: "inventory"`,
+`list_id`, `asset_list_id`, `cogs_list_id` and `income_list_id`. Each account must
+be active and have the corresponding OtherCurrentAsset, CostOfGoodsSold or Income
+role. Inventory-only companies may configure an empty expense mapping.
+
+ItemInventory evidence must match those references, with nonnegative on-hand
+quantity and average cost. Supported company settings are inventory enabled,
+single location, average cost, no enhanced receiving, no serial/lot/bin or expiration
+tracking, and no item unit-of-measure set. Unsupported settings fail before dispatch.
+Expense, purchased-service and inventory lines can share a bill.
+
+The native preflight records each inventory quantity in the append-only authorization
+event. A separate receipt session queries the exact saved bill, BillToPay and every
+inventory item. Final native verification requires on-hand quantity to equal the
+original baseline plus the sum of received units, including repeated item lines.
+A mismatch or missing baseline leaves the write unverified and cannot authorize a retry.
+An existing inventory bill with no owned original stock baseline is held for further
+reconciliation rather than claiming its historical stock effect.
+
+Actual qualification created one isolated zero-stock sample item, then the installed
+package posted a USD10 inventory bill for two USD5 units. Saved lines and USD10 payable
+matched; stock changed from zero to two and the observed average cost was USD5.
+This verifies the quantity effect, not a general inventory valuation or GL report.
+Tax/currency, unit conversions and advanced inventory variants remain release work.
 
 ## First implementation increment
 

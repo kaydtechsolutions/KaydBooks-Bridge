@@ -71,9 +71,9 @@ qualification are separate evidence; a passing mock does not establish native su
 - [ ] **M3-03:** Supplier bills: vendor binding, expense/service/inventory lines,
   payable and expense/asset accounts, due dates, terms and reference checks. Verify
   saved lines, totals and liability effects; preserve an unknown outcome without retry.
-  Base-currency expense and mixed purchased-service bills, including standard Net30
-  terms, are implemented and sample-qualified. Inventory lines, discounted/date-driven
-  terms and broader operation variants remain unchecked.
+  Base-currency expense, mixed purchased-service and simple inventory bills, including
+  standard Net30 terms and native inventory quantity increase, are sample-qualified.
+  Advanced inventory, discounted/date-driven terms and broader variants remain unchecked.
 - [ ] **M3-04:** Customer receipts: exact customer/invoice allocation, full and partial
   settlement, supported deposits/unapplied amounts, and independent balance read-back.
 - [ ] **M3-05:** Supplier payments: exact vendor/bill allocation, partial settlement,

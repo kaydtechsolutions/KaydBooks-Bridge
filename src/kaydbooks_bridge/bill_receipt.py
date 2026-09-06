@@ -6,7 +6,7 @@ from xml.etree import ElementTree as ET
 
 from qbwc_kit._xml import fromstring
 
-from .bill_lookup import plan
+from .bill_lookup import INVENTORY_FIELDS, plan, validate_inventory_item
 from .config import BridgeError
 from .invoice_commercial import decimal_evidence
 from .invoice_compatibility import required_id
@@ -91,6 +91,13 @@ def append_lookup(discovery, run, txn_id, policy, payload):
     payable = ET.SubElement(root[0], "BillToPayQueryRq", requestID=correlation(run + "4"))
     for name, key in (("PayeeEntityRef", "vendor_list_id"), ("APAccountRef", "payable_list_id")):
         ET.SubElement(ET.SubElement(payable, name), "ListID").text = binding[key]
+    for index, item_id in enumerate(sorted(binding.get("inventory_items", {})), 5):
+        query = ET.SubElement(
+            root[0], "ItemInventoryQueryRq", requestID=correlation(run + str(index))
+        )
+        ET.SubElement(query, "ListID").text = item_id
+        for field in INVENTORY_FIELDS:
+            ET.SubElement(query, "IncludeRetElement").text = field
     return render(root)
 
 
@@ -115,21 +122,46 @@ def lookup_context(policy, payload, txn_id):
 
 def validate_lookup(xml, run, policy, payload, txn_id):
     root = fromstring(xml)
-    if root.tag != "QBXML" or len(root) != 1 or root[0].tag != "QBXMLMsgsRs" or len(root[0]) != 4:
+    inventory = plan(policy, payload)["binding"].get("inventory_items", {})
+    if (
+        root.tag != "QBXML"
+        or len(root) != 1
+        or root[0].tag != "QBXMLMsgsRs"
+        or len(root[0]) != 4 + len(inventory)
+    ):
         raise BridgeError("bill receipt requires discovery, exact bill and payable responses")
     receipt_root = ET.Element("QBXML")
     ET.SubElement(receipt_root, "QBXMLMsgsRs").append(root[0][2])
     proof = validate_receipt(ET.tostring(receipt_root), policy, payload, run + "3", txn_id=txn_id)
     validate_payable(root[0][3], policy, payload, run + "4", txn_id)
+    if inventory:
+        from qbwc_kit.qbxml import parse_response
+
+        stock = {}
+        responses = list(parse_response(xml))
+        for index, item_id in enumerate(sorted(inventory), 5):
+            rs = responses[index - 1]
+            if (
+                rs.entity != "ItemInventory"
+                or rs.request_id != run + str(index)
+                or rs.status_code != 0
+                or rs.status_severity != "Info"
+                or len(rs.records) != 1
+            ):
+                raise BridgeError("inventory receipt query status or identity mismatch")
+            stock[item_id] = validate_inventory_item(rs.records[0], inventory[item_id])
+        proof["stock_observations"] = stock
     proof.update(
         balance_verification="matched-bill-to-pay",
         outstanding_amount=proof["total"],
-        scope="unpaid-service-expense-bill-receipt"
+        scope="unpaid-inventory-bill-receipt"
+        if inventory
+        else "unpaid-service-expense-bill-receipt"
         if "item_list_ids" in plan(policy, payload)["binding"]
         else "unpaid-expense-bill-receipt",
     )
-    root[0].remove(root[0][3])
-    root[0].remove(root[0][2])
+    for node in list(root[0])[2:]:
+        root[0].remove(node)
     return ET.tostring(root, encoding="unicode"), proof
 
 

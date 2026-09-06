@@ -1,6 +1,6 @@
 # KaydBooks Bridge project status
 
-Updated: 2026-09-06. Production posting: DISABLED. Three USD10 sample bills (two expense-only and one mixed expense/service) are verified through exact saved-field and independent BillToPay checks. Three sample invoices retain their historical verified receipts. No uncertain transaction was resent.
+Updated: 2026-09-06. Production posting: DISABLED. Four USD10 sample bills (two expense-only, one mixed expense/service and one inventory) are verified through exact saved-field and independent BillToPay checks. Three sample invoices retain their historical verified receipts. No uncertain transaction was resent.
 
 ## M3–M7 sample implementation and qualification
 
@@ -25,7 +25,12 @@ Updated: 2026-09-06. Production posting: DISABLED. Three USD10 sample bills (two
 - Latest validation: 682 local tests passed; native allowlists, source/wheel builds and
   the installed-package mixed-bill run passed. CI48 passed all nine jobs for the preceding
   balance-fix commit. The resolved eight-job state passed a signed isolated restore drill.
-- Current step: inventory-bill compatibility, then remaining M3–M6 acceptance gates.
+- Simple inventory bills are implemented and sample-qualified through the installed
+  package: one USD10 bill received two isolated test units; exact saved lines, payable
+  and native stock increase from zero to two all matched. No uncertain write was resent.
+- Latest inventory validation: 695 local tests passed; native account/field gates and
+  source/wheel builds passed. CI49 passed the preceding purchased-service commit.
+- Current step: inventory sales invoices, then remaining M3–M6 acceptance gates.
   Production posting remains disabled; sample posting is paused between controlled runs.
 
 - The [first-release scope and acceptance checklist](docs/FIRST_RELEASE_SCOPE.md)
