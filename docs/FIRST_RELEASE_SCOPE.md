@@ -89,6 +89,9 @@ qualification are separate evidence; a passing mock does not establish native su
   complete BillToPay evidence. Broader methods and variants remain unchecked.
 - [ ] **M3-06:** Customer credit notes and refunds: reference the intended customer,
   invoice/credit and accounts, avoid duplicate applications, verify remaining credit.
+  One native USD5 non-tax service credit passed original-invoice limits, saved credit
+  verification and independent customer balance decrease from USD25 to USD20. It remains
+  unapplied; credit application, refunds, inventory and broader variants are unqualified.
 - [ ] **M3-07:** Supplier credits: correct vendor/accounts/items and bill applications;
   verify remaining payable and unused credit independently.
 - [ ] **M3-08:** Discounts and additional charges: explicit line/document treatment,

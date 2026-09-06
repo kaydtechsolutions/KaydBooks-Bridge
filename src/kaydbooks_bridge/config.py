@@ -54,6 +54,7 @@ class Company:
     sample_payment_posting: dict = field(default_factory=dict)
     supplier_payment_masters: dict = field(default_factory=dict)
     sample_supplier_payment_posting: dict = field(default_factory=dict)
+    sample_credit_posting: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -77,7 +78,11 @@ def company_policy_context(policy):
         value.pop("payment_masters", None)
     if not value.get("sample_payment_posting"):
         value.pop("sample_payment_posting", None)
-    for name in ("supplier_payment_masters", "sample_supplier_payment_posting"):
+    for name in (
+        "supplier_payment_masters",
+        "sample_supplier_payment_posting",
+        "sample_credit_posting",
+    ):
         if not value.get(name):
             value.pop(name, None)
     return value
@@ -134,6 +139,7 @@ class Config:
                     "sample_payment_posting",
                     "supplier_payment_masters",
                     "sample_supplier_payment_posting",
+                    "sample_credit_posting",
                 },
             )
             identifier(raw["simulation_identity"])
@@ -250,6 +256,25 @@ class Config:
                     or type(supplier_gate["expires_at"]) not in (int, float)
                 ):
                     raise BridgeError("invalid controlled sample supplier payment posting gate")
+            credit_gate = companies[name].sample_credit_posting
+            if not isinstance(credit_gate, dict):
+                raise BridgeError("sample credit posting gate must be an object")
+            if credit_gate:
+                strict_keys(
+                    credit_gate,
+                    {"connector", "authorization", "ref_prefix", "max_credits", "expires_at"},
+                )
+                identifier(credit_gate["connector"])
+                if (
+                    not isinstance(credit_gate["authorization"], str)
+                    or not 20 <= len(credit_gate["authorization"]) <= 1000
+                    or not isinstance(credit_gate["ref_prefix"], str)
+                    or not re.fullmatch(r"[A-Z0-9-]{3,8}", credit_gate["ref_prefix"])
+                    or type(credit_gate["max_credits"]) is not int
+                    or not 1 <= credit_gate["max_credits"] <= 10
+                    or type(credit_gate["expires_at"]) not in (int, float)
+                ):
+                    raise BridgeError("invalid controlled sample credit posting gate")
         principals = data["principals"]
         if not isinstance(principals, dict) or not principals:
             raise BridgeError("principals required")

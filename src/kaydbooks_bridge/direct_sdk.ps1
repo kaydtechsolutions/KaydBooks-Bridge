@@ -73,6 +73,37 @@ public static class PrivateReadOnlyDiscovery {
    var root=doc.DocumentElement;
    if(root.Name!="QBXML" || root.ChildNodes.Count!=1) throw new InvalidOperationException("Invalid discovery envelope");
    var batch=root.FirstChild;
+   // Validate and detach fixed credit extensions before validating their invoice-master prefix.
+   if(batch.LastChild!=null && batch.LastChild.Name=="CreditMemoQueryRq") {
+    string[] cf="TxnID,EditSequence,CustomerRef,ARAccountRef,TxnDate,RefNumber,IsPending,Subtotal,SalesTaxTotal,CurrencyRef,ExchangeRate,IsToBePrinted,IsToBeEmailed,IsTaxIncluded,CustomerSalesTaxCodeRef,ItemSalesTaxRef,LinkedTxn,CreditMemoLineRet,CreditMemoLineGroupRet,DiscountLineRet,SalesTaxLineRet,ShippingLineRet,TotalAmount,CreditRemaining,Memo".Split(',');
+    string correlation=batch.FirstChild.Attributes["requestID"].Value;
+    correlation=correlation.Substring(0,correlation.Length-1);
+    bool receipt=batch.LastChild.FirstChild!=null&&batch.LastChild.FirstChild.Name=="TxnID";
+    int count=batch.ChildNodes.Count, first=count-(receipt?4:3);
+    if(first<8||first>88)throw new Exception("Credit master prefix required");
+    var customer=batch.ChildNodes[first];
+    FixedQuery(customer,"Customer","ListID,IsActive,Balance,CurrencyRef",true);
+    if(customer.Attributes["requestID"].Value!=correlation+"90")throw new Exception("Credit customer correlation differs");
+    string customerId=customer.FirstChild.InnerText;
+    for(int j=first+1;j<count;j++) {
+     var q=batch.ChildNodes[j];
+     bool original=j==first+1, history=j==first+2;
+     string kind=original?"InvoiceQueryRq":"CreditMemoQueryRq";
+     string suffix=original?"91":history?"92":"99";
+     if(q.Name!=kind||q.Attributes.Count!=1||q.Attributes["requestID"]==null||q.Attributes["requestID"].Value!=correlation+suffix)throw new Exception("Credit query correlation differs");
+     string expected;
+     if(history)expected="<EntityFilter><ListID>"+customerId+"</ListID></EntityFilter>";
+     else {
+      var id=q.FirstChild;
+      if(id==null||id.Name!="TxnID"||!System.Text.RegularExpressions.Regex.IsMatch(id.InnerText,@"\A[A-Za-z0-9-]{1,31}\z"))throw new Exception("Exact credit/source transaction required");
+      expected="<TxnID>"+id.InnerText+"</TxnID>";
+     }
+     expected+="<IncludeLineItems>true</IncludeLineItems>";
+     foreach(string field in original?"TxnID,EditSequence,CustomerRef,ARAccountRef,TxnDate,RefNumber,IsPending,Subtotal,SalesTaxTotal,CurrencyRef,ExchangeRate,InvoiceLineRet,InvoiceLineGroupRet".Split(','):cf)expected+="<IncludeRetElement>"+field+"</IncludeRetElement>";
+     if(q.InnerXml!=expected)throw new Exception("Fixed complete credit query required");
+    }
+    while(batch.ChildNodes.Count>first)batch.RemoveChild(batch.LastChild);
+   }
    bool supplierPaymentCheck=batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=28 && batch.ChildNodes[3].Name=="VendorQueryRq" && batch.ChildNodes[6].Name=="BillQueryRq";
    bool paymentCheck=batch.ChildNodes.Count>=7 && batch.ChildNodes.Count<=28 && batch.ChildNodes[6].Name=="PaymentMethodQueryRq";
    bool billReceipt=!supplierPaymentCheck && batch.ChildNodes.Count>=4 && batch.ChildNodes.Count<=104 && batch.ChildNodes[2].Name=="BillQueryRq" && batch.ChildNodes[3].Name=="BillToPayQueryRq";

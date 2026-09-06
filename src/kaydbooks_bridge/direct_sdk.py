@@ -96,6 +96,8 @@ def discover(
     payment_check: dict | None = None,
     payment_methods: bool = False,
     payment_receipt_check: dict | None = None,
+    credit_check: dict | None = None,
+    credit_receipt_check: dict | None = None,
     supplier_payment_check: dict | None = None,
     supplier_payment_receipt_check: dict | None = None,
 ) -> dict:
@@ -104,6 +106,23 @@ def discover(
     Unknown reads are held unless recover_read is explicit. This API cannot write.
     Real SDK results are recorded separately from QBWC callback sessions.
     """
+    credit = credit_check is not None or credit_receipt_check is not None
+    if credit:
+        if (
+            any(
+                v is not None
+                for v in (
+                    payment_check,
+                    payment_receipt_check,
+                    supplier_payment_check,
+                    supplier_payment_receipt_check,
+                )
+            )
+            or payment_methods
+            or (credit_check is not None and credit_receipt_check is not None)
+        ):
+            raise BridgeError("credit check cannot be combined with another lookup")
+        payment_check, payment_receipt_check = credit_check, credit_receipt_check
     supplier_payment = (
         supplier_payment_check is not None or supplier_payment_receipt_check is not None
     )
@@ -226,6 +245,8 @@ def discover(
 
         if supplier_payment:
             from .supplier_payment_receipt import append_lookup, lookup_context
+        if credit:
+            from .customer_credits import append_lookup, lookup_context
 
         strict_keys(payment_receipt_check, {"payload", "txn_id"})
         payment_policy = config.authorize(actor, connector.company, "validate")
@@ -240,7 +261,9 @@ def discover(
             payment_receipt_check["txn_id"],
         )
         operation = (
-            "supplier-payment-receipt-check"
+            "customer-credit-receipt-check"
+            if credit
+            else "supplier-payment-receipt-check"
             if supplier_payment
             else "customer-payment-receipt-check"
         )
@@ -256,12 +279,21 @@ def discover(
         if supplier_payment:
             from .supplier_payments import append_check
             from .supplier_payments import plan as payment_master_plan
+        if credit:
+            from .customer_credits import append_check
+            from .customer_credits import plan as payment_master_plan
 
         company = config.authorize(actor, connector.company, "validate")
         payment_plan = payment_master_plan(company, payment_check)
         context_hash = payment_plan["context_sha256"]
         request = append_check(request, run_id, payment_plan)
-        operation = "supplier-payment-check" if supplier_payment else "customer-payment-check"
+        operation = (
+            "customer-credit-check"
+            if credit
+            else "supplier-payment-check"
+            if supplier_payment
+            else "customer-payment-check"
+        )
     if bill_terms or bill_services:
         from .bill_lookup import append_terms_preview
 
@@ -386,6 +418,8 @@ def discover(
 
                 if supplier_payment:
                     from .supplier_payment_receipt import validate_lookup
+                if credit:
+                    from .customer_credits import validate_lookup
 
                 discovery_response, receipt = validate_lookup(
                     response,
@@ -403,6 +437,8 @@ def discover(
 
                 if supplier_payment:
                     from .supplier_payments import validate_check
+                if credit:
+                    from .customer_credits import validate_check
 
                 discovery_response, payment_balances = validate_check(
                     response, run_id, payment_plan
@@ -499,7 +535,9 @@ def discover(
         if payment_plan is not None:
             result.update(
                 operation=operation,
-                scope="payment-allocation-review-only",
+                scope="source-invoice-credit-review-only"
+                if credit
+                else "payment-allocation-review-only",
                 balances=payment_balances,
                 context_sha256=context_hash,
             )
@@ -542,6 +580,11 @@ def main(argv=None):
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--recover-read", action="store_true")
     modes = parser.add_mutually_exclusive_group()
+    modes.add_argument(
+        "--credit-check",
+        type=Path,
+        help="check original invoice and prior customer credits; no posting",
+    )
     modes.add_argument(
         "--supplier-payment-check", type=Path, help="check exact vendor/bill allocation; no posting"
     )
@@ -628,6 +671,9 @@ def main(argv=None):
             if args.payment_check
             else None,
             payment_methods=args.payment_methods,
+            credit_check=json.loads(args.credit_check.read_text(encoding="utf-8"))
+            if args.credit_check
+            else None,
             supplier_payment_check=json.loads(
                 args.supplier_payment_check.read_text(encoding="utf-8")
             )

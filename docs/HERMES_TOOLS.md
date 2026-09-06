@@ -26,6 +26,8 @@ All calls require an explicit company. Config and grants are rechecked per opera
 | check_customer_payment_v1 | Fixed read-only customer, AR, deposit, method and invoice-balance checks |
 | prepare_supplier_payment_v1 | Prepare a captured supplier payment with exact bill-allocation evidence |
 | check_supplier_payment_v1 | Fixed read-only vendor, AP/bank and complete bill-payable checks |
+| prepare_customer_credit_v1 | Prepare a captured unapplied service credit tied to an original invoice |
+| check_customer_credit_v1 | Fixed read-only source-invoice, prior-credit and customer-balance checks |
 | validate_v1 | Validate a draft against current policy and source/master evidence |
 | submit_v1 | Queue a validated transaction; never dispatch |
 | status_v1 | Read canonical job state |

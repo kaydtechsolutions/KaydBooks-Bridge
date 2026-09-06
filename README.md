@@ -2,7 +2,7 @@
 
 A multi-company QuickBooks Desktop automation platform under development,
 with broad, optional Hermes integration. **Production posting is disabled.**
-Explicit private gates permit bounded invoice, supplier-bill and customer-receipt tests in an
+Explicit private gates permit bounded invoice, bill, payment and customer-credit tests in an
 operator-confirmed sample company; see [controlled sample posting](docs/SAMPLE_POSTING.md).
 
 The application lives in `kaydbooks_bridge`. The inherited `qbwc_kit` SOAP,
@@ -36,6 +36,9 @@ sample evidence. [Customer receipts](docs/CUSTOMER_PAYMENTS.md) support explicit
 full and unapplied amounts with independent read-back and reconciliation without resend.
 [Supplier payments](docs/SUPPLIER_PAYMENTS.md) support explicit partial/full bill settlement
 with independent payable checks and a separate bounded sample gate.
+[Customer service credits](docs/CUSTOMER_CREDITS.md) reference an original invoice,
+check prior Bridge-linked credits and verify the saved unapplied amount and customer
+balance effect. Credit application, refunds and broader credit variants remain unfinished.
 
 SDK/QBWC company binding and master/receipt reads have real sample-company evidence.
 The optional [Hermes MCP adapter](docs/HERMES_TOOLS.md) adds source capture, preparation
