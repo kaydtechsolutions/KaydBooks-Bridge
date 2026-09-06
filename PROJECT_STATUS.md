@@ -2,7 +2,25 @@
 
 Updated: 2026-09-06. General live posting: DISABLED. One separately approved sample invoice was saved and verified. Real direct SDK and QBWC discovery, including QBWC post-restart update: PASS.
 
-## Latest implementation: durable invoice receipts and shared job reconciliation
+## Latest implementation: Web Connector receipt parity
+
+- Added immutable exact-TxnID receipt checks to the existing one-update invoice queue.
+  Both transports share request projection, saved-record validation, company binding and
+  the authenticated receipt attachment path. Replays recheck current grants and context.
+- Added fresh `verify-receipt` for completed jobs. It appends an independent observation
+  without replacing the historical receipt or changing the job/transaction.
+- Migrated receipt storage atomically to support both transports, preserving existing SDK
+  receipts and company-level transaction uniqueness. A private pre-upgrade backup was saved.
+- Validation: 535 tests pass (532-test full regression plus three new CLI/grant cases).
+  Original SDK receipt preservation, QBWC callback replay/errors, current policy, stale
+  observations, queue exclusion and migration are covered. General posting stays disabled.
+- The staged service was restarted and health checked ready. The existing sample invoice
+  receipt query is queued; no new accounting write was issued.
+- BLOCKER: real QBWC receipt verification awaits one manual Web Connector update. Windows
+  automation failed twice with GetCursorPos access denied; no locked-session assumption.
+- NEXT: run the queued update, verify the exact receipt and retain the fresh audit proof.
+
+## Previous implementation: durable invoice receipts and shared job reconciliation
 
 - Added a fixed read-only SDK invoice query by TxnID. Current company binding, exact
   payload/policy, durable request and response, owner and permissions are verified.

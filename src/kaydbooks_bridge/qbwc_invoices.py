@@ -11,18 +11,51 @@ from .invoice_compatibility import plan, validate_response
 from .validation import canonical
 
 
+def make_plan(company, payload, txn_id=None):
+    if txn_id is None:
+        return plan(company, payload)
+    from .invoice_receipt import lookup_context
+
+    return {
+        "receipt_policy": company,
+        "payload": payload,
+        "txn_id": txn_id,
+        "context_sha256": lookup_context(company, payload, txn_id),
+    }
+
+
+def append_request(request, correlation, check):
+    if "txn_id" in check:
+        from .invoice_receipt import append_lookup
+
+        return append_lookup(request, correlation, check["txn_id"])
+    from .invoice_compatibility import append_queries
+
+    return append_queries(request, correlation, check)
+
+
+def check_response(response, correlation, check):
+    if "txn_id" in check:
+        from .invoice_receipt import validate_lookup
+
+        return validate_lookup(
+            response, correlation, check["receipt_policy"], check["payload"], check["txn_id"]
+        )
+    return validate_response(response, correlation, check), None
+
+
 def current_plan(service, job, connector):
     company = service.config.authorize(job["actor"], connector.company, "validate")
     service.config.authorize(job["actor"], connector.company, "read")
     if job["connector"] != connector.id:
         raise BridgeError("invoice lookup connector mismatch")
-    check = plan(company, json.loads(job["payload"]))
+    check = make_plan(company, json.loads(job["payload"]), job["txn_id"])
     if check["context_sha256"] != job["context_hash"]:
         raise BridgeError("invoice lookup policy changed; use a new job")
     return check
 
 
-def invoice_job(service, token, connector_id, job_id, *, payload=None, enqueue=False):
+def invoice_job(service, token, connector_id, job_id, *, payload=None, enqueue=False, txn_id=None):
     from .qbwc import UNCONFIRMED_IDENTITY
 
     actor = service.config.authenticate(token)
@@ -40,7 +73,7 @@ def invoice_job(service, token, connector_id, job_id, *, payload=None, enqueue=F
         if job is None:
             if not enqueue or payload is None:
                 raise BridgeError("new invoice check requires payload and enqueue")
-            check = plan(company, payload)
+            check = make_plan(company, payload, txn_id)
             if any(
                 db.execute(
                     f"SELECT 1 FROM {table} WHERE connector=? AND ticket IS NULL", (connector_id,)
@@ -49,8 +82,8 @@ def invoice_job(service, token, connector_id, job_id, *, payload=None, enqueue=F
             ):
                 raise BridgeError("connector already has a queued read job")
             db.execute(
-                "INSERT INTO qbwc_invoice_jobs(id,actor,connector,payload,context_hash) VALUES(?,?,?,?,?)",
-                (job_id, actor, connector_id, canonical(payload), check["context_sha256"]),
+                "INSERT INTO qbwc_invoice_jobs(id,actor,connector,payload,context_hash,txn_id) VALUES(?,?,?,?,?,?)",
+                (job_id, actor, connector_id, canonical(payload), check["context_sha256"], txn_id),
             )
             store.event(
                 db,
@@ -65,6 +98,8 @@ def invoice_job(service, token, connector_id, job_id, *, payload=None, enqueue=F
             raise BridgeError("invoice check ownership mismatch")
         if payload is not None and canonical(payload) != job["payload"]:
             raise BridgeError("invoice check payload is immutable")
+        if (txn_id is not None or enqueue) and txn_id != job["txn_id"]:
+            raise BridgeError("invoice check transaction selector is immutable")
         check = current_plan(service, job, connector)
         if job["ticket"] is None:
             return {"job": job_id, "state": "queued", "live_posting": False}
@@ -77,8 +112,19 @@ def invoice_job(service, token, connector_id, job_id, *, payload=None, enqueue=F
             and row["response_result"] == 100
             and not row["last_error"]
         ):
-            discovery = validate_response(row["response_xml"], row["correlation"], check)
+            discovery, receipt = check_response(row["response_xml"], row["correlation"], check)
             service._verify_discovery_response(discovery, row, connector)
+            if receipt is not None:
+                result.update(
+                    operation="invoice-receipt-check",
+                    transport="qbwc",
+                    receipt=receipt,
+                    context_sha256=check["context_sha256"],
+                )
+                store.event(
+                    db, time.time(), actor, None, "qbwc_invoice_receipt_read", {"job": job_id}
+                )
+                return result
             result.update(
                 operation="invoice-master-compatibility",
                 transport="qbwc",
@@ -114,6 +160,9 @@ def main(argv=None):
         parser.add_argument("--" + name, required=True)
     parser.add_argument("--payload", type=Path)
     parser.add_argument("--enqueue", action="store_true")
+    parser.add_argument(
+        "--txn-id", help="exact saved invoice receipt lookup instead of master checks"
+    )
     args = parser.parse_args(argv)
     try:
         load_secret_file(args.credentials)
@@ -126,6 +175,7 @@ def main(argv=None):
             args.job,
             payload=json.loads(args.payload.read_text(encoding="utf-8")) if args.payload else None,
             enqueue=args.enqueue,
+            txn_id=args.txn_id,
         )
         print(json.dumps(result))
         return 0

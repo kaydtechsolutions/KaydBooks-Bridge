@@ -230,7 +230,7 @@ class Bridge:
             if db.execute("SELECT 1 FROM invoice_receipts WHERE txn_id=?", (txn_id,)).fetchone():
                 raise BridgeError("saved transaction already belongs to another job")
             db.execute(
-                "INSERT INTO invoice_receipts VALUES (?,?,?,?,?,?,?)",
+                "INSERT INTO invoice_receipts VALUES (?,?,?,?,?,?,?,?)",
                 (
                     job_id,
                     txn_id,
@@ -239,6 +239,7 @@ class Bridge:
                     reference["id"],
                     evidence["context_sha256"],
                     canonical(evidence),
+                    reference["transport"],
                 ),
             )
             db.execute(
@@ -247,6 +248,36 @@ class Bridge:
             )
             store.event(db, self.clock(), actor, job_id, "invoice_receipt_attached", evidence)
             return store.job(db, job_id)
+
+    @audited
+    def verify_receipt(self, token: str, company: str, job_id: str, reference: dict) -> dict:
+        """Append a fresh readback proof without replacing the original receipt."""
+        from .receipt_evidence import resolve
+
+        config, actor, policy, store = self._context(token, company, "read")
+        config.authorize(actor, company, "validate")
+        with store.transaction() as db:
+            job = store.job(db, job_id)
+            if (
+                job["submitter"] != actor
+                or job["state"] != "verified"
+                or not job.get("transaction_receipt")
+            ):
+                raise BridgeError(
+                    "fresh receipt verification requires an owned externally verified job"
+                )
+            evidence = resolve(
+                config, policy, store, db, actor, job["payload"], reference, self.clock()
+            )
+            if evidence["receipt"]["txn_id"] != job["txn_id"]:
+                raise BridgeError("fresh receipt transaction identity mismatch")
+            store.event(db, self.clock(), actor, job_id, "invoice_receipt_confirmed", evidence)
+            return {
+                "job_id": job_id,
+                "state": "verified",
+                "observation": evidence,
+                "live_posting": False,
+            }
 
     @audited
     def preview(self, token: str, company: str, job_id: str) -> dict:

@@ -95,5 +95,39 @@ fail. Further payments or edits are outside this narrow receipt qualification.
 The previously approved sample invoice passed this new read-only transport and attachment
 path. Restart, duplicate preparation and audit verification passed with zero new writes.
 This supersedes the earlier milestone's separate-only receipt record; the job now explicitly
-records verified external provenance. QBWC receipt attachment and general posting remain
-unimplemented, and this code does not enable production writes.
+records verified external provenance. General posting remains unimplemented, and this code
+does not enable production writes.
+
+## Web Connector receipt checks
+
+The QBWC invoice queue also accepts `--txn-id` with the private `--payload` file and
+`--enqueue`. This selects a saved-invoice check rather than a master compatibility check.
+The selector is immutable and part of the context digest. Existing master-check jobs
+migrate with a null selector. One queued read is assigned to one authenticated session;
+account, master and receipt reads remain mutually exclusive for the connector.
+
+The callback requires verified HCP, the bound US company and qbXML 17.0. It emits the same
+fixed HostQuery/CompanyQuery/InvoiceQuery batch as SDK. Repeated sends reuse the saved
+request. Sends, receives and result reads recheck current actor grants and policy; changed
+context blocks the session. Exact receipt validation is shared with SDK. Errors, conflicts,
+disconnections, wrong invoices and unsupported saved features cannot qualify a receipt.
+
+Use `attach-receipt` with a reference whose transport is `qbwc` and ID is the queued receipt
+check ID. The resolver requires the correct owned queue item and assigned verified/closed
+session, successful result, exact persisted request, matching payload/context/company and
+freshness from the original session creation time. Callback replay cannot renew that time.
+Receipt storage supports both transports with the same company-level TxnID uniqueness.
+The atomic schema upgrade retains existing SDK receipts and restores all immutable and
+state-transition guards; transport-specific insertion checks validate durable provenance.
+
+For a job already completed through either transport, `verify-receipt JOB_ID REFERENCE_JSON`
+requires a new or still-fresh verified observation plus current owner/read/validate authority.
+It compares the same TxnID, appends `invoice_receipt_confirmed` to the audit and returns the
+observation without replacing the original receipt, changing job state or sending any write.
+Unlike historical attachment replay, this action always checks freshness. A payment or
+unsupported edit causes the check to fail; it does not erase the historical receipt.
+
+Synthetic callback, attachment, fresh-confirmation, migration and failure tests pass.
+The staged sample lookup is queued and the upgraded service is ready. Real QBWC receipt
+qualification remains pending a manual Web Connector update because Windows app automation
+returned an access-denied error; this is not reported as a successful real receipt check.

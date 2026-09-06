@@ -86,6 +86,11 @@ class Store:
                 payload TEXT NOT NULL, context_hash TEXT NOT NULL, ticket TEXT UNIQUE)""")
             db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS one_pending_invoice_job
                 ON qbwc_invoice_jobs(connector) WHERE ticket IS NULL""")
+            if "txn_id" not in {r[1] for r in db.execute("PRAGMA table_info(qbwc_invoice_jobs)")}:
+                db.execute("ALTER TABLE qbwc_invoice_jobs ADD COLUMN txn_id TEXT")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS invoice_selector_immutable
+                BEFORE UPDATE OF txn_id ON qbwc_invoice_jobs WHEN NEW.txn_id IS NOT OLD.txn_id
+                BEGIN SELECT RAISE(ABORT,'immutable invoice selector'); END""")
             db.execute("""CREATE TRIGGER IF NOT EXISTS invoice_job_immutable
                 BEFORE UPDATE ON qbwc_invoice_jobs WHEN NEW.id IS NOT OLD.id OR
                 NEW.actor IS NOT OLD.actor OR NEW.connector IS NOT OLD.connector OR
@@ -277,25 +282,51 @@ class Store:
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name='invoice_receipts'"
             ).fetchone():
                 db.execute("DROP TRIGGER IF EXISTS jobs_state_transition_guard")
-            db.execute("""CREATE TABLE IF NOT EXISTS invoice_receipts (
+            receipt_schema = """CREATE TABLE IF NOT EXISTS {table} (
                 job_id TEXT PRIMARY KEY REFERENCES jobs(id), txn_id TEXT NOT NULL UNIQUE,
                 actor TEXT NOT NULL, connector TEXT NOT NULL,
-                run_id TEXT NOT NULL REFERENCES sdk_discovery(id),
-                context_hash TEXT NOT NULL, evidence TEXT NOT NULL)""")
+                run_id TEXT NOT NULL, context_hash TEXT NOT NULL, evidence TEXT NOT NULL,
+                transport TEXT NOT NULL CHECK(transport IN ('direct-sdk','qbwc')))"""
+            columns = {r[1] for r in db.execute("PRAGMA table_info(invoice_receipts)")}
+            if columns and "transport" not in columns:
+                # Atomic upgrade: retain every immutable receipt and restore the guards below.
+                for trigger in (
+                    "receipt_no_update",
+                    "receipt_no_delete",
+                    "receipt_insert_guard",
+                    "jobs_state_transition_guard",
+                    "external_receipt_terminal_guard",
+                ):
+                    db.execute(f"DROP TRIGGER IF EXISTS {trigger}")
+                db.execute(receipt_schema.format(table="invoice_receipts_upgrade"))
+                db.execute(
+                    "INSERT INTO invoice_receipts_upgrade SELECT *, 'direct-sdk' FROM invoice_receipts"
+                )
+                db.execute("DROP TABLE invoice_receipts")
+                db.execute("ALTER TABLE invoice_receipts_upgrade RENAME TO invoice_receipts")
+            db.execute(receipt_schema.format(table="invoice_receipts"))
             for operation in ("UPDATE", "DELETE"):
                 db.execute(f"""CREATE TRIGGER IF NOT EXISTS receipt_no_{operation.lower()}
                     BEFORE {operation} ON invoice_receipts
                     BEGIN SELECT RAISE(ABORT,'invoice receipts are immutable'); END""")
             db.execute("""CREATE TRIGGER IF NOT EXISTS receipt_insert_guard
                 BEFORE INSERT ON invoice_receipts WHEN NOT EXISTS (
-                    SELECT 1 FROM jobs j JOIN sdk_discovery s ON s.id=NEW.run_id
+                    SELECT 1 FROM jobs j
                     WHERE j.id=NEW.job_id AND j.submitter=NEW.actor
                       AND j.operation='invoice.create' AND j.state IN ('validated','queued')
                       AND j.attempt IS NULL AND j.txn_id IS NULL
+                      AND ((NEW.transport='direct-sdk' AND EXISTS
+                      (SELECT 1 FROM sdk_discovery s WHERE s.id=NEW.run_id
                       AND s.state='verified' AND s.response IS NOT NULL AND s.error=''
                       AND s.actor=NEW.actor AND s.connector=NEW.connector
-                      AND s.context_hash=NEW.context_hash)
-                BEGIN SELECT RAISE(ABORT,'receipt requires owned undispatched job and SDK evidence'); END""")
+                      AND s.context_hash=NEW.context_hash))
+                      OR (NEW.transport='qbwc' AND EXISTS
+                      (SELECT 1 FROM qbwc_invoice_jobs q JOIN qbwc_sessions s ON s.ticket=q.ticket
+                       WHERE q.id=NEW.run_id AND q.actor=NEW.actor AND q.connector=NEW.connector
+                       AND q.context_hash=NEW.context_hash AND q.txn_id=NEW.txn_id
+                       AND s.connector=NEW.connector AND s.state IN ('verified','closed')
+                       AND s.response_result=100 AND s.last_error=''))))
+                BEGIN SELECT RAISE(ABORT,'receipt requires owned undispatched job and verified evidence'); END""")
             db.execute("""CREATE TRIGGER IF NOT EXISTS jobs_state_transition_guard
                 BEFORE UPDATE OF state ON jobs
                 WHEN NOT (

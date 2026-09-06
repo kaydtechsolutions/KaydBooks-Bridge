@@ -344,9 +344,9 @@ class DurableQBWCDiscoveryService:
                 if check is not None:
                     if not hcp or country != "US" or version != "17.0":
                         raise BridgeError("invoice check requires verified HCP and US qbXML 17.0")
-                    from .invoice_compatibility import append_queries
+                    from .qbwc_invoices import append_request
 
-                    request = append_queries(request, row["correlation"], check)
+                    request = append_request(request, row["correlation"], check)
             except (BridgeError, ValueError, TypeError) as exc:
                 self._block(db, store, row, now, str(exc))
                 self._callback(
@@ -475,13 +475,11 @@ class DurableQBWCDiscoveryService:
                             response, row["correlation"], lookup["list_id"]
                         )
                     if check is not None:
-                        from .invoice_compatibility import (
-                            validate_response as validate_invoice_response,
-                        )
+                        from .qbwc_invoices import check_response
 
                         if lookup:
                             raise BridgeError("conflicting read jobs for session")
-                        payload = validate_invoice_response(response, row["correlation"], check)
+                        payload, _ = check_response(response, row["correlation"], check)
                     identity_hash, host_evidence = self._verify_discovery_response(
                         payload, row, connector
                     )
