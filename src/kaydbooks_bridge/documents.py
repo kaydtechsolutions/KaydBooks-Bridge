@@ -105,7 +105,16 @@ def fields(value, prefix=""):
 
 @audited
 def prepare(
-    bridge, token, company, document_id, idempotency_key, payload, confidence, master_evidence=None
+    bridge,
+    token,
+    company,
+    document_id,
+    idempotency_key,
+    payload,
+    confidence,
+    master_evidence=None,
+    *,
+    operation="invoice.create",
 ):
     _, actor, _, store = bridge._context(token, company, "prepare")
     if not isinstance(document_id, str) or not re.fullmatch(r"[a-f0-9]{64}", document_id):
@@ -148,7 +157,7 @@ def prepare(
             "uncertain_fields": sorted(name for name in expected if confidence[name] < 1),
         }
     envelope = {
-        "operation": "invoice.create",
+        "operation": operation,
         "surface": "documents",
         "idempotency_key": idempotency_key,
         "payload": payload,

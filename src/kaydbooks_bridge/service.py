@@ -9,7 +9,7 @@ from functools import wraps
 from pathlib import Path
 
 from .config import BridgeError, Config, identifier, strict_keys
-from .invoice_evidence import require as require_evidence
+from .invoice_evidence import require as require_invoice_evidence
 from .invoice_evidence import resolve as resolve_evidence
 from .simulation import SyntheticLedger
 from .store import Store
@@ -18,6 +18,24 @@ from .validation import canonical, digest, validate_invoice, validate_source
 SURFACES = frozenset(
     {"cli", "chat", "documents", "tools", "schedule", "delegation", "kanban", "browser", "desktop"}
 )
+
+
+def validate_payload(operation, payload, policy):
+    if operation == "bill.create":
+        from .bills import validate_payload as validate_bill
+
+        return validate_bill(payload, policy)
+    if operation != "invoice.create":
+        raise BridgeError("operation unavailable")
+    return validate_invoice(payload, policy)
+
+
+def require_evidence(config, policy, store, db, job, now):
+    if job["operation"] == "bill.create":
+        from .bills import require_context
+
+        return require_context(config, policy, store, db, job, now)
+    return require_invoice_evidence(config, policy, store, db, job, now)
 
 
 def audited(method):
@@ -69,18 +87,28 @@ class Bridge:
             {"operation", "idempotency_key", "surface", "payload", "source"},
             {"master_evidence"},
         )
-        if envelope["operation"] != "invoice.create":
-            raise BridgeError("operation unavailable; only synthetic invoice.create is implemented")
+        if envelope["operation"] not in ("invoice.create", "bill.create"):
+            raise BridgeError(
+                "operation unavailable; only invoice.create and bill.create are implemented"
+            )
         if envelope["surface"] not in SURFACES:
             raise BridgeError("unsupported interface")
         identifier(envelope["idempotency_key"])
-        payload = validate_invoice(envelope["payload"], policy)
+        payload = validate_payload(envelope["operation"], envelope["payload"], policy)
         source = validate_source(envelope["source"], policy)
         fingerprint = digest(
             {"operation": envelope["operation"], "payload": payload, "source": source}
         )
         source_key = canonical([source["namespace"], source["reference"]])
         business_key = canonical([envelope["operation"], payload["ref_number"].casefold()])
+        bill_context = None
+        if envelope["operation"] == "bill.create":
+            from .bills import context
+
+            bill_context = context(policy, payload)
+            business_key = canonical(
+                ["bill.create", bill_context["vendor_list_id"], payload["ref_number"].casefold()]
+            )
         with store.transaction() as db:
             matches = db.execute(
                 "SELECT id,fingerprint FROM jobs WHERE id IN (SELECT job_id FROM idempotency_keys WHERE key=?) OR source_key=? OR business_key=?",
@@ -113,7 +141,10 @@ class Bridge:
                     return existing
             evidence = None
             if "master_evidence" in envelope:
-                evidence = resolve_evidence(
+                resolver = resolve_evidence
+                if bill_context is not None:
+                    from .bill_evidence import resolve as resolver
+                evidence = resolver(
                     config,
                     policy,
                     store,
@@ -123,7 +154,7 @@ class Bridge:
                     envelope["master_evidence"],
                     self.clock(),
                 )
-            elif policy.invoice_masters:
+            elif policy.invoice_masters and bill_context is None:
                 raise BridgeError("verified invoice master evidence required")
             if matches:
                 job_id = matches[0]["id"]
@@ -175,6 +206,11 @@ class Bridge:
             db.execute(
                 "INSERT INTO idempotency_keys VALUES (?,?)", (envelope["idempotency_key"], job_id)
             )
+            if bill_context is not None:
+                db.execute(
+                    "INSERT INTO bill_policy_bindings VALUES (?,?)",
+                    (job_id, canonical(bill_context)),
+                )
             if evidence is not None:
                 self._link_evidence(store, db, actor, job_id, evidence)
             store.event(
@@ -188,11 +224,20 @@ class Bridge:
             return store.job(db, job_id)
 
     def _link_evidence(self, store, db, actor, job_id, evidence):
+        bill = store.job(db, job_id)["operation"] == "bill.create"
+        table = "bill_evidence_links" if bill else "invoice_evidence_links"
         db.execute(
-            "INSERT INTO invoice_evidence_links(job_id,evidence) VALUES (?,?)",
+            f"INSERT INTO {table}(job_id,evidence) VALUES (?,?)",
             (job_id, canonical(evidence)),
         )
-        store.event(db, self.clock(), actor, job_id, "invoice_evidence_linked", evidence)
+        store.event(
+            db,
+            self.clock(),
+            actor,
+            job_id,
+            "bill_evidence_linked" if bill else "invoice_evidence_linked",
+            evidence,
+        )
 
     @audited
     def attach_receipt(self, token: str, company: str, job_id: str, reference: dict) -> dict:
@@ -266,12 +311,23 @@ class Bridge:
                 raise BridgeError(
                     "fresh receipt verification requires an owned externally verified job"
                 )
+            if job["operation"] == "bill.create":
+                from .bill_receipt_evidence import resolve
             evidence = resolve(
                 config, policy, store, db, actor, job["payload"], reference, self.clock()
             )
             if evidence["receipt"]["txn_id"] != job["txn_id"]:
                 raise BridgeError("fresh receipt transaction identity mismatch")
-            store.event(db, self.clock(), actor, job_id, "invoice_receipt_confirmed", evidence)
+            store.event(
+                db,
+                self.clock(),
+                actor,
+                job_id,
+                "bill_receipt_confirmed"
+                if job["operation"] == "bill.create"
+                else "invoice_receipt_confirmed",
+                evidence,
+            )
             return {
                 "job_id": job_id,
                 "state": "verified",
@@ -290,9 +346,24 @@ class Bridge:
             job = store.job(db, job_id)
             if job["submitter"] != actor or job["state"] != "validated":
                 raise BridgeError("invoice preview requires an owned validated job")
-            if job["operation"] != "invoice.create":
-                raise BridgeError("only invoice previews are supported")
             require_evidence(config, policy, store, db, job, self.clock())
+            if job["operation"] == "bill.create":
+                from .bills import preview
+                from .source_review import require as require_review
+
+                require_review(config, policy, store, db, job)
+                result = preview(policy, job)
+                store.event(
+                    db,
+                    self.clock(),
+                    actor,
+                    job_id,
+                    "bill_previewed",
+                    {"preview_sha256": result["preview_sha256"]},
+                )
+                return result
+            if job["operation"] != "invoice.create":
+                raise BridgeError("unsupported preview operation")
             result = build(policy, job)
             store.event(
                 db,
@@ -314,7 +385,7 @@ class Bridge:
             expected = {"validate": "draft", "approve": "validated", "submit": "validated"}[action]
             if job["state"] != expected:
                 raise BridgeError("action is invalid for the current job state")
-            validate_invoice(job["payload"], policy)
+            validate_payload(job["operation"], job["payload"], policy)
             require_evidence(config, policy, store, db, job, self.clock())
             validate_source(job["source"], policy)
             from .source_review import require as require_review
@@ -395,13 +466,14 @@ class Bridge:
                 return None
             job = store.job(db, row["id"])
             if db.execute(
-                "SELECT 1 FROM native_invoice_attempts WHERE job_id=?", (job["id"],)
+                "SELECT 1 FROM native_invoice_attempts WHERE job_id=? UNION ALL SELECT 1 FROM native_bill_attempts WHERE job_id=?",
+                (job["id"], job["id"]),
             ).fetchone():
                 raise BridgeError("native invoice cannot enter the simulator")
             # Initiator and worker both need current authority. Delegation adds none.
             config.authorize(job["submitter"], company, "submit")
             require_evidence(config, policy, store, db, job, self.clock())
-            validate_invoice(job["payload"], policy)
+            validate_payload(job["operation"], job["payload"], policy)
             validate_source(job["source"], policy)
             self._approval(config, policy, job)
             from .source_review import require as require_review
@@ -452,7 +524,7 @@ class Bridge:
                     latest_policy = latest.authorize(latest_actor, company, "simulate")
                     latest.authorize(job["submitter"], company, "submit")
                     require_evidence(latest, latest_policy, store, db, job, self.clock())
-                    validate_invoice(job["payload"], latest_policy)
+                    validate_payload(job["operation"], job["payload"], latest_policy)
                     validate_source(job["source"], latest_policy)
                     require_review(latest, latest_policy, store, db, job)
                     self._approval(latest, latest_policy, job)
@@ -528,7 +600,7 @@ class Bridge:
 
     @audited
     def reconcile(self, token: str, company: str, job_id: str) -> dict:
-        _, actor, policy, store = self._context(token, company, "recover")
+        config, actor, policy, store = self._context(token, company, "recover")
         ledger = SyntheticLedger(store, policy)
         # Serialize reconciliation with completion, recovery and competing reconcilers.
         # The simulation read is local. A real asynchronous transport needs persisted
@@ -537,8 +609,11 @@ class Bridge:
             job = store.job(db, job_id)
             if job["state"] not in {"unknown", "posted-unverified"}:
                 raise BridgeError("only uncertain outcomes can be reconciled")
+            if job["operation"] == "bill.create":
+                require_evidence(config, policy, store, db, job, self.clock())
             if db.execute(
-                "SELECT 1 FROM native_invoice_attempts WHERE job_id=?", (job_id,)
+                "SELECT 1 FROM native_invoice_attempts WHERE job_id=? UNION ALL SELECT 1 FROM native_bill_attempts WHERE job_id=?",
+                (job_id, job_id),
             ).fetchone():
                 raise BridgeError("native invoice requires sample reconciliation")
             if ledger.identity() != policy.simulation_identity:

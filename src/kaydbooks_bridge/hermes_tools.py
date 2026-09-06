@@ -56,13 +56,19 @@ class Tools:
         if name == "capture_document_v1":
             strict_keys(arguments, {"namespace", "reference", "media_type", "content_base64"})
             return capture(self.bridge, self.token, company, **arguments)
-        if name == "prepare_invoice_v1":
+        if name in {"prepare_invoice_v1", "prepare_bill_v1"}:
             strict_keys(
                 arguments,
                 {"document_id", "idempotency_key", "payload", "confidence"},
                 {"master_evidence"},
             )
-            return prepare(self.bridge, self.token, company, **arguments)
+            return prepare(
+                self.bridge,
+                self.token,
+                company,
+                **arguments,
+                operation="bill.create" if name == "prepare_bill_v1" else "invoice.create",
+            )
         if name in {"validate_v1", "submit_v1"}:
             strict_keys(arguments, {"job_id"})
             return self.bridge.action(
@@ -81,7 +87,7 @@ class Tools:
             return self.bridge.verify_receipt(
                 self.token, company, arguments["job_id"], arguments["reference"]
             )
-        if name == "lookup_invoice_masters_v1":
+        if name in {"lookup_invoice_masters_v1", "lookup_bill_masters_v1"}:
             strict_keys(arguments, {"connector", "payload"})
             config = Config.load(self.bridge.config_path)
             actor = config.authenticate(self.token)
@@ -97,7 +103,11 @@ class Tools:
                 connector.id,
                 os.environ.get(connector.password_env, ""),
                 run,
-                invoice_check=arguments["payload"],
+                **{
+                    "bill_check"
+                    if name == "lookup_bill_masters_v1"
+                    else "invoice_check": arguments["payload"]
+                },
             )
             return {"transport": "direct-sdk", "connector": connector.id, "id": run}
         raise BridgeError("tool unavailable")
@@ -159,13 +169,42 @@ def server(config_path, token):
         )
 
     @app.tool()
+    def prepare_bill_v1(
+        company: str,
+        document_id: str,
+        idempotency_key: str,
+        payload: dict,
+        confidence: dict,
+        master_evidence: dict | None = None,
+    ) -> dict:
+        """Prepare an expense bill from retained source evidence; never posts or approves."""
+        return tools.call(
+            "prepare_bill_v1",
+            company,
+            {
+                "document_id": document_id,
+                "idempotency_key": idempotency_key,
+                "payload": payload,
+                "confidence": confidence,
+                "master_evidence": master_evidence,
+            },
+        )
+
+    @app.tool()
+    def lookup_bill_masters_v1(company: str, connector: str, payload: dict) -> dict:
+        """Fresh read-only SDK supplier, payable, expense-account and single-currency checks."""
+        return tools.call(
+            "lookup_bill_masters_v1", company, {"connector": connector, "payload": payload}
+        )
+
+    @app.tool()
     def validate_v1(company: str, job_id: str) -> dict:
         """Validate owned draft against current policy and linked master evidence."""
         return tools.call("validate_v1", company, {"job_id": job_id})
 
     @app.tool()
     def submit_v1(company: str, job_id: str) -> dict:
-        """Queue an approved/validated invoice. Does not dispatch to QuickBooks."""
+        """Queue an approved/validated job. Does not dispatch to QuickBooks."""
         return tools.call("submit_v1", company, {"job_id": job_id})
 
     @app.tool()
@@ -175,7 +214,7 @@ def server(config_path, token):
 
     @app.tool()
     def preview_v1(company: str, job_id: str) -> dict:
-        """Read a deterministic validated invoice review; no dispatch."""
+        """Read a deterministic validated transaction review; no dispatch."""
         return tools.call("preview_v1", company, {"job_id": job_id})
 
     @app.tool()

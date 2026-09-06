@@ -10,7 +10,7 @@ import sqlite3
 from dataclasses import asdict
 from pathlib import Path, PurePosixPath
 
-from .config import BridgeError, outside_repository
+from .config import BridgeError, company_policy_context, outside_repository
 from .direct_sdk import company_lock
 from .sample_posting import save
 from .service import Bridge, audited
@@ -30,9 +30,10 @@ def signature(value):
 
 
 def context(config, policy):
+    company = company_policy_context(policy)
     return digest(
         {
-            "company": asdict(policy),
+            "company": company,
             "connectors": {
                 name: asdict(connector)
                 for name, connector in config.connectors.items()

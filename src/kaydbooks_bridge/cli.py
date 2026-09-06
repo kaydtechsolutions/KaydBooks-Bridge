@@ -22,7 +22,16 @@ def main(argv=None) -> int:
     commands.add_parser("check-config")
     prepare = commands.add_parser("prepare")
     prepare.add_argument("input", type=Path, help="structured synthetic envelope JSON")
-    for action in ("validate", "approve", "submit", "reconcile", "post-sample", "reconcile-sample"):
+    for action in (
+        "validate",
+        "approve",
+        "submit",
+        "reconcile",
+        "post-sample",
+        "reconcile-sample",
+        "post-sample-bill",
+        "reconcile-sample-bill",
+    ):
         commands.add_parser(action).add_argument("job_id")
     commands.add_parser("status").add_argument("job_id", nargs="?")
     commands.add_parser("preview").add_argument("job_id")
@@ -63,10 +72,18 @@ def main(argv=None) -> int:
                 result = bridge.action(token, args.company, args.job_id, args.command)
             elif args.command == "reconcile":
                 result = bridge.reconcile(token, args.company, args.job_id)
-            elif args.command in ("post-sample", "reconcile-sample"):
+            elif args.command in (
+                "post-sample",
+                "reconcile-sample",
+                "post-sample-bill",
+                "reconcile-sample-bill",
+            ):
                 from .sample_posting import post, reconcile
 
-                result = (post if args.command == "post-sample" else reconcile)(
+                if args.command.endswith("-bill"):
+                    from .sample_bill_posting import post, reconcile
+
+                result = (post if args.command.startswith("post-") else reconcile)(
                     bridge, token, args.company, args.job_id
                 )
             elif args.command == "status":

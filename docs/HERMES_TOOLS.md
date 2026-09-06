@@ -7,8 +7,11 @@ CLI and core do not require Hermes or MCP. Start the stdio server with
 The trusted server process needs `KAYDBOOKS_CONFIG`, an environment credential named
 by `KAYDBOOKS_TOOL_TOKEN_ENV` (default `KAYDBOOKS_TOKEN`), and optionally
 `KAYDBOOKS_TOOL_SECRET_FILE`. Private config/state/secret files must remain outside Git.
-Use a dedicated company principal with prepare/read/validate/submit/recover grants.
-Do not give the tool principal post-sample, approve, review-source or backup permissions.
+New principals receive all supported permissions within their explicitly assigned
+companies by default. Operators may restrict them with an explicit grant list.
+Preparation needs prepare/read/validate; queueing needs submit and recovery needs
+recover. The tool server exposes no posting or approval tool even when its principal
+has those permissions; required review and posting gates still apply.
 Optional local workflows require manage-workflows; receipt reports require report/read.
 All calls require an explicit company. Config and grants are rechecked per operation.
 
@@ -17,11 +20,13 @@ All calls require an explicit company. Config and grants are rechecked per opera
 | capture_document_v1 | Decode bounded base64 and retain original bytes with a server-calculated SHA-256 |
 | prepare_invoice_v1 | Prepare an invoice from an owned captured document, payload, field confidence and durable master reference |
 | lookup_invoice_masters_v1 | Fixed read-only SDK account/customer/item/currency/commercial checks |
+| prepare_bill_v1 | Prepare an expense bill from an owned captured document with field confidence and bill master evidence |
+| lookup_bill_masters_v1 | Fixed read-only SDK supplier, payable/expense account and single-currency checks |
 | validate_v1 | Validate a draft against current policy and source/master evidence |
-| submit_v1 | Queue a validated invoice; never dispatch |
+| submit_v1 | Queue a validated transaction; never dispatch |
 | status_v1 | Read canonical job state |
-| preview_v1 | Produce a deterministic invoice review |
-| verify_receipt_v1 | Verify fresh durable receipt evidence for a completed invoice |
+| preview_v1 | Produce a deterministic invoice or expense-bill review |
+| verify_receipt_v1 | Verify fresh durable receipt evidence for a completed invoice or expense bill |
 | recover_v1 | Hold expired attempts; never resend accounting |
 | board_v1 | Read canonical job-board cards and counts |
 | memory_v1 | Read expiring display/report preferences; never permissions |

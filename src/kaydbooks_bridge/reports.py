@@ -35,7 +35,9 @@ def register(bridge, token, company, date_from, date_to):
         if not store.verify_audit(db):
             raise BridgeError("invalid receipt report audit")
         rows, excluded = [], 0
-        for row in db.execute("SELECT id FROM jobs WHERE state='verified' ORDER BY id"):
+        for row in db.execute(
+            "SELECT id FROM jobs WHERE state='verified' AND operation='invoice.create' ORDER BY id"
+        ):
             job = store.job(db, row["id"])
             if not first <= date.fromisoformat(job["payload"]["txn_date"]) <= last:
                 continue

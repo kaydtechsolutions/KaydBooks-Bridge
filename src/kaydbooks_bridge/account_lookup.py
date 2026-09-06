@@ -20,14 +20,20 @@ def validate_list_id(list_id):
     return list_id
 
 
-def append_query(discovery: str, correlation: str, version: str = "17.0", list_id=None) -> str:
+def append_query(
+    discovery: str, correlation: str, version: str = "17.0", list_id=None, *, expense_only=False
+) -> str:
     validate_list_id(list_id)
+    if type(expense_only) is not bool or (expense_only and list_id is not None):
+        raise BridgeError("invalid expense preview mode")
     root = fromstring(discovery)
     batch = root.find("QBXMLMsgsRq")
     account = ET.SubElement(batch, "AccountQueryRq", requestID=f"{correlation}3")
     if list_id is None:
         ET.SubElement(account, "MaxReturned").text = "20"
         ET.SubElement(account, "ActiveStatus").text = "ActiveOnly"
+        if expense_only:
+            ET.SubElement(account, "AccountType").text = "Expense"
     else:
         ET.SubElement(account, "ListID").text = list_id
     for name in FIELDS:
@@ -37,7 +43,7 @@ def append_query(discovery: str, correlation: str, version: str = "17.0", list_i
     )
 
 
-def validate_response(payload: str, correlation: str, list_id=None):
+def validate_response(payload: str, correlation: str, list_id=None, *, expense_only=False):
     validate_list_id(list_id)
     responses = parse_response(payload)
     if len(responses) != 3 or [r.entity for r in responses] != ["Host", "Company", "Account"]:
@@ -57,6 +63,8 @@ def validate_response(payload: str, correlation: str, list_id=None):
             raise BridgeError("account preview fields incomplete")
         if row["IsActive"] != "true" or row["ListID"] in seen:
             raise BridgeError("inactive or duplicate account returned")
+        if expense_only and row["AccountType"] != "Expense":
+            raise BridgeError("expense preview account type mismatch")
         seen.add(row["ListID"])
         records.append({k: row[k] for k in FIELDS})
     root = fromstring(payload)

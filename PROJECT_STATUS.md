@@ -1,6 +1,6 @@
 # KaydBooks Bridge project status
 
-Updated: 2026-09-06. Production posting: DISABLED. Controlled sample posting/recovery: PASS. Three sample invoices have verified receipts (one earlier invoice and two new USD10 tests). SDK/QBWC reads and isolated Hermes MCP qualification: PASS.
+Updated: 2026-09-06. Production posting: DISABLED. Three sample invoices and one USD10 expense bill have verified receipts. One rejected bill attempt is permanently failed after read-only absence confirmation. SDK/QBWC reads and isolated Hermes MCP qualification: PASS.
 
 ## M3–M7 sample implementation and qualification
 
@@ -12,17 +12,28 @@ Updated: 2026-09-06. Production posting: DISABLED. Controlled sample posting/rec
   Hermes messaging and master creation/updates.
 - M3–M6 remain partial under that scope. Final M7 qualification follows their required
   acceptance gates; existing setup and backup work remains supporting evidence.
-- Current step: M3-03 supplier-bill contract/lifecycle. The runtime still accepts only
-  invoice.create; supplier bills, payments and credits must not be presented as working.
-- The supplier-bill contract maps the reviewed Intuit request/query schemas to the
-  required policy, durable lifecycle, duplicate and read-back changes. This is design
-  evidence; no bill has been dispatched by the Bridge.
+- Current step: M3-03 supplier bills. Base-currency expense bills now share the durable
+  lifecycle with typed master evidence, supplier-scoped references, controlled native
+  attempts and independent saved-bill read-back. Item/inventory bills, payments and
+  credits remain unfinished.
+- Actual sample qualification: one USD10 expense bill verified. The initial request
+  returned SDK3210 for NotBillable without a reimbursable customer. The corrected
+  builder omits that field; the first job was permanently failed after fresh absence
+  confirmation, and a new reference was used. No business records were deleted.
+- CLI bill sample commands and two narrow MCP bill tools are implemented. Bill native
+  attempts cannot enter invoice dispatch or simulation recovery, and bill receipts
+  are excluded from the historical invoice register. All company mappings stay private.
 - New setup operators now receive all currently supported Bridge permissions by
   default. Explicit permission lists (including no access) are respected. Existing
   configuration grants, required approvals and production/sample posting gates remain
   enforced. General user/role management and self-approval configuration remain planned.
-- Validation: 589 local tests passed, including 21 setup/default/restriction cases;
-  lint, formatting and package builds passed. No new accounting transactions occurred.
+- Validation: 641 local tests passed; lint, formatting, source/wheel builds and a
+  separate installed-wheel qualification passed. Bill tests
+  cover duplicates, approval, mapping/permission changes, stale evidence, missing
+  responses, recovery and native request allowlists. Final regression/build results
+  include real expense-bill read-back and 15 discovered MCP tools. A signed 373-file
+  snapshot restored seven jobs with valid SQLite integrity/audit in isolation.
+  The historical invoice register remains three invoices totaling USD30.
 
 ### Reusable company onboarding
 
@@ -44,7 +55,7 @@ Updated: 2026-09-06. Production posting: DISABLED. Controlled sample posting/rec
 
 | Milestone | Current implementation/evidence | Remaining scope |
 | --- | --- | --- |
-| M3 | Durable non-tax service invoice adapter; actual normal write/readback and abrupt-parent-exit recovery; duplicate dispatch refused | Taxable/inventory/broader transactions and production qualification |
+| M3 | Non-tax service invoices and base-currency expense bills; controlled native writes/readback, durable attempts, duplicate refusal and recovery tests | Item/inventory bills/invoices, terms, payments/credits, tax/currency variants and broader qualification |
 | M4 | Thirteen narrow MCP tools; immutable source bytes/hash, explicit field confidence/review; installed Hermes discovery and actual MCP-to-SDK sample preparation | OCR quality, conversational model runs, draft correction/revision |
 | M5 | Local bounded schedules, occurrence deduplication, dependencies/cancellation, local-only outbox, versioned preferences, canonical delegation, read-only board | Native Hermes cron/channels/delegation/Kanban connections; external delivery |
 | M6 | Historical verified-invoice register with dates, source hashes, observation times, derived totals and private exports | Native QuickBooks financial reports and optional GUI fallback |

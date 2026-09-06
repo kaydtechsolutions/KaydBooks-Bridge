@@ -262,6 +262,47 @@ class Store:
             db.execute("""CREATE TABLE IF NOT EXISTS idempotency_keys (
                 key TEXT PRIMARY KEY, job_id TEXT NOT NULL REFERENCES jobs(id))""")
             db.execute("INSERT OR IGNORE INTO idempotency_keys SELECT idempotency_key,id FROM jobs")
+            db.execute("""CREATE TABLE IF NOT EXISTS bill_policy_bindings (
+                job_id TEXT PRIMARY KEY REFERENCES jobs(id), context TEXT NOT NULL)""")
+            db.execute("""CREATE TABLE IF NOT EXISTS native_bill_attempts (
+                job_id TEXT PRIMARY KEY REFERENCES jobs(id), attempt TEXT NOT NULL UNIQUE,
+                connector TEXT NOT NULL, actor TEXT NOT NULL, created_at REAL NOT NULL,
+                request TEXT NOT NULL, context_hash TEXT NOT NULL, authorization TEXT NOT NULL)""")
+            for action in ("UPDATE", "DELETE"):
+                db.execute(f"""CREATE TRIGGER IF NOT EXISTS native_bill_attempt_no_{action.lower()}
+                    BEFORE {action} ON native_bill_attempts
+                    BEGIN SELECT RAISE(ABORT,'native bill dispatch identity is immutable'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS native_bill_attempt_insert_guard
+                BEFORE INSERT ON native_bill_attempts WHEN NOT EXISTS
+                (SELECT 1 FROM jobs WHERE id=NEW.job_id AND operation='bill.create' AND state='queued'
+                 AND submitter=NEW.actor AND attempt IS NULL)
+                BEGIN SELECT RAISE(ABORT,'native bill dispatch requires owned queued bill'); END""")
+            db.execute("""CREATE TABLE IF NOT EXISTS bill_evidence_links (
+                sequence INTEGER PRIMARY KEY AUTOINCREMENT, job_id TEXT NOT NULL REFERENCES jobs(id), evidence TEXT NOT NULL)""")
+            for action in ("UPDATE", "DELETE"):
+                db.execute(f"""CREATE TRIGGER IF NOT EXISTS bill_evidence_no_{action.lower()}
+                    BEFORE {action} ON bill_evidence_links
+                    BEGIN SELECT RAISE(ABORT,'bill evidence is append-only'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS bill_evidence_insert_guard
+                BEFORE INSERT ON bill_evidence_links WHEN NOT EXISTS
+                (SELECT 1 FROM jobs WHERE id=NEW.job_id AND state='draft' AND operation='bill.create')
+                BEGIN SELECT RAISE(ABORT,'bill evidence requires draft bill'); END""")
+            for action in ("UPDATE", "DELETE"):
+                db.execute(f"""CREATE TRIGGER IF NOT EXISTS bill_binding_no_{action.lower()}
+                    BEFORE {action} ON bill_policy_bindings
+                    BEGIN SELECT RAISE(ABORT,'bill policy binding is immutable'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS bill_binding_insert_guard
+                BEFORE INSERT ON bill_policy_bindings WHEN NOT EXISTS
+                (SELECT 1 FROM jobs WHERE id=NEW.job_id AND state='draft' AND operation='bill.create')
+                BEGIN SELECT RAISE(ABORT,'bill binding requires draft bill'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS bill_binding_state_guard
+                BEFORE UPDATE OF state ON jobs WHEN NEW.operation='bill.create' AND NOT EXISTS
+                (SELECT 1 FROM bill_policy_bindings WHERE job_id=NEW.id)
+                BEGIN SELECT RAISE(ABORT,'bill policy binding required'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS invoice_attempt_operation_guard
+                BEFORE INSERT ON native_invoice_attempts WHEN NOT EXISTS
+                (SELECT 1 FROM jobs WHERE id=NEW.job_id AND operation='invoice.create')
+                BEGIN SELECT RAISE(ABORT,'native invoice attempt requires invoice'); END""")
             db.execute("""CREATE TRIGGER IF NOT EXISTS jobs_identity_immutable
                 BEFORE UPDATE OF id,idempotency_key,fingerprint,source_key,business_key,
                 operation,submitter,payload,source ON jobs
@@ -291,6 +332,10 @@ class Store:
                 BEFORE INSERT ON invoice_evidence_links WHEN NOT EXISTS
                 (SELECT 1 FROM jobs WHERE id=NEW.job_id AND state='draft')
                 BEGIN SELECT RAISE(ABORT,'evidence requires draft'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS invoice_evidence_operation_guard
+                BEFORE INSERT ON invoice_evidence_links WHEN NOT EXISTS
+                (SELECT 1 FROM jobs WHERE id=NEW.job_id AND operation='invoice.create')
+                BEGIN SELECT RAISE(ABORT,'invoice evidence requires invoice'); END""")
             if not db.execute(
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name='invoice_receipts'"
             ).fetchone():
@@ -340,6 +385,20 @@ class Store:
                        AND s.connector=NEW.connector AND s.state IN ('verified','closed')
                        AND s.response_result=100 AND s.last_error=''))))
                 BEGIN SELECT RAISE(ABORT,'receipt requires owned undispatched job and verified evidence'); END""")
+            if not db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='native_bill_rejections'"
+            ).fetchone():
+                db.execute("DROP TRIGGER IF EXISTS jobs_state_transition_guard")
+            db.execute("""CREATE TABLE IF NOT EXISTS native_bill_rejections (
+                job_id TEXT PRIMARY KEY REFERENCES native_bill_attempts(job_id), evidence TEXT NOT NULL)""")
+            for action in ("UPDATE", "DELETE"):
+                db.execute(f"""CREATE TRIGGER IF NOT EXISTS native_bill_rejection_no_{action.lower()}
+                    BEFORE {action} ON native_bill_rejections
+                    BEGIN SELECT RAISE(ABORT,'bill rejection evidence is immutable'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS native_bill_rejection_insert_guard
+                BEFORE INSERT ON native_bill_rejections WHEN NOT EXISTS
+                (SELECT 1 FROM jobs WHERE id=NEW.job_id AND operation='bill.create' AND state='unknown' AND txn_id IS NULL)
+                BEGIN SELECT RAISE(ABORT,'rejection requires an uncertain native bill without receipt'); END""")
             db.execute("""CREATE TRIGGER IF NOT EXISTS jobs_state_transition_guard
                 BEFORE UPDATE OF state ON jobs
                 WHEN NOT (
@@ -357,6 +416,8 @@ class Store:
                         ('posted-unverified', 'blocked', 'failed', 'unknown'))
                     OR (OLD.state IN ('posted-unverified', 'unknown')
                         AND NEW.state = 'verified')
+                    OR (OLD.state='unknown' AND NEW.state='failed' AND NEW.operation='bill.create'
+                        AND EXISTS (SELECT 1 FROM native_bill_rejections WHERE job_id=OLD.id))
                 )
                 BEGIN SELECT RAISE(ABORT, 'invalid job state transition'); END""")
             db.execute("""CREATE TRIGGER IF NOT EXISTS jobs_approval_guard
@@ -484,8 +545,18 @@ class Store:
         result = dict(row)
         for key in ("payload", "source"):
             result[key] = json.loads(result[key])
+        binding = db.execute(
+            "SELECT context FROM bill_policy_bindings WHERE job_id=?", (job_id,)
+        ).fetchone()
+        if binding:
+            result["bill_context"] = json.loads(binding[0])
+        evidence_table = (
+            "bill_evidence_links"
+            if result["operation"] == "bill.create"
+            else "invoice_evidence_links"
+        )
         evidence = db.execute(
-            "SELECT evidence FROM invoice_evidence_links WHERE job_id=? ORDER BY sequence DESC LIMIT 1",
+            f"SELECT evidence FROM {evidence_table} WHERE job_id=? ORDER BY sequence DESC LIMIT 1",
             (job_id,),
         ).fetchone()
         if evidence:
@@ -496,9 +567,14 @@ class Store:
         if receipt:
             result["transaction_receipt"] = json.loads(receipt[0])
         elif result["state"] == "verified":
+            event = (
+                "native_bill_verified"
+                if result["operation"] == "bill.create"
+                else "native_invoice_verified"
+            )
             native = db.execute(
-                "SELECT data FROM audit WHERE job_id=? AND event='native_invoice_verified' ORDER BY sequence DESC LIMIT 1",
-                (job_id,),
+                "SELECT data FROM audit WHERE job_id=? AND event=? ORDER BY sequence DESC LIMIT 1",
+                (job_id, event),
             ).fetchone()
             if native:
                 result["transaction_receipt"] = json.loads(native[0])

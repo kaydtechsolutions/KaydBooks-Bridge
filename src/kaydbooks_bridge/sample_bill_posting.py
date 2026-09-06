@@ -1,4 +1,4 @@
-"""Explicitly gated sample-company invoices. Production posting is unavailable."""
+"""Explicitly gated sample-company bills. Production posting is unavailable."""
 
 import hashlib
 import math
@@ -12,11 +12,13 @@ from xml.etree import ElementTree as ET
 
 from qbwc_kit._xml import fromstring
 
+from .bill_lookup import append_check as append_queries
+from .bill_lookup import plan
+from .bill_lookup import validate_check as validate_response
+from .bill_receipt import RECEIPT_FIELDS, add_request, validate_receipt
+from .bills import require_context as require
 from .config import BridgeError, Config
 from .direct_sdk import company_lock, discover
-from .invoice_compatibility import append_queries, plan, validate_response
-from .invoice_evidence import require
-from .invoice_receipt import RECEIPT_FIELDS, add_request, validate_receipt
 from .qbwc import DurableQBWCDiscoveryService
 from .service import Bridge, audited
 from .validation import digest, validate_source
@@ -37,7 +39,7 @@ def context_hash(policy, job, connector):
     return digest(
         {
             "policy": plan(policy, job["payload"])["context_sha256"],
-            "gate": policy.sample_posting,
+            "gate": policy.sample_bill_posting,
             "connector": asdict(connector),
         }
     )
@@ -48,7 +50,7 @@ def preflight(policy, payload, run):
     root = fromstring(
         append_queries(DurableQBWCDiscoveryService._discovery_request(run, "17.0"), run, check)
     )
-    query = ET.SubElement(root[0], "InvoiceQueryRq", requestID=run + "999")
+    query = ET.SubElement(root[0], "BillQueryRq", requestID=run + "999")
     ET.SubElement(query, "RefNumber").text = payload["ref_number"]
     ET.SubElement(query, "IncludeLineItems").text = "true"
     ET.SubElement(query, "IncludeLinkedTxns").text = "true"
@@ -62,8 +64,8 @@ def check_preflight(response, policy, payload, connector, run):
     if root.tag != "QBXML" or len(root) != 1 or root[0].tag != "QBXMLMsgsRs" or not len(root[0]):
         raise BridgeError("invalid native preflight envelope")
     collision = root[0][-1]
-    if collision.tag != "InvoiceQueryRs" or collision.get("requestID") != run + "999":
-        raise BridgeError("uncorrelated invoice duplicate query")
+    if collision.tag != "BillQueryRs" or collision.get("requestID") != run + "999":
+        raise BridgeError("uncorrelated bill duplicate query")
     root[0].remove(collision)
     discovery = validate_response(ET.tostring(root), run, plan(policy, payload))
     DurableQBWCDiscoveryService._verify_discovery_response(
@@ -72,9 +74,35 @@ def check_preflight(response, policy, payload, connector, run):
     status = collision.get("statusCode"), collision.get("statusSeverity")
     if len(collision) == 0 and status in (("1", "Info"), ("500", "Warn")):
         return None
-    invoice_root = ET.Element("QBXML")
-    ET.SubElement(invoice_root, "QBXMLMsgsRs").append(collision)
-    return validate_receipt(ET.tostring(invoice_root), policy, payload, run + "999")
+    if (
+        status != ("0", "Info")
+        or collision.get("iteratorRemainingCount") not in (None, "0")
+        or len(collision) > 1000
+    ):
+        raise BridgeError("bill duplicate query is incomplete or unsuccessful")
+    vendor = policy.bill_masters["vendors"][payload["vendor_id"]]
+    matching = []
+    for row in collision:
+        if (
+            row.tag != "BillRet"
+            or len(row.findall("VendorRef/ListID")) != 1
+            or len(row.findall("RefNumber")) != 1
+        ):
+            raise BridgeError("bill duplicate identity missing or ambiguous")
+        if row.findtext("RefNumber", "").casefold() != payload["ref_number"].casefold():
+            raise BridgeError("bill duplicate query reference mismatch")
+        if row.findtext("VendorRef/ListID") == vendor:
+            matching.append(row)
+    if not matching:
+        return None
+    if len(matching) != 1:
+        raise BridgeError("ambiguous supplier bill duplicate")
+    for row in list(collision):
+        collision.remove(row)
+    collision.append(matching[0])
+    bill_root = ET.Element("QBXML")
+    ET.SubElement(bill_root, "QBXMLMsgsRs").append(collision)
+    return validate_receipt(ET.tostring(bill_root), policy, payload, run + "999")
 
 
 def windows_exchange(request, write, folder, approve):
@@ -101,7 +129,7 @@ def windows_exchange(request, write, folder, approve):
                 ),
                 "-NoProfile",
                 "-File",
-                str(Path(__file__).with_name("native_invoice.ps1")),
+                str(Path(__file__).with_name("native_bill.ps1")),
             ],
             env=env,
             stdout=log,
@@ -136,13 +164,15 @@ def windows_exchange(request, write, folder, approve):
 
 
 def gate(config, actor, policy, job, now):
-    if job["operation"] != "invoice.create":
+    if job["operation"] != "bill.create":
         raise BridgeError("native posting is unavailable for this operation")
     config.authorize(actor, policy.id, "post-sample")
     config.authorize(actor, policy.id, "read")
     config.authorize(actor, policy.id, "validate")
     config.authorize(job["submitter"], policy.id, "submit")
-    settings = policy.sample_posting
+    if not job.get("master_evidence"):
+        raise BridgeError("verified bill master evidence required for native posting")
+    settings = policy.sample_bill_posting
     if (
         not settings
         or not math.isfinite(settings["expires_at"])
@@ -172,7 +202,7 @@ def post(bridge, token, company, job_id, *, exchange=windows_exchange, read_exch
             require_review(config, policy, store, db, job)
             if job["state"] != "queued":
                 raise BridgeError(
-                    "sample posting requires queued job; never retry a dispatched invoice"
+                    "sample posting requires queued job; never retry a dispatched bill"
                 )
             require(config, policy, store, db, job, bridge.clock())
             if not store.verify_audit(db):
@@ -193,8 +223,8 @@ def post(bridge, token, company, job_id, *, exchange=windows_exchange, read_exch
             ):
                 raise BridgeError("company read session active")
             if (
-                db.execute("SELECT COUNT(*) FROM native_invoice_attempts").fetchone()[0]
-                >= policy.sample_posting["max_invoices"]
+                db.execute("SELECT COUNT(*) FROM native_bill_attempts").fetchone()[0]
+                >= policy.sample_bill_posting["max_bills"]
             ):
                 raise BridgeError("sample dispatch quota reached")
             attempt = uuid.uuid4().hex
@@ -202,7 +232,7 @@ def post(bridge, token, company, job_id, *, exchange=windows_exchange, read_exch
             request = add_request(policy, job["payload"], run + "998")
             context = context_hash(policy, job, connector)
             db.execute(
-                "INSERT INTO native_invoice_attempts VALUES (?,?,?,?,?,?,?,?)",
+                "INSERT INTO native_bill_attempts VALUES (?,?,?,?,?,?,?,?)",
                 (
                     job_id,
                     attempt,
@@ -211,7 +241,7 @@ def post(bridge, token, company, job_id, *, exchange=windows_exchange, read_exch
                     bridge.clock(),
                     request,
                     context,
-                    policy.sample_posting["authorization"],
+                    policy.sample_bill_posting["authorization"],
                 ),
             )
             db.execute(
@@ -262,12 +292,12 @@ def post(bridge, token, company, job_id, *, exchange=windows_exchange, read_exch
                 )
             return matched is None
 
-        folder = store.path.parent / ("native-invoice-" + attempt)
+        folder = store.path.parent / ("native-bill-" + attempt)
         try:
             response = exchange(preflight(policy, job["payload"], run), request, folder, approve)
             if response is not None:
                 matched = validate_receipt(
-                    response, policy, job["payload"], run + "998", operation="InvoiceAdd"
+                    response, policy, job["payload"], run + "998", operation="BillAdd"
                 )
             if matched is None:
                 raise BridgeError("native receipt missing")
@@ -310,14 +340,14 @@ def reconcile(bridge, token, company, job_id, *, exchange=windows_exchange, read
         with store.transaction() as db:
             job = store.job(db, job_id)
             record = db.execute(
-                "SELECT * FROM native_invoice_attempts WHERE job_id=?", (job_id,)
+                "SELECT * FROM native_bill_attempts WHERE job_id=?", (job_id,)
             ).fetchone()
             if (
                 record is None
                 or record["actor"] != actor
                 or job["state"] not in ("unknown", "posted-unverified")
             ):
-                raise BridgeError("owned uncertain native invoice required")
+                raise BridgeError("owned uncertain native bill required")
             connector = config.connectors[record["connector"]]
             if connector.company != company or not store.verify_audit(db):
                 raise BridgeError("native reconciliation binding or audit invalid")
@@ -327,12 +357,72 @@ def reconcile(bridge, token, company, job_id, *, exchange=windows_exchange, read
         run = str(int(time.time() * 1000))[-12:]
 
         def receive(response):
-            nonlocal matched
+            nonlocal matched, absence_response
             matched = check_preflight(response, policy, job["payload"], connector, run)
+            absence_response = response
             return False
 
+        absence_response = None
         folder = store.path.parent / ("native-reconcile-" + uuid.uuid4().hex)
         exchange(preflight(policy, job["payload"], run), None, folder, receive)
+        if matched is None and job["state"] == "unknown" and job["txn_id"] is None:
+            failure = store.path.parent / ("native-bill-" + record["attempt"]) / "add.response.xml"
+            if failure.exists():
+                raw_failure = failure.read_text(encoding="utf-8")
+                root = fromstring(raw_failure)
+                correlation = fromstring(record["request"])[0][0].get("requestID")
+                if (
+                    root.tag == "QBXML"
+                    and len(root) == 1
+                    and root[0].tag == "QBXMLMsgsRs"
+                    and len(root[0]) == 1
+                    and root[0][0].tag == "BillAddRs"
+                    and root[0][0].get("requestID") == correlation
+                    and root[0][0].get("statusCode") == "3210"
+                    and root[0][0].get("statusSeverity") == "Error"
+                    and len(root[0][0]) == 0
+                ):
+                    latest, latest_actor, latest_policy, _ = bridge._context(
+                        token, company, "recover"
+                    )
+                    latest.authorize(latest_actor, company, "read")
+                    latest.authorize(latest_actor, company, "validate")
+                    if (
+                        context_hash(latest_policy, job, latest.connectors[record["connector"]])
+                        != record["context_hash"]
+                    ):
+                        raise BridgeError("bill rejection context changed")
+                    from .validation import canonical
+
+                    proof = {
+                        "status_code": "3210",
+                        "response_sha256": digest(raw_failure),
+                        "absence_run": run,
+                        "absence_response": absence_response,
+                        "absence_response_sha256": digest(absence_response),
+                        "attempt": record["attempt"],
+                        "retry_authorized": False,
+                    }
+                    with store.transaction() as db:
+                        current = store.job(db, job_id)
+                        if (
+                            current["state"] != "unknown"
+                            or current["attempt"] != record["attempt"]
+                            or not store.verify_audit(db)
+                        ):
+                            raise BridgeError("bill rejection state or audit changed")
+                        db.execute(
+                            "INSERT INTO native_bill_rejections VALUES (?,?)",
+                            (job_id, canonical(proof)),
+                        )
+                        db.execute(
+                            "UPDATE jobs SET state='failed',detail='native_bill_rejected_3210' WHERE id=?",
+                            (job_id,),
+                        )
+                        store.event(
+                            db, bridge.clock(), latest_actor, job_id, "native_bill_rejected", proof
+                        )
+                        return store.job(db, job_id)
         if matched is None or (job["txn_id"] and matched["txn_id"] != job["txn_id"]):
             raise BridgeError("native reconciliation inconclusive; no retry authorized")
     kwargs = {} if read_exchange is None else {"exchange": read_exchange}
@@ -344,10 +434,10 @@ def reconcile(bridge, token, company, job_id, *, exchange=windows_exchange, read
         connector.id,
         os.environ.get(connector.password_env, ""),
         run_id,
-        receipt_check={"txn_id": matched["txn_id"], "payload": job["payload"]},
+        bill_receipt_check={"txn_id": matched["txn_id"], "payload": job["payload"]},
         **kwargs,
     )
-    from .receipt_evidence import resolve
+    from .bill_receipt_evidence import resolve
 
     latest, latest_actor, latest_policy, store = bridge._context(token, company, "recover")
     latest.authorize(latest_actor, company, "read")
@@ -376,9 +466,7 @@ def reconcile(bridge, token, company, job_id, *, exchange=windows_exchange, read
             != record["context_hash"]
         ):
             raise BridgeError("native dispatch context changed during reconciliation")
-        add_response = (
-            store.path.parent / ("native-invoice-" + record["attempt"]) / "add.response.xml"
-        )
+        add_response = store.path.parent / ("native-bill-" + record["attempt"]) / "add.response.xml"
         dispatched = None
         if add_response.exists():
             correlation = fromstring(record["request"])[0][0].get("requestID")
@@ -387,7 +475,7 @@ def reconcile(bridge, token, company, job_id, *, exchange=windows_exchange, read
                 latest_policy,
                 current["payload"],
                 correlation,
-                operation="InvoiceAdd",
+                operation="BillAdd",
                 txn_id=matched["txn_id"],
             )
             dispatched = True
@@ -397,8 +485,8 @@ def reconcile(bridge, token, company, job_id, *, exchange=windows_exchange, read
             dispatched = False
         proof.update(origin="native-attempt-readback", bridge_dispatched=dispatched)
         db.execute(
-            "UPDATE jobs SET state='verified',txn_id=?,detail='native_invoice_verified' WHERE id=?",
+            "UPDATE jobs SET state='verified',txn_id=?,detail='native_bill_verified' WHERE id=?",
             (matched["txn_id"], job_id),
         )
-        store.event(db, bridge.clock(), actor, job_id, "native_invoice_verified", proof)
+        store.event(db, bridge.clock(), actor, job_id, "native_bill_verified", proof)
         return store.job(db, job_id)

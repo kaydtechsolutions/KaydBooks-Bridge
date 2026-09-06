@@ -6,7 +6,7 @@ import json
 import os
 import re
 import secrets
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 
@@ -48,6 +48,8 @@ class Company:
     invoice_masters: dict = field(default_factory=dict)
     invoice_evidence_max_age_seconds: int = 900
     sample_posting: dict = field(default_factory=dict)
+    bill_masters: dict = field(default_factory=dict)
+    sample_bill_posting: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -58,6 +60,16 @@ class Connector:
     company_file_env: str | None
     identity_fields: tuple[str, ...]
     identity_sha256: str
+
+
+def company_policy_context(policy):
+    """Keep legacy policy hashes stable when newly added bill policy is absent."""
+    value = asdict(policy)
+    if not value.get("bill_masters"):
+        value.pop("bill_masters", None)
+    if not value.get("sample_bill_posting"):
+        value.pop("sample_bill_posting", None)
+    return value
 
 
 @dataclass(frozen=True)
@@ -105,6 +117,8 @@ class Config:
                     "invoice_masters",
                     "invoice_evidence_max_age_seconds",
                     "sample_posting",
+                    "bill_masters",
+                    "sample_bill_posting",
                 },
             )
             identifier(raw["simulation_identity"])
@@ -131,6 +145,9 @@ class Config:
             raw["invoice_masters"] = validate_masters(
                 raw.get("invoice_masters", {}), raw["customers"], raw["items"]
             )
+            from .bills import validate_masters as validate_bill_masters
+
+            raw["bill_masters"] = validate_bill_masters(raw.get("bill_masters", {}))
             age = raw.get("invoice_evidence_max_age_seconds", 900)
             if type(age) is not int or not 60 <= age <= 86400:
                 raise BridgeError("invoice evidence age must be 60-86400 seconds")
@@ -153,6 +170,25 @@ class Config:
                     or type(gate["expires_at"]) not in (int, float)
                 ):
                     raise BridgeError("invalid controlled sample posting gate")
+            bill_gate = companies[name].sample_bill_posting
+            if not isinstance(bill_gate, dict):
+                raise BridgeError("sample bill posting gate must be an object")
+            if bill_gate:
+                strict_keys(
+                    bill_gate,
+                    {"connector", "authorization", "ref_prefix", "max_bills", "expires_at"},
+                )
+                identifier(bill_gate["connector"])
+                if (
+                    not isinstance(bill_gate["authorization"], str)
+                    or not 20 <= len(bill_gate["authorization"]) <= 1000
+                    or not isinstance(bill_gate["ref_prefix"], str)
+                    or not re.fullmatch(r"[A-Z0-9-]{3,8}", bill_gate["ref_prefix"])
+                    or type(bill_gate["max_bills"]) is not int
+                    or not 1 <= bill_gate["max_bills"] <= 10
+                    or type(bill_gate["expires_at"]) not in (int, float)
+                ):
+                    raise BridgeError("invalid controlled sample bill posting gate")
         principals = data["principals"]
         if not isinstance(principals, dict) or not principals:
             raise BridgeError("principals required")

@@ -71,6 +71,8 @@ qualification are separate evidence; a passing mock does not establish native su
 - [ ] **M3-03:** Supplier bills: vendor binding, expense/service/inventory lines,
   payable and expense/asset accounts, due dates, terms and reference checks. Verify
   saved lines, totals and liability effects; preserve an unknown outcome without retry.
+  Base-currency expense bill is now implemented and sample-qualified; item/inventory
+  lines, terms and the broader operation variants remain unchecked.
 - [ ] **M3-04:** Customer receipts: exact customer/invoice allocation, full and partial
   settlement, supported deposits/unapplied amounts, and independent balance read-back.
 - [ ] **M3-05:** Supplier payments: exact vendor/bill allocation, partial settlement,

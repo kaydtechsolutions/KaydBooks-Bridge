@@ -1,11 +1,10 @@
 """Local optional workflows; no message delivery or accounting dispatch."""
 
 import json
-from dataclasses import asdict
 from datetime import datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from .config import BridgeError, identifier
+from .config import BridgeError, company_policy_context, identifier
 from .service import audited
 from .validation import canonical, digest
 
@@ -125,7 +124,7 @@ def schedule(
             return dict(existing)
         db.execute(
             "INSERT INTO workflow_schedules VALUES (?,?,?,?,?,?,1)",
-            (schedule_id, actor, definition, digest(asdict(policy)), at, max_runs),
+            (schedule_id, actor, definition, digest(company_policy_context(policy)), at, max_runs),
         )
         store.event(
             db,
@@ -173,7 +172,7 @@ def tick(bridge, token, company):
             try:
                 config.authorize(row["owner"], company, "manage-workflows")
                 config.authorize(row["owner"], company, "read")
-                if row["policy_hash"] != digest(asdict(policy)) or any(
+                if row["policy_hash"] != digest(company_policy_context(policy)) or any(
                     store.job(db, job)["state"] != "verified" for job in definition["dependencies"]
                 ):
                     raise BridgeError("schedule context or dependencies held")

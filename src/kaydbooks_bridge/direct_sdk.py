@@ -87,12 +87,38 @@ def discover(
     master_preview: bool = False,
     commercial_preview: bool = False,
     receipt_check: dict | None = None,
+    bill_preview: bool = False,
+    bill_check: dict | None = None,
+    expense_accounts: bool = False,
+    bill_receipt_check: dict | None = None,
 ) -> dict:
     """Run/resume fixed US qbXML 17 discovery under company permissions and audit.
 
     Unknown reads are held unless recover_read is explicit. This API cannot write.
     Real SDK results are recorded separately from QBWC callback sessions.
     """
+    if type(bill_preview) is not bool:
+        raise BridgeError("invalid bill preview mode")
+    if bill_receipt_check is not None:
+        if receipt_check is not None:
+            raise BridgeError("select one receipt operation")
+        receipt_check = bill_receipt_check
+    if type(expense_accounts) is not bool:
+        raise BridgeError("invalid expense preview mode")
+    if expense_accounts:
+        if accounts or list_id is not None:
+            raise BridgeError("expense preview cannot be combined with another lookup")
+        accounts = True
+    if (bill_preview or bill_check is not None) and (
+        accounts
+        or list_id is not None
+        or invoice_check is not None
+        or master_preview
+        or commercial_preview
+        or receipt_check is not None
+        or (bill_preview and bill_check is not None)
+    ):
+        raise BridgeError("bill preview cannot be combined with another lookup")
     if not re.fullmatch(r"[1-9][0-9]{0,15}", run_id):
         raise BridgeError("SDK run id must be 1-16 decimal digits")
     config = service.config
@@ -119,7 +145,9 @@ def discover(
         else ("active-account-preview" if accounts else "discovery")
     )
     if lookup:
-        request = append_query(request, run_id, list_id=list_id)
+        request = append_query(request, run_id, list_id=list_id, expense_only=expense_accounts)
+        if expense_accounts:
+            operation = "active-expense-account-preview"
     if commercial_preview and master_preview:
         raise BridgeError("select one preview mode")
     if commercial_preview:
@@ -134,9 +162,27 @@ def discover(
     check = None
     context_hash = None
     receipt_policy = None
+    bill_plan = None
+    if bill_check is not None:
+        from .bill_lookup import append_check
+        from .bill_lookup import plan as bill_master_plan
+
+        company = config.authorize(actor, connector.company, "validate")
+        bill_plan = bill_master_plan(company, bill_check)
+        context_hash = bill_plan["context_sha256"]
+        request = append_check(request, run_id, bill_plan)
+        operation = "bill-master-check"
+    if bill_preview:
+        from .bill_lookup import append_preview
+
+        request = append_preview(request, run_id)
+        operation = "bill-master-preview"
     if receipt_check is not None:
         from .config import strict_keys
         from .invoice_receipt import append_lookup, lookup_context
+
+        if bill_receipt_check is not None:
+            from .bill_receipt import append_lookup, lookup_context
 
         if lookup or master_preview or invoice_check is not None:
             raise BridgeError("receipt lookup cannot be combined with another mode")
@@ -147,6 +193,8 @@ def discover(
         )
         request = append_lookup(request, run_id, receipt_check["txn_id"])
         operation = "invoice-receipt-check"
+        if bill_receipt_check is not None:
+            operation = "bill-receipt-check"
     if invoice_check is not None:
         if lookup:
             raise BridgeError("select account lookup or invoice compatibility, not both")
@@ -227,8 +275,19 @@ def discover(
             account_records = None
             master_records = None
             receipt = None
+            if bill_plan is not None:
+                from .bill_lookup import validate_check
+
+                discovery_response = validate_check(response, run_id, bill_plan)
+            if bill_preview:
+                from .bill_lookup import validate_preview
+
+                discovery_response, master_records = validate_preview(response, run_id)
             if receipt_policy is not None:
                 from .invoice_receipt import validate_lookup
+
+                if bill_receipt_check is not None:
+                    from .bill_receipt import validate_lookup
 
                 discovery_response, receipt = validate_lookup(
                     response,
@@ -240,7 +299,9 @@ def discover(
             if lookup:
                 from .account_lookup import validate_response
 
-                discovery_response, account_records = validate_response(response, run_id, list_id)
+                discovery_response, account_records = validate_response(
+                    response, run_id, list_id, expense_only=expense_accounts
+                )
             if master_preview:
                 from .invoice_compatibility import preview_response
 
@@ -290,6 +351,13 @@ def discover(
             )
         if receipt is not None:
             result.update(operation=operation, receipt=receipt, context_sha256=context_hash)
+        if bill_plan is not None:
+            result.update(
+                operation=operation,
+                scope="master-evidence-only",
+                compatibility="matched",
+                context_sha256=context_hash,
+            )
         if check is not None:
             result.update(
                 operation=operation,
@@ -305,7 +373,7 @@ def discover(
                 if check["currency_id"] is None
                 else "verified-home-currency",
             )
-        if master_preview:
+        if master_preview or bill_preview:
             result.update(
                 operation=operation, masters=master_records, complete=False, limit_per_entity=20
             )
@@ -330,11 +398,25 @@ def main(argv=None):
     parser.add_argument("--recover-read", action="store_true")
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument("--accounts", action="store_true", help="preview at most 20 active accounts")
+    modes.add_argument(
+        "--expense-accounts", action="store_true", help="preview at most 20 active expense accounts"
+    )
+    modes.add_argument(
+        "--bill-preview", action="store_true", help="bounded vendor/account preview for bill setup"
+    )
     modes.add_argument("--list-id", help="read one exact active account by ListID")
+    modes.add_argument(
+        "--bill-check", type=Path, help="private expense bill payload JSON for master compatibility"
+    )
     modes.add_argument(
         "--receipt-check",
         type=Path,
         help="private {txn_id,payload} JSON for saved invoice verification",
+    )
+    modes.add_argument(
+        "--bill-receipt-check",
+        type=Path,
+        help="private {txn_id,payload} JSON for saved bill verification",
     )
     modes.add_argument(
         "--invoice-check", type=Path, help="private invoice payload JSON for master compatibility"
@@ -361,11 +443,19 @@ def main(argv=None):
             args.run_id,
             recover_read=args.recover_read,
             accounts=args.accounts,
+            expense_accounts=args.expense_accounts,
+            bill_preview=args.bill_preview,
+            bill_check=json.loads(args.bill_check.read_text(encoding="utf-8"))
+            if args.bill_check
+            else None,
             master_preview=args.master_preview,
             commercial_preview=args.commercial_preview,
             list_id=args.list_id,
             receipt_check=json.loads(args.receipt_check.read_text(encoding="utf-8"))
             if args.receipt_check
+            else None,
+            bill_receipt_check=json.loads(args.bill_receipt_check.read_text(encoding="utf-8"))
+            if args.bill_receipt_check
             else None,
             invoice_check=json.loads(args.invoice_check.read_text(encoding="utf-8"))
             if args.invoice_check

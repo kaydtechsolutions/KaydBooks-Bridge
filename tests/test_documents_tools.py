@@ -149,7 +149,10 @@ def test_real_mcp_stdio_transport_without_model_calls(setup):
             async with ClientSession(read, write) as session:
                 await session.initialize()
                 names = {tool.name for tool in (await session.list_tools()).tools}
-                assert len(names) == 13 and "status_v1" in names
+                assert (
+                    len(names) == 15
+                    and {"status_v1", "prepare_bill_v1", "lookup_bill_masters_v1"} <= names
+                )
                 assert not any(name.startswith(("post", "approve", "review")) for name in names)
                 result = await session.call_tool(
                     "status_v1", {"company": "company-a", "job_id": job["id"]}

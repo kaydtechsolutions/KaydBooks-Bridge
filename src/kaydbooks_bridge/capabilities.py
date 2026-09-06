@@ -53,6 +53,8 @@ def inventory() -> dict:
         "bridge": {
             "invoice.create": "simulation_tested",
             "controlled_sample_invoice": "explicit_private_gate_required",
+            "bill.create": "base_currency_expense_bill",
+            "controlled_sample_bill": "explicit_private_gate_required",
             "document_intake": "implemented",
             "hermes_mcp_tools": "optional_stdio_adapter",
             "local_workflows": "implemented_no_external_deliveries",
