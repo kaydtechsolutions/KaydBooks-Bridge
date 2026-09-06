@@ -202,6 +202,12 @@ The customer's tax code and, for taxable invoices, sales-tax item must match. Ea
 item must have the same explicit tax-code reference. Missing references are not inferred
 from names, defaults or absent preferences. Tax-inclusive pricing is rejected.
 
+Sales tax does not have to be enabled in QuickBooks for non-taxable qualification.
+Absent `SalesTaxPreferences` is accepted only for a policy with no tax item, zero rate,
+and exact verified non-taxable code references on the customer and every item. A taxable
+policy still requires tax preferences even when its rate is zero. Malformed preferences
+and missing master tax-code references remain failures.
+
 Commercial lines require `quantity` and `unit_price` as positive decimal strings with
 at most six fractional places. Existing `amount` must equal quantity times price rounded
 half-up to cents. Top-level `tax_amount` is required, including `"0.00"` for non-taxable
@@ -244,10 +250,27 @@ operator-controlled; the Bridge performs compatibility comparisons, not legal ta
 Qualification: 443 full-suite tests passed, including both transports, taxable/non-taxable
 service/inventory preparation, restart, account/type mismatches, stock commitments, repeated
 item lines, pricing, tax, totals, preferences, unsafe native requests and empty previews.
-The real sample commercial preview passed. Positive real commercial qualification is held:
-the configured customer has a price level, the service has a UOM set and no tax-code reference,
-and the preview found no sales-tax items. None of these conditions was silently bypassed.
-A private review proposes four isolated sample test masters (tax vendor, tax item, service,
-customer) and an unposted local draft of 2 × 5.00 + synthetic 10% tax = 11.00. No setup writes
-have been executed. A separate QuickBooks write grant and explicit test-master authorization
-are required; Windows full access alone does not alter the current read-only SDK grant.
+The real sample commercial preview passed. Following explicit approval and the operator's
+choice to continue without tax, two isolated synthetic customer/service masters were created
+and independently read back using a separate setup application. Existing masters and company
+sales-tax settings were unchanged. Both real SDK and QBWC checks passed for a non-taxable
+10.00 local draft, followed by preparation, validation, duplicate prevention and evidence
+transport refresh retaining the same job. The audit chain verified. Raw evidence and setup
+receipts remain private. No tax agency/item, inventory stock or QuickBooks invoice was created.
+
+## Validated invoice review
+
+`kaydbooks-bridge --config PRIVATE_CONFIG --company COMPANY preview JOB_ID` returns JSON
+for an owned, validated invoice with linked commercial master evidence. The caller needs
+current `read` and `validate` permissions. The preview rechecks evidence age, ownership,
+company identity, payload and mappings using the same gate as preparation. It fails for
+draft/queued/terminal jobs, stale evidence, unresolved source fields or amount-only checks.
+
+The output includes exact mapped IDs, quantities, list prices, subtotal, tax, total, source
+digest, currency verification basis and evidence expiry. `preview_sha256` hashes all other
+returned fields using the Bridge's canonical JSON encoding. A fresh process produces the
+same preview while the evidence and policy remain valid. Store the output privately.
+
+Previewing appends an audit event containing the digest. It does not change job state,
+refresh evidence age, approve an invoice, construct a write request or call either transport.
+The result is an unposted review snapshot; it does not prove a saved QuickBooks transaction.

@@ -174,6 +174,31 @@ class Bridge:
         store.event(db, self.clock(), actor, job_id, "invoice_evidence_linked", evidence)
 
     @audited
+    def preview(self, token: str, company: str, job_id: str) -> dict:
+        """Review a validated owned invoice using current verified evidence; no dispatch."""
+        from .invoice_preview import build
+
+        config, actor, policy, store = self._context(token, company, "read")
+        config.authorize(actor, company, "validate")
+        with store.transaction() as db:
+            job = store.job(db, job_id)
+            if job["submitter"] != actor or job["state"] != "validated":
+                raise BridgeError("invoice preview requires an owned validated job")
+            if job["operation"] != "invoice.create":
+                raise BridgeError("only invoice previews are supported")
+            require_evidence(config, policy, store, db, job, self.clock())
+            result = build(policy, job)
+            store.event(
+                db,
+                self.clock(),
+                actor,
+                job_id,
+                "invoice_previewed",
+                {"preview_sha256": result["preview_sha256"]},
+            )
+            return result
+
+    @audited
     def action(self, token: str, company: str, job_id: str, action: str) -> dict:
         if action not in {"validate", "approve", "submit"}:
             raise BridgeError("unsupported action; job state cannot be set by a client")

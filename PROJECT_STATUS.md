@@ -2,6 +2,30 @@
 
 Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK and QBWC discovery, including QBWC post-restart update: PASS.
 
+## Latest qualification: non-taxable commercial invoice and review preview
+
+- Operator chose non-taxable qualification with the sample company's sales-tax setting
+  unchanged. The approved setup created only an isolated synthetic service and customer.
+  Exact company checks, collision queries, returned IDs and independent readback were
+  retained privately. No tax vendor/item, existing master, stock or invoice was changed.
+- The initial exact-name collision query returned 500/Warn for absence; the private
+  helper stopped before any creation. After inspecting the saved response, its exact
+  name absence check was corrected and the bounded setup completed. Product exact-ID
+  queries retain strict success requirements; no lookup gate was weakened.
+- Real direct SDK and QBWC commercial checks both passed for quantity 2 at price 5.00,
+  tax 0.00 and total 10.00. Local preparation/validation, duplicate prevention and changing
+  the evidence transport while retaining the same job passed with a valid audit chain.
+- Added authenticated owner-only `preview` for validated commercial invoice jobs. It
+  rechecks current permissions, policy, company binding and fresh evidence, returns a
+  deterministic review digest and evidence expiry, and records an audit event without
+  dispatching a request, approving an invoice or changing its state.
+- Validation: 456 tests passed, including native allowlist and both transport paths;
+  lint and formatting passed. The actual non-taxable review was generated from the
+  verified QBWC evidence. Source and wheel builds use the project's `uv build` workflow.
+- Taxable and positive real inventory qualification remain deferred, not prerequisites
+  for non-taxable Bridge development. Any real invoice posting needs separately approved
+  sample-transaction qualification; posting remains disabled and no release/merge occurs.
+
 ## Latest implementation: bounded inventory, tax and pricing compatibility
 
 - Added optional commercial policy and explicit quantity/unit-price/tax fields. Both
@@ -15,13 +39,9 @@ Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK and QBWC discovery,
   response schemas were checked against official Intuit OSR. All accounting writes disabled.
 - Validation: 443 tests pass; lint, format and builds pass. Both transports have synthetic
   taxable/non-taxable service/inventory preparation coverage; real commercial preview passed.
-- BLOCKER: Positive real commercial qualification needs compatible sample masters. Existing
-  customer has a price level; service has UOM and no tax reference; no sales-tax items were
-  returned. A private review proposes four isolated test masters and an unposted 11.00 local
-  invoice draft. Creating them needs explicit QuickBooks test-write authorization and a
-  separate SDK read/write grant. No master records or company settings have been changed.
-- NEXT after authorization: collision-check, create/read-back the reviewed synthetic sample
-  masters with durable receipts, then qualify commercial checks. Inventory positive real
+- The original positive real commercial test needed compatible sample masters. The operator
+  subsequently authorized isolated setup and chose non-taxable qualification; see the latest
+  result above. Sales tax activation is not required for this path. Taxable/inventory real
   qualification remains separate. No production posting, merge or release.
 
 ## Latest implementation: fresh master evidence required for mapped invoices

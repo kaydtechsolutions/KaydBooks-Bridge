@@ -25,6 +25,7 @@ def main(argv=None) -> int:
     for action in ("validate", "approve", "submit", "reconcile"):
         commands.add_parser(action).add_argument("job_id")
     commands.add_parser("status").add_argument("job_id", nargs="?")
+    commands.add_parser("preview").add_argument("job_id")
     for action in ("simulate", "recover", "pause", "resume", "audit"):
         commands.add_parser(action)
     args = parser.parse_args(argv)
@@ -55,6 +56,8 @@ def main(argv=None) -> int:
                 result = bridge.reconcile(token, args.company, args.job_id)
             elif args.command == "status":
                 result = bridge.status(token, args.company, args.job_id)
+            elif args.command == "preview":
+                result = bridge.preview(token, args.company, args.job_id)
             elif args.command in {"pause", "resume"}:
                 result = bridge.pause(token, args.company, args.command == "pause")
             else:

@@ -120,6 +120,11 @@ def response(request, *, inventory=False, taxable=True, mutate=None):
         },
         ("ItemSalesTax", "tax-item"): {"ListID": "tax-item", "IsActive": "true", "TaxRate": "10"},
     }
+    if not taxable:
+        # QuickBooks omits SalesTaxPreferences when the company does not charge tax.
+        # A non-taxable code must still be independently verified on both masters.
+        prefs.pop("SalesTaxPreferences")
+        rows[("Customer", "customer-id")].pop("ItemSalesTaxRef")
     if mutate:
         mutate(rows)
     root = ET.Element("QBXML")
@@ -223,6 +228,12 @@ def test_full_transport_preparation_and_restart(
     )
     job = Bridge(path).prepare(token, "company-a", envelope)
     assert Bridge(path).action(token, "company-a", job["id"], "validate")["state"] == "validated"
+    preview = Bridge(path).preview(token, "company-a", job["id"])
+    assert preview["total"] == ("11.00" if taxable else "10.00")
+    assert preview["tax_amount"] == ("1.00" if taxable else "0.00")
+    assert preview["live_posting"] is False
+    assert preview["scope"] == "unposted-invoice-preview"
+    assert preview == Bridge(path).preview(token, "company-a", job["id"])
 
 
 @pytest.mark.parametrize(
@@ -337,6 +348,53 @@ def test_commercial_payload_fails_before_dispatch(commercial, case):
         path.write_text(json.dumps(raw))
     with pytest.raises(BridgeError):
         plan(Config.load(path).companies["company-a"], payload)
+
+
+@pytest.mark.parametrize("case", ["customer-code", "item-code", "taxable-code", "malformed-prefs"])
+def test_disabled_sales_tax_does_not_bypass_master_evidence(commercial, case):
+    path, _, payload = commercial
+    raw = json.loads(path.read_text())
+    raw["companies"]["company-a"]["invoice_masters"]["commercial"].update(
+        tax_item_id=None, tax_rate="0"
+    )
+    path.write_text(json.dumps(raw))
+    payload["tax_amount"] = "0.00"
+    check = plan(Config.load(path).companies["company-a"], payload)
+    svc = DurableQBWCDiscoveryService.from_path(path)
+    request = append_queries(svc._discovery_request("961", "17.0"), "961", check)
+    assert "ItemSalesTaxQueryRq" not in request
+
+    def mutate(rows):
+        if case == "customer-code":
+            rows[("Customer", "customer-id")].pop("SalesTaxCodeRef")
+        elif case == "item-code":
+            rows[("ItemService", "service-id")].pop("SalesTaxCodeRef")
+        elif case == "taxable-code":
+            rows[("SalesTaxCode", "tax-code")]["IsTaxable"] = "true"
+        else:
+            rows[("Preferences", None)]["SalesTaxPreferences"] = "invalid"
+
+    with pytest.raises(BridgeError):
+        validate_response(response(request, taxable=False, mutate=mutate), "961", check)
+
+
+def test_zero_rated_taxable_policy_still_requires_sales_tax_preferences(commercial):
+    path, _, payload = commercial
+    raw = json.loads(path.read_text())
+    raw["companies"]["company-a"]["invoice_masters"]["commercial"]["tax_rate"] = "0"
+    path.write_text(json.dumps(raw))
+    payload["tax_amount"] = "0.00"
+    check = plan(Config.load(path).companies["company-a"], payload)
+    svc = DurableQBWCDiscoveryService.from_path(path)
+    request = append_queries(svc._discovery_request("962", "17.0"), "962", check)
+    assert "ItemSalesTaxQueryRq" in request
+
+    def mutate(rows):
+        rows[("Preferences", None)].pop("SalesTaxPreferences")
+        rows[("ItemSalesTax", "tax-item")]["TaxRate"] = "0"
+
+    with pytest.raises(BridgeError, match="tax preferences"):
+        validate_response(response(request, mutate=mutate), "962", check)
 
 
 @pytest.mark.parametrize("status", [1, 500])
