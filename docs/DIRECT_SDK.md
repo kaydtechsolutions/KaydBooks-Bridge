@@ -62,9 +62,23 @@ response mismatches terminate the run as blocked; investigate before using a new
 
 Actual sample-company discovery, persisted binding after service restart, duplicate
 execution from a new Python process without dispatch, and audit verification passed.
-Crash windows, missing-response recovery, permission denial, mismatch rejection and
-transport overlap are synthetic tests. A native process crash/power-loss qualification
-has not been performed. Original private CompanyRet evidence is never committed.
+Two controlled native process-termination windows also passed against the sample:
+
+- After response save, before session closure/publication: journal remained dispatched,
+  automatic replay was refused, and explicit authorized read recovery succeeded.
+  The audit recorded exactly two dispatches, with only the second marked recovery.
+- After closure/publication, before Python ingestion: recovery verified the saved
+  response without another SDK call. The audit recorded exactly one dispatch.
+
+Both original responses matched the operator-confirmed binding. A fresh Python
+process subsequently replayed both completed runs without dispatch and verified audit
+integrity. Private helper copies inserted only a marker and pause at each checkpoint;
+the harness terminated the exact helper PID. It did not terminate QuickBooks. Private
+evidence includes helper hashes, checkpoint/closure markers and original responses.
+
+Power loss, termination inside ProcessRequest, and parent-only death with a surviving
+helper remain unqualified. Permission denial, mismatch rejection and transport overlap
+remain synthetic tests. Original private CompanyRet evidence is never committed.
 
 QBWC read-only registration remains blocked by its AppLock metadata operation. Direct
 SDK success does not qualify QBWC, Hermes, production companies, transaction adapters,

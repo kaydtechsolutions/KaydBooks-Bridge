@@ -2,6 +2,31 @@
 
 Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK discovery: PASS; QBWC qualification: BLOCKED.
 
+## Latest qualification: native helper interruption/recovery
+
+- Actual sample-company fault injection passed at two native-helper checkpoints.
+  Private copies of the packaged helper added only a checkpoint marker and pause;
+  the qualification harness terminated the exact child PID. QuickBooks itself was
+  not terminated. Source/instrumented hashes, PIDs, XML and results remain private.
+- After a real response was saved but before session closure/publication, termination
+  left the durable run dispatched with no published response. A fresh service refused
+  automatic replay. Explicit authorized read recovery issued one new fixed read,
+  verified the operator-confirmed binding and completed successfully.
+- After closure and atomic response publication, termination likewise left the
+  parent journal dispatched. Recovery consumed the saved real response with no SDK
+  call. Both original captured payloads passed the shared company-binding verifier.
+- A subsequent independent Python process verified both completed runs without
+  dispatch. Audit chains passed; dispatch counts were exactly two for explicit
+  recovery and one for saved-response recovery. No accounting writes were enabled.
+- Focused synthetic regression: **26 passed** (SDK and QBWC discovery). Previous
+  full-suite evidence remains 251 passed; application source was unchanged here.
+- Limits: controlled native process termination is now real-tested at these two
+  boundaries. Power loss, termination inside ProcessRequest, parent-only death with
+  a surviving helper, and production-company operation remain unqualified. QBWC's
+  AppLock registration blocker remains unchanged. No QWC import/removal is required.
+- Next: qualify parent-only interruption/overlap, then extend narrowly supported
+  read-only adapters. No missing user access was needed for this qualification.
+
 ## Latest milestone: durable direct SDK discovery
 
 - Integrated fixed read-only HostQuery/CompanyQuery with shared private configuration,
