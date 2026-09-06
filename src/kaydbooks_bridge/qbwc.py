@@ -123,6 +123,11 @@ class DurableQBWCDiscoveryService:
         store = self._stores[connector.company]
         with store.transaction() as db:
             self._expire_active(db, store, now)
+            if db.execute(
+                "SELECT 1 FROM sdk_discovery WHERE state IN ('prepared','dispatched')"
+            ).fetchone():
+                store.event(db, now, f"qbwc:{connector.id}", None, "qbwc_sdk_overlap_blocked", {})
+                return ["", BUSY]
             active = db.execute(
                 f"SELECT * FROM qbwc_sessions WHERE state IN ({','.join('?' * len(ACTIVE_STATES))})",
                 ACTIVE_STATES,

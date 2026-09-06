@@ -61,6 +61,23 @@ class Store:
                 "INSERT OR IGNORE INTO metadata VALUES (?, ?)",
                 [("schema_version", "1"), ("company", company)],
             )
+            db.execute("""CREATE TABLE IF NOT EXISTS sdk_discovery (
+                id TEXT PRIMARY KEY, connector TEXT NOT NULL, actor TEXT NOT NULL,
+                request TEXT NOT NULL, state TEXT NOT NULL
+                CHECK(state IN ('prepared','dispatched','verified','blocked')),
+                response TEXT, error TEXT NOT NULL DEFAULT '')""")
+            db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS one_active_sdk_discovery
+                ON sdk_discovery((1)) WHERE state IN ('prepared','dispatched')""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS sdk_identity_immutable
+                BEFORE UPDATE ON sdk_discovery WHEN
+                NEW.id IS NOT OLD.id OR NEW.connector IS NOT OLD.connector OR
+                NEW.actor IS NOT OLD.actor OR NEW.request IS NOT OLD.request OR
+                (OLD.response IS NOT NULL AND NEW.response IS NOT OLD.response) OR
+                (OLD.state IN ('verified','blocked') AND NEW.state IS NOT OLD.state)
+                BEGIN SELECT RAISE(ABORT,'immutable SDK evidence'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS sdk_no_delete
+                BEFORE DELETE ON sdk_discovery
+                BEGIN SELECT RAISE(ABORT,'immutable SDK evidence'); END""")
             db.execute(f"""CREATE TABLE IF NOT EXISTS qbwc_sessions (
                 ticket TEXT PRIMARY KEY, connector TEXT NOT NULL,
                 state TEXT NOT NULL CHECK (state IN {QBWC_STATES}),

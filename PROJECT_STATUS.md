@@ -2,6 +2,32 @@
 
 Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK discovery: PASS; QBWC qualification: BLOCKED.
 
+## Latest milestone: durable direct SDK discovery
+
+- Integrated fixed read-only HostQuery/CompanyQuery with shared private configuration,
+  actor/connector authentication, company read/recover permissions, SQLite durability,
+  immutable evidence, binding validation and chained audit. Added an operational CLI
+  and [direct SDK runbook](docs/DIRECT_SDK.md). No transaction dispatch was enabled.
+- Requests persist before dispatch; responses persist before verification. Repeated
+  run IDs recover saved responses without SDK calls; missing responses require explicit
+  authorized read recovery. Per-company active sessions exclude QBWC and direct SDK
+  overlap. A native mutex serializes helpers across parent-process exits.
+- Real synthetic-company integration: two successful integrated SDK discovery runs,
+  including one after staged HTTPS service restart. Each matched the previously
+  operator-confirmed private binding. New-process replay used persisted evidence
+  without dispatch; the audit chain verified. HTTPS health reports posting disabled.
+  Exact responses, permissions, closure evidence and qualification summary are private.
+- Local verification: **251 tests passed**, including **8 new synthetic direct SDK
+  tests** for response recovery, duplicate execution, held missing responses, binding
+  mismatch, overlap, permissions, immutable evidence and audit integrity. Ruff lint
+  and format passed; wheel/source build passed. One inherited deprecation warning remains.
+- Real SDK process-crash/power-loss recovery and actual mismatched-company sessions
+  are not qualified. Those failure paths are synthetic tests, not real QBWC results.
+  QBWC registration/callback qualification remains blocked by AppLock metadata behavior.
+- Next: qualify native helper interruption/recovery on the sample company, then extend
+  explicitly supported read-only adapters. Hermes and production transaction support
+  remain unqualified. Earlier chronological entries below describe prior milestones.
+
 ## Scope and branch
 
 - Started from `main` at `4f86e44f890c88ee89f53daf0ec2b8c0f59730ff`.

@@ -1,0 +1,234 @@
+"""Authenticated, durable read-only SDK discovery; never accepts transaction XML."""
+
+from __future__ import annotations
+
+import os
+import re
+import subprocess
+import time
+from contextlib import contextmanager
+from pathlib import Path
+
+from .config import BridgeError
+from .qbwc import ACTIVE_STATES, UNCONFIRMED_IDENTITY, DurableQBWCDiscoveryService
+
+
+@contextmanager
+def company_lock(path):
+    """OS releases the lock on process death; no stale lock deletion is necessary."""
+    if path.is_symlink():
+        raise BridgeError("SDK lock must not be a symlink")
+    with path.open("a+b") as file:
+        if os.fstat(file.fileno()).st_size == 0:
+            file.write(b"0")
+            file.flush()
+        file.seek(0)
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                msvcrt.locking(file.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            raise BridgeError("direct SDK company session is busy") from exc
+        try:
+            yield
+        finally:
+            file.seek(0)
+            if os.name == "nt":
+                msvcrt.locking(file.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(file.fileno(), fcntl.LOCK_UN)
+
+
+def windows_exchange(request: str, destination: Path):
+    """Private file IPC; credentials and company XML never appear in command arguments."""
+    if os.name != "nt":
+        raise BridgeError("direct SDK requires Windows")
+    request_file = destination.with_suffix(".request.xml")
+    if request_file.is_symlink():
+        raise BridgeError("SDK request must not be a symlink")
+    request_file.write_text(request, encoding="utf-8")
+    env = os.environ.copy()
+    env["KAYDBOOKS_SDK_REQUEST"] = str(request_file)
+    env["KAYDBOOKS_SDK_RESPONSE"] = str(destination)
+    result = subprocess.run(
+        [
+            str(Path(os.environ["SYSTEMROOT"]) / "System32/WindowsPowerShell/v1.0/powershell.exe"),
+            "-NoProfile",
+            "-File",
+            str(Path(__file__).with_name("direct_sdk.ps1")),
+        ],
+        env=env,
+        capture_output=True,
+        creationflags=subprocess.CREATE_NO_WINDOW,
+    )
+    if result.returncode:
+        raise BridgeError(
+            "SDK exchange failed; private evidence retained; explicit recovery required"
+        )
+
+
+def discover(
+    service: DurableQBWCDiscoveryService,
+    token: str,
+    connector_id: str,
+    password: str,
+    run_id: str,
+    *,
+    exchange=windows_exchange,
+    recover_read: bool = False,
+) -> dict:
+    """Run/resume fixed US qbXML 17 discovery under company permissions and audit.
+
+    Unknown reads are held unless recover_read is explicit. This API cannot write.
+    Real SDK results are recorded separately from QBWC callback sessions.
+    """
+    if not re.fullmatch(r"[1-9][0-9]{0,15}", run_id):
+        raise BridgeError("SDK run id must be 1-16 decimal digits")
+    config = service.config
+    actor = config.authenticate(token)
+    connector = config.authenticate_connector(connector_id, password)
+    config.authorize(actor, connector.company, "read")
+    if recover_read:
+        config.authorize(actor, connector.company, "recover")
+    if connector.identity_sha256 == UNCONFIRMED_IDENTITY:
+        raise BridgeError("company binding is not operator-confirmed")
+    store = service._stores[connector.company]
+    request = service._discovery_request(run_id, "17.0")
+    with company_lock(store.path.with_suffix(".sdk.lock")):
+        with store.transaction() as db:
+            service._expire_active(db, store, time.time())
+            if db.execute(
+                f"SELECT 1 FROM qbwc_sessions WHERE state IN ({','.join('?' for _ in ACTIVE_STATES)})",
+                ACTIVE_STATES,
+            ).fetchone():
+                raise BridgeError("QBWC company session is active")
+            row = db.execute("SELECT * FROM sdk_discovery WHERE id=?", (run_id,)).fetchone()
+            if row is None:
+                if db.execute(
+                    "SELECT 1 FROM sdk_discovery WHERE state IN ('prepared','dispatched')"
+                ).fetchone():
+                    raise BridgeError("resume the existing SDK discovery first")
+                db.execute(
+                    "INSERT INTO sdk_discovery(id,connector,actor,request,state) VALUES(?,?,?,?,'prepared')",
+                    (run_id, connector_id, actor, request),
+                )
+                store.event(
+                    db,
+                    time.time(),
+                    actor,
+                    None,
+                    "sdk_discovery_prepared",
+                    {"run": run_id, "connector": connector_id, "transport": "direct-sdk"},
+                )
+                row = db.execute("SELECT * FROM sdk_discovery WHERE id=?", (run_id,)).fetchone()
+            if (
+                row["connector"] != connector_id
+                or row["actor"] != actor
+                or row["request"] != request
+            ):
+                raise BridgeError("SDK run ownership mismatch")
+            if row["state"] == "blocked":
+                raise BridgeError("SDK discovery is blocked")
+        destination = store.path.parent / f"sdk-{run_id}.response.xml"
+        if destination.is_symlink():
+            raise BridgeError("SDK evidence must not be a symlink")
+        response = row["response"]
+        if response is None and destination.exists():
+            response = destination.read_text(encoding="utf-8-sig")
+        if response is None:
+            if row["state"] == "dispatched" and not recover_read:
+                raise BridgeError("read outcome missing; explicit read recovery required")
+            with store.transaction() as db:
+                db.execute("UPDATE sdk_discovery SET state='dispatched' WHERE id=?", (run_id,))
+                store.event(
+                    db,
+                    time.time(),
+                    actor,
+                    None,
+                    "sdk_read_dispatch",
+                    {"run": run_id, "explicit_recovery": recover_read},
+                )
+            exchange(request, destination)
+            response = destination.read_text(encoding="utf-8-sig")
+        with store.transaction() as db:
+            db.execute("UPDATE sdk_discovery SET response=? WHERE id=?", (response, run_id))
+        try:
+            identity, host = service._verify_discovery_response(
+                response,
+                {"correlation": run_id, "country": "US", "qbxml_version": "17.0"},
+                connector,
+            )
+        except Exception:
+            with store.transaction() as db:
+                if row["state"] != "verified":
+                    db.execute(
+                        "UPDATE sdk_discovery SET state='blocked',error='binding or response validation failed' WHERE id=?",
+                        (run_id,),
+                    )
+                store.event(db, time.time(), actor, None, "sdk_discovery_rejected", {"run": run_id})
+            raise BridgeError("SDK binding or response validation failed") from None
+        with store.transaction() as db:
+            db.execute("UPDATE sdk_discovery SET state='verified' WHERE id=?", (run_id,))
+            store.event(
+                db,
+                time.time(),
+                actor,
+                None,
+                "sdk_discovery_verified",
+                {"run": run_id, "identity_hash": identity, "transport": "direct-sdk"},
+            )
+        return {
+            "run": run_id,
+            "state": "verified",
+            "transport": "direct-sdk",
+            "live_posting": False,
+        }
+
+
+def main(argv=None):
+    import argparse
+    import json
+    import sys
+
+    from .deployment import load_secret_file
+
+    parser = argparse.ArgumentParser(description="Durable read-only direct SDK discovery")
+    parser.add_argument("--config", required=True)
+    parser.add_argument(
+        "--credentials", required=True, help="private secret file, never a password"
+    )
+    parser.add_argument("--principal", required=True)
+    parser.add_argument("--connector", required=True)
+    parser.add_argument("--run-id", required=True)
+    parser.add_argument("--recover-read", action="store_true")
+    args = parser.parse_args(argv)
+    try:
+        load_secret_file(args.credentials)
+        service = DurableQBWCDiscoveryService.from_path(args.config)
+        principal = service.config.principals[args.principal]
+        connector = service.config.connectors[args.connector]
+        result = discover(
+            service,
+            os.environ.get(principal["token_env"], ""),
+            args.connector,
+            os.environ.get(connector.password_env, ""),
+            args.run_id,
+            recover_read=args.recover_read,
+        )
+        print(json.dumps(result))
+        return 0
+    except BridgeError as exc:
+        print(json.dumps({"error": str(exc)}), file=sys.stderr)
+        return 2
+    except (OSError, ValueError, KeyError):
+        print(json.dumps({"error": "invalid or inaccessible private input"}), file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
