@@ -1,7 +1,7 @@
 # Sample deployment qualification and production gate
 
 The implemented pilot is limited to the confirmed sample company: non-tax service,
-simple inventory/mixed invoices, expense/service/inventory bills, customer receipts,
+simple inventory/mixed invoices, expense/service/inventory bills, customer/supplier payments,
 fixed SDK/QBWC read paths and the local tools/workflows described in this repo.
 Production posting and release publishing remain disabled.
 
@@ -40,10 +40,13 @@ the signing key can rewrite evidence; HMAC is not a third-party immutable checkp
 
 ## Latest staging evidence
 
-- 742 local tests pass. Three customer receipts total USD20: USD15 applied to the mixed
+- The latest complete run passed 771 tests; the additional ambiguous-payable regression
+  and updated 19-tool checks also pass. Three customer receipts total USD20: USD15 applied to the mixed
   invoice and USD5 unapplied. Independent Customer Balance Summary matches USD25.
-- The latest installed-package signed restore recovers 14 jobs with valid integrity,
+- The latest installed-package signed restore recovers 16 jobs with valid integrity,
   foreign keys and audit. It stays paused and launches no service.
+- Two USD5 supplier payments settled one USD10 bill. Vendor Balance Summary and complete
+  payable evidence agree on USD30 remaining across three bills.
 - The following earlier drills remain historical evidence; their counts predate later work.
 
 ## Earlier verified staging evidence

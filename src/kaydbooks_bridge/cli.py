@@ -31,6 +31,8 @@ def main(argv=None) -> int:
         "reconcile-sample",
         "post-sample-bill",
         "reconcile-sample-bill",
+        "post-sample-supplier-payment",
+        "reconcile-sample-supplier-payment",
         "post-sample-payment",
         "reconcile-sample-payment",
     ):
@@ -79,6 +81,8 @@ def main(argv=None) -> int:
                 "reconcile-sample",
                 "post-sample-bill",
                 "reconcile-sample-bill",
+                "post-sample-supplier-payment",
+                "reconcile-sample-supplier-payment",
                 "post-sample-payment",
                 "reconcile-sample-payment",
             ):
@@ -86,7 +90,9 @@ def main(argv=None) -> int:
 
                 if args.command.endswith("-bill"):
                     from .sample_bill_posting import post, reconcile
-                if args.command.endswith("-payment"):
+                if args.command.endswith("-supplier-payment"):
+                    from .sample_supplier_payment_posting import post, reconcile
+                elif args.command.endswith("-payment"):
                     from .sample_payment_posting import post, reconcile
 
                 result = (post if args.command.startswith("post-") else reconcile)(

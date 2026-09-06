@@ -21,6 +21,10 @@ SURFACES = frozenset(
 
 
 def validate_payload(operation, payload, policy):
+    if operation == "supplier-payment.create":
+        from .supplier_payments import validate_payload as validate_payment
+
+        return validate_payment(payload, policy)
     if operation == "customer-payment.create":
         from .customer_payments import validate_payload as validate_payment
 
@@ -35,6 +39,10 @@ def validate_payload(operation, payload, policy):
 
 
 def require_evidence(config, policy, store, db, job, now):
+    if job["operation"] == "supplier-payment.create":
+        from .supplier_payment_evidence import require
+
+        return require(config, policy, store, db, job, now)
     if job["operation"] == "customer-payment.create":
         from .payment_evidence import require
 
@@ -99,6 +107,7 @@ class Bridge:
             "invoice.create",
             "bill.create",
             "customer-payment.create",
+            "supplier-payment.create",
         ):
             raise BridgeError("operation unavailable")
         if envelope["surface"] not in SURFACES:
@@ -156,6 +165,8 @@ class Bridge:
                     from .bill_evidence import resolve as resolver
                 if envelope["operation"] == "customer-payment.create":
                     from .payment_evidence import resolve as resolver
+                if envelope["operation"] == "supplier-payment.create":
+                    from .supplier_payment_evidence import resolve as resolver
                 evidence = resolver(
                     config,
                     policy,
@@ -166,9 +177,10 @@ class Bridge:
                     envelope["master_evidence"],
                     self.clock(),
                 )
-            elif envelope["operation"] == "customer-payment.create" or (
-                policy.invoice_masters and bill_context is None
-            ):
+            elif envelope["operation"] in (
+                "customer-payment.create",
+                "supplier-payment.create",
+            ) or (policy.invoice_masters and bill_context is None):
                 raise BridgeError("verified invoice master evidence required")
             if matches:
                 job_id = matches[0]["id"]
@@ -241,8 +253,11 @@ class Bridge:
         bill = store.job(db, job_id)["operation"] == "bill.create"
         table = "bill_evidence_links" if bill else "invoice_evidence_links"
         payment = store.job(db, job_id)["operation"] == "customer-payment.create"
+        supplier_payment = store.job(db, job_id)["operation"] == "supplier-payment.create"
         if payment:
             table = "payment_evidence_links"
+        if supplier_payment:
+            table = "supplier_payment_evidence_links"
         db.execute(
             f"INSERT INTO {table}(job_id,evidence) VALUES (?,?)",
             (job_id, canonical(evidence)),
@@ -252,7 +267,9 @@ class Bridge:
             self.clock(),
             actor,
             job_id,
-            "payment_evidence_linked"
+            "supplier_payment_evidence_linked"
+            if supplier_payment
+            else "payment_evidence_linked"
             if payment
             else "bill_evidence_linked"
             if bill
@@ -334,7 +351,7 @@ class Bridge:
                 )
             if job["operation"] == "bill.create":
                 from .bill_receipt_evidence import resolve
-            if job["operation"] == "customer-payment.create":
+            if job["operation"] in ("customer-payment.create", "supplier-payment.create"):
                 raise BridgeError("use dedicated native payment reconciliation")
             evidence = resolve(
                 config, policy, store, db, actor, job["payload"], reference, self.clock()
@@ -385,12 +402,12 @@ class Bridge:
                     {"preview_sha256": result["preview_sha256"]},
                 )
                 return result
-            if job["operation"] == "customer-payment.create":
+            if job["operation"] in ("customer-payment.create", "supplier-payment.create"):
                 from .source_review import require as require_review
 
                 require_review(config, policy, store, db, job)
                 result = {
-                    "schema": "customer-payment-review-v1",
+                    "schema": job["operation"].removesuffix(".create") + "-review-v1",
                     "job": job_id,
                     "company": company,
                     "payload": job["payload"],
@@ -512,7 +529,7 @@ class Bridge:
             if row is None:
                 return None
             job = store.job(db, row["id"])
-            if job["operation"] == "customer-payment.create":
+            if job["operation"] in ("customer-payment.create", "supplier-payment.create"):
                 raise BridgeError("payment requires dedicated native dispatch or reconciliation")
             if db.execute(
                 "SELECT 1 FROM native_invoice_attempts WHERE job_id=? UNION ALL SELECT 1 FROM native_bill_attempts WHERE job_id=?",
@@ -656,7 +673,7 @@ class Bridge:
         # read intents and fenced callbacks, not a database transaction over the network.
         with store.transaction() as db:
             job = store.job(db, job_id)
-            if job["operation"] == "customer-payment.create":
+            if job["operation"] in ("customer-payment.create", "supplier-payment.create"):
                 raise BridgeError("payment requires dedicated native dispatch or reconciliation")
             if job["state"] not in {"unknown", "posted-unverified"}:
                 raise BridgeError("only uncertain outcomes can be reconciled")

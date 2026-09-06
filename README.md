@@ -34,6 +34,8 @@ invoice path is only part of that release.
 Non-tax service/inventory/mixed invoices and expense/service/inventory bills have native
 sample evidence. [Customer receipts](docs/CUSTOMER_PAYMENTS.md) support explicit partial,
 full and unapplied amounts with independent read-back and reconciliation without resend.
+[Supplier payments](docs/SUPPLIER_PAYMENTS.md) support explicit partial/full bill settlement
+with independent payable checks and a separate bounded sample gate.
 
 SDK/QBWC company binding and master/receipt reads have real sample-company evidence.
 The optional [Hermes MCP adapter](docs/HERMES_TOOLS.md) adds source capture, preparation

@@ -73,15 +73,16 @@ public static class PrivateReadOnlyDiscovery {
    var root=doc.DocumentElement;
    if(root.Name!="QBXML" || root.ChildNodes.Count!=1) throw new InvalidOperationException("Invalid discovery envelope");
    var batch=root.FirstChild;
+   bool supplierPaymentCheck=batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=28 && batch.ChildNodes[3].Name=="VendorQueryRq" && batch.ChildNodes[6].Name=="BillQueryRq";
    bool paymentCheck=batch.ChildNodes.Count>=7 && batch.ChildNodes.Count<=28 && batch.ChildNodes[6].Name=="PaymentMethodQueryRq";
-   bool billReceipt=batch.ChildNodes.Count>=4 && batch.ChildNodes.Count<=104 && batch.ChildNodes[2].Name=="BillQueryRq" && batch.ChildNodes[3].Name=="BillToPayQueryRq";
-   bool invoiceReceipt=batch.ChildNodes.Count>=3 && batch.ChildNodes.Count<=23 && batch.ChildNodes[2].Name=="InvoiceQueryRq";
+   bool billReceipt=!supplierPaymentCheck && batch.ChildNodes.Count>=4 && batch.ChildNodes.Count<=104 && batch.ChildNodes[2].Name=="BillQueryRq" && batch.ChildNodes[3].Name=="BillToPayQueryRq";
+   bool invoiceReceipt=!supplierPaymentCheck && batch.ChildNodes.Count>=3 && batch.ChildNodes.Count<=23 && batch.ChildNodes[2].Name=="InvoiceQueryRq";
    bool billPreview=batch.ChildNodes.Count==5 && batch.ChildNodes[2].Name=="PreferencesQueryRq" && batch.ChildNodes[3].Name=="VendorQueryRq";
-   bool billCheck=batch.ChildNodes.Count>=6 && batch.ChildNodes.Count<=406 && batch.ChildNodes[2].Name=="PreferencesQueryRq" && batch.ChildNodes[3].Name=="VendorQueryRq";
-   bool commercial=batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=88 && batch.ChildNodes[2].Name=="PreferencesQueryRq" && batch.ChildNodes[2].InnerXml.Contains("<IncludeRetElement>SalesTaxPreferences</IncludeRetElement>");
+   bool billCheck=!supplierPaymentCheck && batch.ChildNodes.Count>=6 && batch.ChildNodes.Count<=406 && batch.ChildNodes[2].Name=="PreferencesQueryRq" && batch.ChildNodes[3].Name=="VendorQueryRq";
+   bool commercial=!supplierPaymentCheck && batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=88 && batch.ChildNodes[2].Name=="PreferencesQueryRq" && batch.ChildNodes[2].InnerXml.Contains("<IncludeRetElement>SalesTaxPreferences</IncludeRetElement>");
    bool single=!commercial && batch.ChildNodes.Count>=7 && batch.ChildNodes.Count<=45 && batch.ChildNodes.Count%2==1 && batch.ChildNodes[3].Name=="AccountQueryRq";
-   bool invoice=!paymentCheck && !invoiceReceipt && !billReceipt && !commercial && !billCheck && (single || (batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=46 && batch.ChildNodes.Count%2==0));
-   if(batch.Name!="QBXMLMsgsRq" || (batch.ChildNodes.Count!=2 && batch.ChildNodes.Count!=3 && batch.ChildNodes.Count!=7 && !invoice && !commercial && !billPreview && !billCheck && !billReceipt && !invoiceReceipt && !paymentCheck)) throw new InvalidOperationException("Invalid discovery batch");
+   bool invoice=!supplierPaymentCheck && !paymentCheck && !invoiceReceipt && !billReceipt && !commercial && !billCheck && (single || (batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=46 && batch.ChildNodes.Count%2==0));
+   if(batch.Name!="QBXMLMsgsRq" || (batch.ChildNodes.Count!=2 && batch.ChildNodes.Count!=3 && batch.ChildNodes.Count!=7 && !invoice && !commercial && !billPreview && !billCheck && !billReceipt && !invoiceReceipt && !paymentCheck && !supplierPaymentCheck)) throw new InvalidOperationException("Invalid discovery batch");
    string[] names={"HostQueryRq","CompanyQueryRq"};
    for(int i=0;i<2;i++) {
     var node=batch.ChildNodes[i];
@@ -89,7 +90,31 @@ public static class PrivateReadOnlyDiscovery {
        !System.Text.RegularExpressions.Regex.IsMatch(node.Attributes["requestID"].Value,"^[0-9]+$"))
       throw new InvalidOperationException("Only fixed read-only discovery requests are permitted");
    }
-   if(paymentCheck) {
+   if(supplierPaymentCheck) {
+    FixedQuery(batch.ChildNodes[2],"Preferences","MultiCurrencyPreferences",false);
+    FixedQuery(batch.ChildNodes[3],"Vendor","ListID,Name,IsActive,CurrencyRef,Balance",true);
+    for(int i=4;i<6;i++)FixedQuery(batch.ChildNodes[i],"Account","ListID,FullName,IsActive,AccountType,CurrencyRef",true);
+    int end=batch.ChildNodes.Count;
+    if(batch.LastChild.Name=="BillPaymentCheckQueryRq") {
+     var q=batch.LastChild;var id=q.FirstChild;
+     if(q.Attributes.Count!=1||q.Attributes["requestID"]==null||id==null||id.Name!="TxnID"||!System.Text.RegularExpressions.Regex.IsMatch(id.InnerText,@"\A[A-Za-z0-9-]{1,31}\z"))throw new Exception("Exact supplier payment selector required");
+     string expected="<TxnID>"+id.InnerText+"</TxnID><IncludeLineItems>true</IncludeLineItems>";
+     foreach(string field in "TxnID,EditSequence,PayeeEntityRef,APAccountRef,TxnDate,RefNumber,Amount,AmountInHomeCurrency,IsToBePrinted,CurrencyRef,ExchangeRate,BankAccountRef,AppliedToTxnRet".Split(','))expected+="<IncludeRetElement>"+field+"</IncludeRetElement>";
+     if(q.InnerXml!=expected)throw new Exception("Fixed supplier payment fields required");
+     end--;
+    }
+    var payable=batch.ChildNodes[end-1];
+    if(payable.Name!="BillToPayQueryRq"||payable.Attributes.Count!=1||payable.Attributes["requestID"]==null)throw new Exception("Complete supplier payable query required");
+    string scoped="<PayeeEntityRef><ListID>"+batch.ChildNodes[3].FirstChild.InnerText+"</ListID></PayeeEntityRef><APAccountRef><ListID>"+batch.ChildNodes[4].FirstChild.InnerText+"</ListID></APAccountRef>";
+    if(payable.InnerXml!=scoped)throw new Exception("Supplier payable scope differs");
+    for(int i=6;i<end-1;i++) {
+     var q=batch.ChildNodes[i];var id=q.FirstChild;
+     if(q.Name!="BillQueryRq"||q.Attributes.Count!=1||q.Attributes["requestID"]==null||id==null||id.Name!="TxnID"||!System.Text.RegularExpressions.Regex.IsMatch(id.InnerText,@"\A[A-Za-z0-9-]{1,31}\z"))throw new Exception("Exact supplier bill required");
+     string expected="<TxnID>"+id.InnerText+"</TxnID>";
+     foreach(string field in "TxnID,EditSequence,VendorRef,APAccountRef,TxnDate,DueDate,RefNumber,AmountDue,OpenAmount,IsPaid,CurrencyRef,ExchangeRate".Split(','))expected+="<IncludeRetElement>"+field+"</IncludeRetElement>";
+     if(q.InnerXml!=expected)throw new Exception("Fixed supplier bill fields required");
+    }
+   } else if(paymentCheck) {
     FixedQuery(batch.ChildNodes[2],"Preferences","MultiCurrencyPreferences",false);
     FixedQuery(batch.ChildNodes[3],"Customer","ListID,Name,IsActive,CurrencyRef",true);
     for(int i=4;i<6;i++) FixedQuery(batch.ChildNodes[i],"Account","ListID,FullName,IsActive,AccountType,SpecialAccountType,CurrencyRef",true);

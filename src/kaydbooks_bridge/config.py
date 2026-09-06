@@ -52,6 +52,8 @@ class Company:
     sample_bill_posting: dict = field(default_factory=dict)
     payment_masters: dict = field(default_factory=dict)
     sample_payment_posting: dict = field(default_factory=dict)
+    supplier_payment_masters: dict = field(default_factory=dict)
+    sample_supplier_payment_posting: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -75,6 +77,9 @@ def company_policy_context(policy):
         value.pop("payment_masters", None)
     if not value.get("sample_payment_posting"):
         value.pop("sample_payment_posting", None)
+    for name in ("supplier_payment_masters", "sample_supplier_payment_posting"):
+        if not value.get(name):
+            value.pop(name, None)
     return value
 
 
@@ -127,6 +132,8 @@ class Config:
                     "sample_bill_posting",
                     "payment_masters",
                     "sample_payment_posting",
+                    "supplier_payment_masters",
+                    "sample_supplier_payment_posting",
                 },
             )
             identifier(raw["simulation_identity"])
@@ -159,6 +166,11 @@ class Config:
             from .customer_payments import validate_masters as validate_payment_masters
 
             raw["payment_masters"] = validate_payment_masters(raw.get("payment_masters", {}))
+            from .supplier_payments import validate_masters as validate_supplier_masters
+
+            raw["supplier_payment_masters"] = validate_supplier_masters(
+                raw.get("supplier_payment_masters", {})
+            )
             age = raw.get("invoice_evidence_max_age_seconds", 900)
             if type(age) is not int or not 60 <= age <= 86400:
                 raise BridgeError("invoice evidence age must be 60-86400 seconds")
@@ -219,6 +231,25 @@ class Config:
                     or type(payment_gate["expires_at"]) not in (int, float)
                 ):
                     raise BridgeError("invalid controlled sample payment posting gate")
+            supplier_gate = companies[name].sample_supplier_payment_posting
+            if not isinstance(supplier_gate, dict):
+                raise BridgeError("sample supplier payment posting gate must be an object")
+            if supplier_gate:
+                strict_keys(
+                    supplier_gate,
+                    {"connector", "authorization", "ref_prefix", "max_payments", "expires_at"},
+                )
+                identifier(supplier_gate["connector"])
+                if (
+                    not isinstance(supplier_gate["authorization"], str)
+                    or not 20 <= len(supplier_gate["authorization"]) <= 1000
+                    or not isinstance(supplier_gate["ref_prefix"], str)
+                    or not re.fullmatch(r"[A-Z0-9-]{3,8}", supplier_gate["ref_prefix"])
+                    or type(supplier_gate["max_payments"]) is not int
+                    or not 1 <= supplier_gate["max_payments"] <= 10
+                    or type(supplier_gate["expires_at"]) not in (int, float)
+                ):
+                    raise BridgeError("invalid controlled sample supplier payment posting gate")
         principals = data["principals"]
         if not isinstance(principals, dict) or not principals:
             raise BridgeError("principals required")

@@ -56,7 +56,12 @@ class Tools:
         if name == "capture_document_v1":
             strict_keys(arguments, {"namespace", "reference", "media_type", "content_base64"})
             return capture(self.bridge, self.token, company, **arguments)
-        if name in {"prepare_invoice_v1", "prepare_bill_v1", "prepare_customer_payment_v1"}:
+        if name in {
+            "prepare_invoice_v1",
+            "prepare_bill_v1",
+            "prepare_customer_payment_v1",
+            "prepare_supplier_payment_v1",
+        }:
             strict_keys(
                 arguments,
                 {"document_id", "idempotency_key", "payload", "confidence"},
@@ -67,7 +72,9 @@ class Tools:
                 self.token,
                 company,
                 **arguments,
-                operation="customer-payment.create"
+                operation="supplier-payment.create"
+                if name == "prepare_supplier_payment_v1"
+                else "customer-payment.create"
                 if name == "prepare_customer_payment_v1"
                 else "bill.create"
                 if name == "prepare_bill_v1"
@@ -95,6 +102,7 @@ class Tools:
             "lookup_invoice_masters_v1",
             "lookup_bill_masters_v1",
             "check_customer_payment_v1",
+            "check_supplier_payment_v1",
         }:
             strict_keys(arguments, {"connector", "payload"})
             config = Config.load(self.bridge.config_path)
@@ -112,7 +120,9 @@ class Tools:
                 os.environ.get(connector.password_env, ""),
                 run,
                 **{
-                    "payment_check"
+                    "supplier_payment_check"
+                    if name == "check_supplier_payment_v1"
+                    else "payment_check"
                     if name == "check_customer_payment_v1"
                     else "bill_check"
                     if name == "lookup_bill_masters_v1"
@@ -234,6 +244,35 @@ def server(config_path, token):
         """Read exact customer, deposit account, method and current invoice balances for explicit allocations."""
         return tools.call(
             "check_customer_payment_v1", company, {"connector": connector, "payload": payload}
+        )
+
+    @app.tool()
+    def prepare_supplier_payment_v1(
+        company: str,
+        document_id: str,
+        idempotency_key: str,
+        payload: dict,
+        confidence: dict,
+        master_evidence: dict,
+    ) -> dict:
+        """Prepare an accounting payment draft from retained source and exact bill allocations; never transfer money or post."""
+        return tools.call(
+            "prepare_supplier_payment_v1",
+            company,
+            {
+                "document_id": document_id,
+                "idempotency_key": idempotency_key,
+                "payload": payload,
+                "confidence": confidence,
+                "master_evidence": master_evidence,
+            },
+        )
+
+    @app.tool()
+    def check_supplier_payment_v1(company: str, connector: str, payload: dict) -> dict:
+        """Read exact vendor, bank/payable accounts and current bill balances for explicit allocations."""
+        return tools.call(
+            "check_supplier_payment_v1", company, {"connector": connector, "payload": payload}
         )
 
     @app.tool()

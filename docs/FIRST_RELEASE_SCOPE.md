@@ -84,6 +84,9 @@ qualification are separate evidence; a passing mock does not establish native su
   reconcile unpaid invoices minus unapplied funds. Broader variants remain unchecked.
 - [ ] **M3-05:** Supplier payments: exact vendor/bill allocation, partial settlement,
   source account and supported payment method; compare saved allocation and balances.
+  Two native single-currency bank-account payments independently verified partial and
+  final settlement. Vendor balance and Vendor Balance Summary agree with remaining
+  complete BillToPay evidence. Broader methods and variants remain unchecked.
 - [ ] **M3-06:** Customer credit notes and refunds: reference the intended customer,
   invoice/credit and accounts, avoid duplicate applications, verify remaining credit.
 - [ ] **M3-07:** Supplier credits: correct vendor/accounts/items and bill applications;

@@ -96,12 +96,27 @@ def discover(
     payment_check: dict | None = None,
     payment_methods: bool = False,
     payment_receipt_check: dict | None = None,
+    supplier_payment_check: dict | None = None,
+    supplier_payment_receipt_check: dict | None = None,
 ) -> dict:
     """Run/resume fixed US qbXML 17 discovery under company permissions and audit.
 
     Unknown reads are held unless recover_read is explicit. This API cannot write.
     Real SDK results are recorded separately from QBWC callback sessions.
     """
+    supplier_payment = (
+        supplier_payment_check is not None or supplier_payment_receipt_check is not None
+    )
+    if supplier_payment:
+        if (
+            payment_check is not None
+            or payment_receipt_check is not None
+            or payment_methods
+            or (supplier_payment_check is not None and supplier_payment_receipt_check is not None)
+        ):
+            raise BridgeError("supplier payment check cannot be combined with another lookup")
+        payment_check = supplier_payment_check
+        payment_receipt_check = supplier_payment_receipt_check
     if type(payment_methods) is not bool:
         raise BridgeError("invalid payment method preview mode")
     if (payment_check is not None or payment_methods or payment_receipt_check is not None) and (
@@ -209,6 +224,9 @@ def discover(
         from .config import strict_keys
         from .payment_receipt import append_lookup, lookup_context
 
+        if supplier_payment:
+            from .supplier_payment_receipt import append_lookup, lookup_context
+
         strict_keys(payment_receipt_check, {"payload", "txn_id"})
         payment_policy = config.authorize(actor, connector.company, "validate")
         context_hash = lookup_context(
@@ -221,7 +239,11 @@ def discover(
             payment_receipt_check["payload"],
             payment_receipt_check["txn_id"],
         )
-        operation = "customer-payment-receipt-check"
+        operation = (
+            "supplier-payment-receipt-check"
+            if supplier_payment
+            else "customer-payment-receipt-check"
+        )
     if payment_methods:
         from .customer_payments import append_methods
 
@@ -231,11 +253,15 @@ def discover(
         from .customer_payments import append_check
         from .customer_payments import plan as payment_master_plan
 
+        if supplier_payment:
+            from .supplier_payments import append_check
+            from .supplier_payments import plan as payment_master_plan
+
         company = config.authorize(actor, connector.company, "validate")
         payment_plan = payment_master_plan(company, payment_check)
         context_hash = payment_plan["context_sha256"]
         request = append_check(request, run_id, payment_plan)
-        operation = "customer-payment-check"
+        operation = "supplier-payment-check" if supplier_payment else "customer-payment-check"
     if bill_terms or bill_services:
         from .bill_lookup import append_terms_preview
 
@@ -358,6 +384,9 @@ def discover(
             if payment_policy is not None:
                 from .payment_receipt import validate_lookup
 
+                if supplier_payment:
+                    from .supplier_payment_receipt import validate_lookup
+
                 discovery_response, receipt = validate_lookup(
                     response,
                     run_id,
@@ -371,6 +400,9 @@ def discover(
                 discovery_response, master_records = validate_methods(response, run_id)
             if payment_plan is not None:
                 from .customer_payments import validate_check
+
+                if supplier_payment:
+                    from .supplier_payments import validate_check
 
                 discovery_response, payment_balances = validate_check(
                     response, run_id, payment_plan
@@ -511,6 +543,9 @@ def main(argv=None):
     parser.add_argument("--recover-read", action="store_true")
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument(
+        "--supplier-payment-check", type=Path, help="check exact vendor/bill allocation; no posting"
+    )
+    modes.add_argument(
         "--payment-methods", action="store_true", help="preview at most 20 active payment methods"
     )
     modes.add_argument(
@@ -593,6 +628,11 @@ def main(argv=None):
             if args.payment_check
             else None,
             payment_methods=args.payment_methods,
+            supplier_payment_check=json.loads(
+                args.supplier_payment_check.read_text(encoding="utf-8")
+            )
+            if args.supplier_payment_check
+            else None,
         )
         print(json.dumps(result))
         return 0
