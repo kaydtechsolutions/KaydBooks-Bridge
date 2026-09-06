@@ -1,6 +1,24 @@
 # KaydBooks Bridge project status
 
-Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK discovery: PASS; QBWC qualification: BLOCKED.
+Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK and QBWC discovery: PASS; QBWC post-restart update pending.
+
+## Verified actual QBWC discovery: registration blocker resolved
+
+- Operator completed the fresh stable registration and manual update after explicitly
+  approving broader QuickBooks application permission for QBWC metadata. The bridge
+  continues to enforce query-only discovery; personal data and unattended access were
+  not granted. Strict QuickBooks-enforced read-only QBWC registration is not claimed.
+- Actual persisted callback sequence: authenticate, sendRequestXML, receiveResponseXML,
+  closeConnection. Session closed with response_result=100 and no last_error; HCP,
+  exact request and response were durably saved. CompanyRet matched the previously
+  operator-confirmed binding and stored identity hash. Audit integrity passed.
+- The captured real response was rejected with a deliberately wrong expected digest
+  offline. This was not an actual mismatched-company connection. All company claims,
+  raw XML, credentials and exact deployment evidence remain private outside Git.
+- Cleared the credential clipboard. Restarted the staged bridge after verifying this
+  cycle; one further manual update is needed for actual QBWC post-restart qualification.
+  The AppLock registration blocker is resolved for the approved permission mode.
+  Earlier blocker entries below are chronological history, not current status.
 
 ## Current QBWC repair decision
 
