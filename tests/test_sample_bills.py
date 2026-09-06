@@ -21,6 +21,10 @@ from test_qbwc_discovery import discovery_setup  # noqa: F401
 
 @pytest.fixture
 def queued_bill(exact_case):
+    return queue_case(exact_case)
+
+
+def queue_case(exact_case):
     path, token, payload = exact_case
     raw = json.loads(path.read_text())
     actor = next(iter(raw["principals"]))
@@ -329,11 +333,27 @@ def test_bill_receipt_rejects_changed_saved_values(queued_bill, old, new):
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows native compiler")
 @pytest.mark.parametrize("with_terms", [False, True])
-def test_native_bill_write_allowlist(queued_bill, tmp_path, with_terms):
+@pytest.mark.parametrize("with_items", [False, True])
+def test_native_bill_write_allowlist(queued_bill, tmp_path, with_terms, with_items):
     from kaydbooks_bridge.bill_receipt import add_request
 
     bridge, _, _, payload = queued_bill
     policy = Config.load(bridge.config_path).companies["company-a"]
+    if with_items:
+        from dataclasses import replace
+
+        policy = replace(
+            policy,
+            bill_masters={
+                **policy.bill_masters,
+                "items": {"service": {"list_id": "I-A", "type": "service", "expense_id": "office"}},
+            },
+        )
+        payload = {
+            **payload,
+            "lines": payload["lines"]
+            + [{"item_id": "service", "quantity": "2", "cost": "2.50", "amount": "5.00"}],
+        }
     if with_terms:
         from dataclasses import replace
 
@@ -356,6 +376,13 @@ def test_native_bill_write_allowlist(queued_bill, tmp_path, with_terms):
         + """
 $xml=[System.IO.File]::ReadAllText($args[0])
 [ControlledSampleBill]::CheckWrite($xml,[ControlledSampleBill]::Hash($xml))
+if($xml.Contains('ItemLineAdd')) {
+ foreach($bad in @($xml.Replace('</ItemLineAdd>','<InventorySiteRef><ListID>other</ListID></InventorySiteRef></ItemLineAdd>'),$xml.Replace('<Quantity>2</Quantity>','<Quantity>-2</Quantity>'),$xml.Replace('<Cost>2.50</Cost>','<Cost bad="1">2.50</Cost>'))) {
+  $failed=$false
+  try{[ControlledSampleBill]::CheckWrite($bad,[ControlledSampleBill]::Hash($bad))}catch{$failed=$true}
+  if(-not $failed){throw 'unsupported item accepted'}
+ }
+}
 foreach($bad in @($xml.Replace('BillAddRq','InvoiceAddRq'),$xml.Replace('</ExpenseLineAdd>','<BillableStatus>NotBillable</BillableStatus></ExpenseLineAdd>'),$xml.Replace('</BillAdd>','<Memo>extra</Memo></BillAdd>'),$xml.Replace('>10.00<','>-10.00<'),$xml.Replace('<ListID>V-A</ListID>','<FullName>V-A</FullName>'),$xml.Replace('</ExpenseLineAdd>','<TaxAmount>1.00</TaxAmount></ExpenseLineAdd>'),$xml.Replace('<Amount>','<Amount bad="1">'),$xml.Replace('<QBXML>','<QBXML bad="1">'))) {
  $failed=$false
  try{[ControlledSampleBill]::CheckWrite($bad,[ControlledSampleBill]::Hash($bad))}catch{$failed=$true}

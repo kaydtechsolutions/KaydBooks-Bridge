@@ -55,6 +55,17 @@ def exact_response(request):
                 }
             ],
             "Vendor": [{"ListID": "V-A", "Name": "Synthetic Supplier", "IsActive": "true"}],
+            "ItemService": [
+                {
+                    "ListID": "I-A",
+                    "Name": "Synthetic purchased service",
+                    "IsActive": "true",
+                    "SalesAndPurchase": {
+                        "ExpenseAccountRef": {"ListID": "E-A"},
+                        "PurchaseCost": "2.50",
+                    },
+                }
+            ],
             "Account": [
                 {
                     "ListID": "AP-A",

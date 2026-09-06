@@ -64,9 +64,20 @@ def add_request(policy, payload, request_id):
     if "terms_list_id" in binding:
         ET.SubElement(ET.SubElement(add, "TermsRef"), "ListID").text = binding["terms_list_id"]
     for line, list_id in zip(payload["lines"], binding["expense_list_ids"], strict=True):
+        if "item_id" in line:
+            continue
         node = ET.SubElement(add, "ExpenseLineAdd")
         ET.SubElement(ET.SubElement(node, "AccountRef"), "ListID").text = list_id
         ET.SubElement(node, "Amount").text = line["amount"]
+    for line, item_id in zip(
+        payload["lines"], binding.get("item_list_ids", [None] * len(payload["lines"])), strict=True
+    ):
+        if item_id is None:
+            continue
+        node = ET.SubElement(add, "ItemLineAdd")
+        ET.SubElement(ET.SubElement(node, "ItemRef"), "ListID").text = item_id
+        for name, key in (("Quantity", "quantity"), ("Cost", "cost"), ("Amount", "amount")):
+            ET.SubElement(node, name).text = line[key]
     return render(root)
 
 
@@ -113,7 +124,9 @@ def validate_lookup(xml, run, policy, payload, txn_id):
     proof.update(
         balance_verification="matched-bill-to-pay",
         outstanding_amount=proof["total"],
-        scope="unpaid-expense-bill-receipt",
+        scope="unpaid-service-expense-bill-receipt"
+        if "item_list_ids" in plan(policy, payload)["binding"]
+        else "unpaid-expense-bill-receipt",
     )
     root[0].remove(root[0][3])
     root[0].remove(root[0][2])
@@ -244,7 +257,6 @@ def validate_receipt(xml, policy, payload, request_id, *, operation="BillQuery",
             "LinkedTxn",
             "CurrencyRef",
             "SalesTaxCodeRef",
-            "ItemLineRet",
             "ItemGroupLineRet",
         )
     ):
@@ -264,12 +276,15 @@ def validate_receipt(xml, policy, payload, request_id, *, operation="BillQuery",
     if row.find("AmountDueInHomeCurrency") is not None:
         number(row, "AmountDueInHomeCurrency", total)
     lines = row.findall("ExpenseLineRet")
-    if len(lines) != len(payload["lines"]):
+    expense_pairs = [
+        (line, list_id)
+        for line, list_id in zip(payload["lines"], binding["expense_list_ids"], strict=True)
+        if "expense_id" in line
+    ]
+    if len(lines) != len(expense_pairs):
         raise BridgeError("saved bill line count differs")
     ids = []
-    for saved, line, list_id in zip(
-        lines, payload["lines"], binding["expense_list_ids"], strict=True
-    ):
+    for saved, (line, list_id) in zip(lines, expense_pairs, strict=True):
         ids.append(required_id(value(saved, "TxnLineID")))
         equals(saved, "AccountRef/ListID", list_id)
         number(saved, "Amount", line["amount"])
@@ -280,6 +295,44 @@ def validate_receipt(xml, policy, payload, request_id, *, operation="BillQuery",
             for name in ("CustomerRef", "ClassRef", "SalesTaxCodeRef", "SalesRepRef")
         ):
             raise BridgeError("unsupported saved bill line feature")
+        if saved.find("TaxAmount") is not None:
+            number(saved, "TaxAmount", "0")
+    item_pairs = [
+        (line, item_id)
+        for line, item_id in zip(
+            payload["lines"],
+            binding.get("item_list_ids", [None] * len(payload["lines"])),
+            strict=True,
+        )
+        if item_id is not None
+    ]
+    item_lines = row.findall("ItemLineRet")
+    if len(item_lines) != len(item_pairs):
+        raise BridgeError("saved bill item line count differs")
+    for saved, (line, item_id) in zip(item_lines, item_pairs, strict=True):
+        ids.append(required_id(value(saved, "TxnLineID")))
+        equals(saved, "ItemRef/ListID", item_id)
+        for name, key in (("Quantity", "quantity"), ("Cost", "cost"), ("Amount", "amount")):
+            number(saved, name, line[key])
+        if saved.find("BillableStatus") is not None:
+            equals(saved, "BillableStatus", "NotBillable")
+        if any(
+            saved.find(name) is not None
+            for name in (
+                "CustomerRef",
+                "ClassRef",
+                "SalesTaxCodeRef",
+                "SalesRepRef",
+                "UnitOfMeasure",
+                "InventorySiteRef",
+                "InventorySiteLocationRef",
+                "SerialNumber",
+                "LotNumber",
+                "OverrideItemAccountRef",
+                "LinkToTxn",
+            )
+        ):
+            raise BridgeError("unsupported saved bill item feature")
         if saved.find("TaxAmount") is not None:
             number(saved, "TaxAmount", "0")
     if len(set(ids)) != len(ids):

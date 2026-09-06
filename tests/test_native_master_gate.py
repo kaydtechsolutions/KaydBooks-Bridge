@@ -168,6 +168,10 @@ def test_native_bill_read_gate_matches_fixed_builder(tmp_path):
     (tmp_path / "terms.xml").write_text(
         append_check(DurableQBWCDiscoveryService._discovery_request("1234", "17.0"), "1234", check)
     )
+    check["queries"].insert(-1, ("ItemService", "I-A"))
+    (tmp_path / "services.xml").write_text(
+        append_check(DurableQBWCDiscoveryService._discovery_request("1234", "17.0"), "1234", check)
+    )
     script = tmp_path / "bill-gate.ps1"
     script.write_text(
         "$ErrorActionPreference='Stop'\nAdd-Type -ReferencedAssemblies System.Xml.dll -TypeDefinition @'\n"

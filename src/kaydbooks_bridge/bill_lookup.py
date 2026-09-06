@@ -15,6 +15,15 @@ FIELDS = {
     "Account": ("ListID", "FullName", "IsActive", "AccountType", "CurrencyRef"),
 }
 TERMS_FIELDS = ("ListID", "Name", "IsActive", "StdDueDays", "StdDiscountDays", "DiscountPct")
+SERVICE_FIELDS = (
+    "ListID",
+    "Name",
+    "IsActive",
+    "SalesOrPurchase",
+    "SalesAndPurchase",
+    "UnitOfMeasureSetRef",
+    "IsTaxIncluded",
+)
 
 
 def append_preview(discovery, run):
@@ -87,6 +96,9 @@ def plan(policy, payload):
         ("Account", binding["payable_list_id"]),
     ]
     queries.extend(("Account", key) for key in sorted(set(binding["expense_list_ids"])))
+    queries.extend(
+        ("ItemService", key) for key in sorted(set(binding.get("item_list_ids", [])) - {None})
+    )
     if "terms_list_id" in binding:
         queries.append(("StandardTerms", binding["terms_list_id"]))
     return {
@@ -110,7 +122,13 @@ def append_check(discovery, run, check):
         node = ET.SubElement(root[0], entity + "QueryRq", requestID=f"{run}{index}")
         if list_id is not None:
             ET.SubElement(node, "ListID").text = list_id
-        for field in TERMS_FIELDS if entity == "StandardTerms" else FIELDS[entity]:
+        for field in (
+            TERMS_FIELDS
+            if entity == "StandardTerms"
+            else SERVICE_FIELDS
+            if entity == "ItemService"
+            else FIELDS[entity]
+        ):
             ET.SubElement(node, "IncludeRetElement").text = field
     return '<?xml version="1.0"?><?qbxml version="17.0"?>' + ET.tostring(root, encoding="unicode")
 
@@ -151,6 +169,35 @@ def validate_check(payload, run, check):
         row.get("AccountType") not in ("Expense", "OtherExpense") for row in records[5:expense_end]
     ):
         raise BridgeError("bill expense account type mismatch")
+    items = dict(
+        zip(
+            sorted(set(check["binding"].get("item_list_ids", [])) - {None}),
+            records[
+                expense_end : expense_end
+                + len(set(check["binding"].get("item_list_ids", [])) - {None})
+            ],
+            strict=True,
+        )
+    )
+    for item_id, expense_id in zip(
+        check["binding"].get("item_list_ids", [None] * len(check["binding"]["expense_list_ids"])),
+        check["binding"]["expense_list_ids"],
+        strict=True,
+    ):
+        if item_id is None:
+            continue
+        item = items[item_id]
+        if "UnitOfMeasureSetRef" in item or item.get("IsTaxIncluded", "false") != "false":
+            raise BridgeError("unsupported purchase item unit or tax setting")
+        two_sided, single = item.get("SalesAndPurchase"), item.get("SalesOrPurchase")
+        if isinstance(two_sided, dict) and single is None:
+            purchase_account = two_sided.get("ExpenseAccountRef")
+        elif isinstance(single, dict) and two_sided is None:
+            purchase_account = single.get("AccountRef")
+        else:
+            raise BridgeError("ambiguous service purchase account")
+        if not isinstance(purchase_account, dict) or purchase_account.get("ListID") != expense_id:
+            raise BridgeError("service purchase expense account differs")
     if "terms_list_id" in check["binding"]:
         import re
         from datetime import date, timedelta
@@ -174,21 +221,23 @@ def validate_check(payload, run, check):
     return ET.tostring(root, encoding="unicode")
 
 
-def append_terms_preview(discovery, run):
+def append_terms_preview(discovery, run, *, services=False):
     root = fromstring(discovery)
-    node = ET.SubElement(root[0], "StandardTermsQueryRq", requestID=run + "3")
+    node = ET.SubElement(
+        root[0], "ItemServiceQueryRq" if services else "StandardTermsQueryRq", requestID=run + "3"
+    )
     ET.SubElement(node, "MaxReturned").text = "20"
     ET.SubElement(node, "ActiveStatus").text = "ActiveOnly"
-    for field in TERMS_FIELDS:
+    for field in SERVICE_FIELDS if services else TERMS_FIELDS:
         ET.SubElement(node, "IncludeRetElement").text = field
     return '<?xml version="1.0"?><?qbxml version="17.0"?>' + ET.tostring(root, encoding="unicode")
 
 
-def validate_terms_preview(payload, run):
+def validate_terms_preview(payload, run, *, services=False):
     rows = list(parse_response(payload))
     if (
         len(rows) != 3
-        or rows[2].entity != "StandardTerms"
+        or rows[2].entity != ("ItemService" if services else "StandardTerms")
         or rows[2].request_id != run + "3"
         or rows[2].status_code != 0
         or rows[2].status_severity != "Info"
@@ -204,5 +253,10 @@ def validate_terms_preview(payload, run):
     root = fromstring(payload)
     root[0].remove(root[0][2])
     return ET.tostring(root, encoding="unicode"), [
-        {field: row[field] for field in TERMS_FIELDS if field in row} for row in rows[2].records
+        {
+            field: row[field]
+            for field in (SERVICE_FIELDS if services else TERMS_FIELDS)
+            if field in row
+        }
+        for row in rows[2].records
     ]

@@ -1,6 +1,6 @@
 # KaydBooks Bridge project status
 
-Updated: 2026-09-06. Production posting: DISABLED. Both USD10 sample expense bills are now verified through exact saved-field and independent BillToPay checks. Three sample invoices retain their historical verified receipts. No uncertain transaction was resent.
+Updated: 2026-09-06. Production posting: DISABLED. Three USD10 sample bills (two expense-only and one mixed expense/service) are verified through exact saved-field and independent BillToPay checks. Three sample invoices retain their historical verified receipts. No uncertain transaction was resent.
 
 ## M3–M7 sample implementation and qualification
 
@@ -18,8 +18,15 @@ Updated: 2026-09-06. Production posting: DISABLED. Both USD10 sample expense bil
   write fences, company identity, source review, permission and duplicate checks remain.
 - Validation: 660 local tests passed; actual read-only reconciliation and both fresh
   bill-specific payable checks passed. Lint, native allowlist tests and wheel build pass.
-- Current step: extend supplier-bill coverage, then continue the remaining M3–M6
-  acceptance gates. Production posting remains disabled.
+- Purchased service and mixed expense/service bills now use exact private item-to-expense
+  mappings, reviewed quantity/cost/amounts and fresh service/account checks. A controlled
+  USD10 mixed Net30 bill passed installed-package native posting and independent payable
+  verification. One isolated purchase-service test master was created and verified.
+- Latest validation: 682 local tests passed; native allowlists, source/wheel builds and
+  the installed-package mixed-bill run passed. CI48 passed all nine jobs for the preceding
+  balance-fix commit. The resolved eight-job state passed a signed isolated restore drill.
+- Current step: inventory-bill compatibility, then remaining M3–M6 acceptance gates.
+  Production posting remains disabled; sample posting is paused between controlled runs.
 
 - The [first-release scope and acceptance checklist](docs/FIRST_RELEASE_SCOPE.md)
   records the agreed transaction families, all four input methods, required reports,

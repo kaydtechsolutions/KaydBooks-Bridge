@@ -51,8 +51,21 @@ public static class ControlledSampleBill {
   int firstLine=5;
   if(bill.ChildNodes[5].Name=="TermsRef") {Ref(bill.ChildNodes[5]);firstLine=6;}
   if(bill.ChildNodes.Count<=firstLine||bill.ChildNodes.Count-firstLine>100) throw new Exception("One to 100 expense lines required");
+  bool seenItem=false;
   for(int i=firstLine;i<bill.ChildNodes.Count;i++) {
    var line=bill.ChildNodes[i];
+   if(line.Name=="ItemLineAdd") {
+    seenItem=true;
+    if(line.Attributes.Count!=0||line.ChildNodes.Count!=4||line.ChildNodes[0].Name!="ItemRef"||line.ChildNodes[1].Name!="Quantity"||line.ChildNodes[2].Name!="Cost"||line.ChildNodes[3].Name!="Amount") throw new Exception("Fixed service item fields required");
+    Ref(line.ChildNodes[0]);
+    for(int j=1;j<4;j++) {
+     decimal val; string text=Text(line.ChildNodes[j]);
+     string pattern=j==1?@"\A(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,6})?\z":@"\A[0-9]+\.[0-9]{2}\z";
+     if(!System.Text.RegularExpressions.Regex.IsMatch(text,pattern)||!decimal.TryParse(text,System.Globalization.NumberStyles.AllowDecimalPoint,System.Globalization.CultureInfo.InvariantCulture,out val)||val<=0)throw new Exception("Invalid service cost or quantity");
+    }
+    continue;
+   }
+   if(seenItem)throw new Exception("Expense lines must precede items");
    if(line.Name!="ExpenseLineAdd"||line.Attributes.Count!=0||line.ChildNodes.Count!=2||line.ChildNodes[0].Name!="AccountRef"||line.ChildNodes[1].Name!="Amount")throw new Exception("Only expense lines permitted");
    Ref(line.ChildNodes[0]);decimal amount;
    string value=Text(line.ChildNodes[1]);
@@ -66,7 +79,7 @@ public static class ControlledSampleBill {
    var batch=Parse(request).SelectSingleNode("/QBXML/QBXMLMsgsRq");
    if(batch==null||batch.ChildNodes.Count<3)throw new Exception("Preflight required");
    foreach(XmlNode q in batch.ChildNodes)
-    if(Array.IndexOf(new string[]{"HostQueryRq","CompanyQueryRq","PreferencesQueryRq","AccountQueryRq","VendorQueryRq","BillQueryRq","StandardTermsQueryRq"},q.Name)<0)throw new Exception("Unsupported preflight request");
+    if(Array.IndexOf(new string[]{"HostQueryRq","CompanyQueryRq","PreferencesQueryRq","AccountQueryRq","VendorQueryRq","BillQueryRq","StandardTermsQueryRq","ItemServiceQueryRq"},q.Name)<0)throw new Exception("Unsupported preflight request");
    string write=readOnly?null:File.ReadAllText(Path.Combine(root,"write.request.xml"));
    if(!readOnly)CheckWrite(write,hash);
    rp=(IRequestProcessor4)new RequestProcessor2Class();var auth=rp.AuthPreferences;

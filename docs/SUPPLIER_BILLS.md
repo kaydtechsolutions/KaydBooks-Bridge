@@ -3,7 +3,7 @@
 Status: base-currency expense-bill preparation, simulated lifecycle and controlled
 native sample posting/read-back are implemented. Both same-vendor bills pass
 independent saved-field and bill-specific payable verification. M3-03 remains partial
-in the [release checklist](FIRST_RELEASE_SCOPE.md): item/inventory bills, discounted/date-driven terms,
+in the [release checklist](FIRST_RELEASE_SCOPE.md): inventory bills, discounted/date-driven terms,
 tax/currency variants and broader liability-effect testing remain unfinished.
 
 ## Resolved balance verification error
@@ -65,6 +65,34 @@ The corrected request omits the flag and rejects reimbursable saved lines. The
 rejected attempt was closed as failed only after a fresh company/vendor/reference
 query confirmed absence; its immutable request and error remain retained. This
 does not authorize retrying the failed job. Other uncertain outcomes remain held.
+
+## Purchased service and mixed bills
+
+Private `bill_masters.items` optionally maps an alias to `list_id`, `type: "service"`
+and an `expense_id` from the existing expense mapping. Legacy expense-only bindings
+retain their original context. Mappings belong in private deployment configuration.
+An item line requires `item_id`, positive `quantity`, two-decimal `cost` and `amount`;
+quantity × cost must round half-up to the explicit amount. The reviewed source cost
+is the transaction cost; a supplier's quoted cost need not equal the item's catalog cost.
+
+Fresh ItemService evidence must match the exact active item and its mapped purchase
+expense account. Both SalesAndPurchase/ExpenseAccountRef and expense-backed
+SalesOrPurchase/AccountRef are supported. Unit-of-measure sets and tax-inclusive items
+are currently rejected. Income-backed sales-only items cannot be used as purchase expenses.
+`--bill-services` previews at most 20 active service items; it does not authorize a write.
+
+The builder emits expense lines before item lines as required by the SDK schema.
+Independent read-back checks each item ID, quantity, cost, amount and unique line ID,
+then separately verifies the full bill's outstanding amount through BillToPayQuery.
+Reimbursable lines, inventory sites/serials/lots, units, account overrides, purchase-order
+links and tax fields remain unsupported in this service increment.
+
+Actual qualification created one isolated purchase-service master in the authorized
+sample, with exact company/account/duplicate checks and read-back. The independently
+installed package posted one USD10 mixed Net30 bill (USD5 expense plus two USD2.50
+service units). Saved lines and a USD10 BillToPay amount matched. BillRet.OpenAmount
+returned USD30 after this third same-vendor bill and remained diagnostic only.
+The audit is valid; no record was deleted or uncertain transaction resent.
 
 ## First implementation increment
 
@@ -141,5 +169,5 @@ invoice and bill evidence cannot be attached to each other's jobs.
 7. Qualify one controlled expense bill in the authorized sample and retain a private
    receipt/audit proof. Do not perform supplier payment or delete that business record.
 
-The two controlled expense bills, including standard Net30 terms, passed qualification.
+The expense-only and mixed purchased-service bills, including standard Net30 terms, passed qualification.
 Remaining release bill variants require their own implementation and native qualification.

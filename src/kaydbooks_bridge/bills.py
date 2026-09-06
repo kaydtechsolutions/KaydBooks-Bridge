@@ -1,7 +1,7 @@
 """Base-currency expense-bill policy and simulation contracts; no native writes."""
 
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from .config import BridgeError, identifier, strict_keys
 from .validation import canonical, digest, money
@@ -10,7 +10,7 @@ from .validation import canonical, digest, money
 def validate_masters(value):
     if value == {}:
         return {}
-    strict_keys(value, {"vendors", "payable", "expenses"}, {"terms"})
+    strict_keys(value, {"vendors", "payable", "expenses"}, {"terms", "items"})
     from .account_lookup import validate_list_id
 
     if value["payable"] is None:
@@ -27,9 +27,23 @@ def validate_masters(value):
             validate_list_id(list_id)
     if value["payable"] in value["expenses"].values():
         raise BridgeError("payable and expense account mappings must differ")
+    items = value.get("items")
+    if items is not None:
+        if not isinstance(items, dict) or not 1 <= len(items) <= 1000:
+            raise BridgeError("nonempty bounded bill item mappings required")
+        for alias, item in items.items():
+            identifier(alias)
+            strict_keys(item, {"list_id", "type", "expense_id"})
+            if item["list_id"] is None:
+                raise BridgeError("bill item requires an exact ListID")
+            validate_list_id(item["list_id"])
+            identifier(item["expense_id"])
+            if item["type"] != "service" or item["expense_id"] not in value["expenses"]:
+                raise BridgeError("bill item requires a supported service expense mapping")
     return {
         "payable": value["payable"],
         **{k: dict(value[k]) for k in kinds},
+        **({"items": {k: dict(v) for k, v in items.items()}} if items is not None else {}),
     }
 
 
@@ -70,13 +84,29 @@ def validate_payload(payload, policy):
         raise BridgeError("bill currency must match configured base currency")
     lines = payload["lines"]
     if not isinstance(lines, list) or not 1 <= len(lines) <= 100:
-        raise BridgeError("bill requires 1-100 expense lines")
+        raise BridgeError("bill requires 1-100 lines")
     total = Decimal("0")
     for line in lines:
-        strict_keys(line, {"expense_id", "amount"})
-        identifier(line["expense_id"])
-        if line["expense_id"] not in masters["expenses"]:
-            raise BridgeError("expense account is not in the company bill allowlist")
+        if isinstance(line, dict) and "item_id" in line:
+            strict_keys(line, {"item_id", "quantity", "cost", "amount"})
+            identifier(line["item_id"])
+            if line["item_id"] not in masters.get("items", {}):
+                raise BridgeError("item is not in the company bill allowlist")
+            from .invoice_commercial import decimal_evidence
+
+            quantity = decimal_evidence(line["quantity"])
+            cost = money(line["cost"])
+            if quantity <= 0 or quantity > Decimal("1000000"):
+                raise BridgeError("bill quantity is out of range")
+            if (quantity * cost).quantize(Decimal(".01"), rounding=ROUND_HALF_UP) != money(
+                line["amount"]
+            ):
+                raise BridgeError("bill item quantity/cost differs from amount")
+        else:
+            strict_keys(line, {"expense_id", "amount"})
+            identifier(line["expense_id"])
+            if line["expense_id"] not in masters["expenses"]:
+                raise BridgeError("expense account is not in the company bill allowlist")
         total += money(line["amount"])
     if total > money(policy.max_total):
         raise BridgeError("company total limit exceeded")
@@ -92,8 +122,24 @@ def context(policy, payload):
         "vendor_list_id": policy.bill_masters["vendors"][bill["vendor_id"]],
         "payable_list_id": policy.bill_masters["payable"],
         "expense_list_ids": [
-            policy.bill_masters["expenses"][line["expense_id"]] for line in bill["lines"]
+            policy.bill_masters["expenses"][
+                line.get("expense_id")
+                or policy.bill_masters["items"][line["item_id"]]["expense_id"]
+            ]
+            for line in bill["lines"]
         ],
+        **(
+            {
+                "item_list_ids": [
+                    policy.bill_masters["items"][line["item_id"]]["list_id"]
+                    if "item_id" in line
+                    else None
+                    for line in bill["lines"]
+                ]
+            }
+            if any("item_id" in line for line in bill["lines"])
+            else {}
+        ),
         "currency": policy.currency,
         **(
             {"terms_list_id": policy.bill_masters["terms"][bill["terms_id"]]}
@@ -125,7 +171,9 @@ def preview(policy, job):
     binding = context(policy, job["payload"])
     result = {
         "schema": "bill-review-v1",
-        "scope": "review-only-expense-bill",
+        "scope": "review-only-service-expense-bill"
+        if "item_list_ids" in binding
+        else "review-only-expense-bill",
         "job": job["id"],
         "company": policy.id,
         "fingerprint": job["fingerprint"],

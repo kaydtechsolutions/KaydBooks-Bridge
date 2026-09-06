@@ -75,7 +75,7 @@ public static class PrivateReadOnlyDiscovery {
    var batch=root.FirstChild;
    bool billReceipt=batch.ChildNodes.Count==4 && batch.ChildNodes[2].Name=="BillQueryRq" && batch.ChildNodes[3].Name=="BillToPayQueryRq";
    bool billPreview=batch.ChildNodes.Count==5 && batch.ChildNodes[2].Name=="PreferencesQueryRq" && batch.ChildNodes[3].Name=="VendorQueryRq";
-   bool billCheck=batch.ChildNodes.Count>=6 && batch.ChildNodes.Count<=106 && batch.ChildNodes[2].Name=="PreferencesQueryRq" && batch.ChildNodes[3].Name=="VendorQueryRq";
+   bool billCheck=batch.ChildNodes.Count>=6 && batch.ChildNodes.Count<=206 && batch.ChildNodes[2].Name=="PreferencesQueryRq" && batch.ChildNodes[3].Name=="VendorQueryRq";
    bool commercial=batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=88 && batch.ChildNodes[2].Name=="PreferencesQueryRq" && batch.ChildNodes[2].InnerXml.Contains("<IncludeRetElement>SalesTaxPreferences</IncludeRetElement>");
    bool single=!commercial && batch.ChildNodes.Count>=7 && batch.ChildNodes.Count<=45 && batch.ChildNodes.Count%2==1 && batch.ChildNodes[3].Name=="AccountQueryRq";
    bool invoice=!commercial && !billCheck && (single || (batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=46 && batch.ChildNodes.Count%2==0));
@@ -102,6 +102,8 @@ public static class PrivateReadOnlyDiscovery {
     if(query.InnerXml!=expected) throw new InvalidOperationException("Only fixed invoice receipt fields permitted");
    } else if(batch.ChildNodes.Count==3 && batch.ChildNodes[2].Name=="StandardTermsQueryRq") {
     FixedQuery(batch.ChildNodes[2],"StandardTerms","ListID,Name,IsActive,StdDueDays,StdDiscountDays,DiscountPct",false,true);
+   } else if(batch.ChildNodes.Count==3 && batch.ChildNodes[2].Name=="ItemServiceQueryRq") {
+    FixedQuery(batch.ChildNodes[2],"ItemService","ListID,Name,IsActive,SalesOrPurchase,SalesAndPurchase,UnitOfMeasureSetRef,IsTaxIncluded",false,true);
    } else if(billReceipt) {
     var query=batch.ChildNodes[2];var selector=query.FirstChild;
     if(query.Attributes.Count!=1 || query.Attributes["requestID"]==null ||
@@ -151,8 +153,18 @@ public static class PrivateReadOnlyDiscovery {
      FixedQuery(batch.LastChild,"StandardTerms","ListID,Name,IsActive,StdDueDays,StdDiscountDays,DiscountPct",true);
      accountEnd--;
     }
-    if(accountEnd<6||accountEnd>105) throw new InvalidOperationException("One to 100 expense accounts required");
-    for(int i=4;i<accountEnd;i++) FixedQuery(batch.ChildNodes[i],"Account","ListID,FullName,IsActive,AccountType,CurrencyRef",true);
+    if(accountEnd<6||accountEnd>205) throw new InvalidOperationException("Bounded expense accounts and items required");
+    bool seenItem=false; int accountCount=0,itemCount=0;
+    for(int i=4;i<accountEnd;i++) {
+     if(batch.ChildNodes[i].Name=="ItemServiceQueryRq") {
+      seenItem=true;itemCount++;
+      FixedQuery(batch.ChildNodes[i],"ItemService","ListID,Name,IsActive,SalesOrPurchase,SalesAndPurchase,UnitOfMeasureSetRef,IsTaxIncluded",true);
+     } else {
+      if(seenItem)throw new InvalidOperationException("Accounts must precede items");
+      accountCount++;FixedQuery(batch.ChildNodes[i],"Account","ListID,FullName,IsActive,AccountType,CurrencyRef",true);
+     }
+    }
+    if(accountCount<2||accountCount>101||itemCount>100)throw new InvalidOperationException("Bounded bill masters required");
    }
    if(batch.ChildNodes.Count==7 && !single && !billCheck) {
     FixedQuery(batch.ChildNodes[2],"Preferences","MultiCurrencyPreferences",false);
