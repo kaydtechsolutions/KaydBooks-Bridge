@@ -154,10 +154,13 @@ Updated: 2026-09-06. Live posting: DISABLED. Real QuickBooks integration tests: 
   completed. Actual installed version/tool enablement evidence is stored privately
   outside Git. Bridge-specific permissions, profile, schemas and integration behavior
   remain unverified. No Hermes settings, schedules, recipients or boards were changed.
-- The sole immediate M2 action is to re-import the private same-ID registration bootstrap
-  without entering a password, removing it, or running an update, then import the v3
-  stable-name read-only replacement. Real callback behavior and company binding remain
-  unverified.
+- R3 real qualification failed: matching AppUniqueName on bootstrap and final QWC
+  did not prevent AppLock DataExtDefAdd during read-only import. SDK status 3263
+  rejected the metadata write. The previously documented replacement workaround is
+  withdrawn; do not repeat imports, rotate IDs, or remove registrations.
+- Immediate work: establish supported QBWC metadata permission requirements or assess
+  direct SDK read-only discovery separately. Keep Auto-Run off, passwords blank,
+  bindings unconfirmed and posting disabled. No actual Bridge CompanyRet received.
 - Real Hermes and QuickBooks integration tests: **none**. Production-enabled features:
   **none**. Real transaction/report/tax/inventory/landed-cost support is unverified.
 - Planned: real qualification of the synthetic-tested QBWC discovery adapter;

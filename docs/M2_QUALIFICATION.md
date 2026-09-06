@@ -98,15 +98,14 @@ status 3263. Its own import routine tries to create a `FileID` data-extension de
 in the company, and QuickBooks correctly rejects that metadata write under read-only
 authorization. This happens before the web service receives a callback.
 
-For a dedicated synthetic company only, create a private one-time bootstrap QWC with
-the same AppName, OwnerID and FileID, `IsReadOnly=false`, optional unattended access,
-and an explicit registration-only description. Import it while the sample company is
-open, allow access only while QuickBooks is running, and do not enable personal data.
-Do not configure its password, run an update, or use Web Connector's Remove button:
-Remove deletes the FileID value from the company. After QBWC creates the FileID and
-AppLock, import the stable `IsReadOnly=true` QWC with the same IDs and a stable
-`AppUniqueName`; that tag invokes QBWC's replacement path. Replace the registration
-before any service callback.
-The temporary QuickBooks permission is broader only because of QBWC's registration
-behavior; the Bridge remains query-only and live posting remains disabled throughout.
-Retain the exact QBWC log as real qualification evidence.
+The attempted bootstrap-to-read-only replacement is NOT qualified. Do not repeat it.
+Actual R3 evidence shows that even with matching AppUniqueName on both files, QBWC
+attempted AppLock DataExtDefAdd again and QuickBooks rejected it with status 3263.
+Changing IDs or removing/reimporting applications did not resolve this limitation.
+The earlier claim that AppUniqueName would prevent metadata writes was incorrect.
+
+Keep Auto-Run off, the password blank, and Bridge posting disabled. Preserve the
+existing registration and logs. Further work must establish supported QBWC metadata
+permission requirements or a direct SDK read-only discovery route. A direct SDK test
+would not qualify QBWC callbacks. Broader QuickBooks permissions are not equivalent
+to QuickBooks-enforced read-only access and must not be silently substituted.
