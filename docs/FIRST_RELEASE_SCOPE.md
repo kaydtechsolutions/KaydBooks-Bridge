@@ -103,7 +103,9 @@ qualification are separate evidence; a passing mock does not establish native su
   Summary independently agrees. A native USD2 credit application then verified bill
   10 -> 8, unused credit 2 -> 0, vendor balance unchanged at 23 and bank unchanged at 508.
   The generated zero-amount payment stub was independently read and the held attempt
-  reconciled without resend. Inventory returns remain unfinished.
+  reconciled without resend. A later two-unit USD10 inventory purchase/return verified
+  stock 0 -> 2 -> 0, unused return credit USD10 and vendor/net payables 23 -> 33 -> 23.
+  This qualifies simple average-cost returns; broader currency/cost/settings remain unfinished.
 - [ ] **M3-08:** Discounts and additional charges: explicit line/document treatment,
   non-tax rounding rules, correct accounts and exact saved totals for each operation.
 - **M3-09 — EXCLUDED:** Tax-enabled transaction qualification is outside this release.

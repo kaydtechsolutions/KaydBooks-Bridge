@@ -52,8 +52,6 @@ def bill_payload(payload):
 
 def validate_payload(payload, policy):
     base = bills.validate_payload(bill_payload(payload), policy)
-    if bill_lookup.plan(policy, base)["binding"].get("inventory_items"):
-        raise BridgeError("inventory supplier returns require separate stock qualification")
     base.pop("due_date")
     return {**base, "bill_txn_id": payload["bill_txn_id"]}
 
@@ -253,7 +251,36 @@ def validate_check(xml, run, check, *, recovering=False):
     for n in list(root[0])[count:]:
         root[0].remove(n)
     discovery = bill_lookup.validate_check(ET.tostring(root), run, check["master_plan"])
+    inventory = binding.get("inventory_items", {})
+    stock = {}
+    if inventory:
+        for rs in responses[:count]:
+            if rs.entity != "ItemInventory":
+                continue
+            for item in rs.records:
+                item_id = item["ListID"]
+                observation = bill_lookup.validate_inventory_item(item, inventory[item_id])
+                quantities = [
+                    line
+                    for index, line in enumerate(check["credit"]["lines"])
+                    if binding["item_list_ids"][index] == item_id
+                ]
+                required = sum(Decimal(line["quantity"]) for line in quantities)
+                if not recovering and (
+                    decimal_evidence(observation["quantity_on_hand"]) < required
+                    or any(
+                        Decimal(line["cost"]) != decimal_evidence(observation["average_cost"])
+                        for line in quantities
+                    )
+                ):
+                    raise BridgeError(
+                        "inventory return requires available stock at verified average cost"
+                    )
+                stock[item_id] = {**observation, "return_quantity": str(required)}
+        if set(stock) != set(inventory):
+            raise BridgeError("complete inventory return stock required")
     return discovery, {
+        **({"stock": stock} if inventory else {}),
         "vendor_balance": str(balance),
         "source_bill": bill["TxnID"],
         "payables": payables,
@@ -347,7 +374,9 @@ def validate_receipt(xml, policy, payload, run, *, operation="VendorCreditQuery"
         operation="supplier-credit.create",
         source_bill=payload["bill_txn_id"],
         verification="matched-saved-supplier-credit",
-        scope="unapplied-expense-service-credit",
+        scope="unapplied-inventory-credit"
+        if plan(policy, payload)["master_plan"]["binding"].get("inventory_items")
+        else "unapplied-expense-service-credit",
         balance_verification="requires-credit-to-apply",
     )
     return result
@@ -398,7 +427,31 @@ def verify_balance_effect(payload, before, after):
         after.get("vendor_balance")
     ) or net(before["payables"]) - total != net(after["payables"]):
         raise BridgeError("supplier credit vendor/payable balance effect differs; never resend")
+    stock_effects = {}
+    if "stock" in before or "stock" in after:
+        if not isinstance(before.get("stock"), dict) or set(before["stock"]) != set(
+            after.get("stock", {})
+        ):
+            raise BridgeError("inventory return baseline or observation missing")
+        for key, observed in before["stock"].items():
+            returned = decimal_evidence(observed["return_quantity"])
+            prior = decimal_evidence(observed["quantity_on_hand"])
+            current = decimal_evidence(after["stock"][key]["quantity_on_hand"])
+            if (
+                returned <= 0
+                or prior < returned
+                or current != prior - returned
+                or decimal_evidence(after["stock"][key]["return_quantity"]) != returned
+            ):
+                raise BridgeError("inventory return stock effect differs; never resend")
+            stock_effects[key] = {
+                "before": str(prior),
+                "returned": str(returned),
+                "after": str(current),
+                "verification": "matched-native-stock-decrease",
+            }
     return {
+        **({"stock_effects": stock_effects} if stock_effects else {}),
         "before": before["vendor_balance"],
         "credit": str(total),
         "after": after["vendor_balance"],

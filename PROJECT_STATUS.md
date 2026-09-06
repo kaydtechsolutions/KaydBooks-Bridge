@@ -4,7 +4,7 @@ Tax functionality and tax reports are excluded from this release by operator ins
 on 2026-09-07. Non-tax checks remain enforced. 35 acceptance gates remain unfinished; manual workflow gate M5-02 now passes.
 
 Updated: 2026-09-07. Production posting: DISABLED. Four sample invoices (USD45 total)
-and four USD10 sample bills have verified receipts. Three customer receipts totaling USD20
+and five USD10 sample bills have verified receipts. Three customer receipts totaling USD20
 settled the mixed invoice and left USD5 unapplied. Before the credit test, Customer Balance Summary and CustomerRet both reported USD25,
 matching USD30 unpaid invoices minus USD5 unapplied.
 Two USD5 supplier payments settled the mixed bill; Vendor Balance Summary and complete
@@ -18,6 +18,8 @@ was resent and no payment processor was invoked. Two subsequent supplier credits
 application subsequently reduced the bill 10 -> 8 and unused credit 2 -> 0, leaving
 vendor 23 and bank 508 unchanged. The generated zero-amount payment stub was
 independently queried and the original held attempt reconciled without resending.
+A subsequent USD10 inventory bill and supplier credit independently verified stock
+0 -> 2 -> 0 and vendor/net payables 23 -> 33 -> 23, both on their first attempts.
 
 ## M3â€“M7 sample implementation and qualification
 
@@ -41,10 +43,11 @@ independently queried and the original held attempt reconciled without resending
   amounts through the durable lifecycle. Native USD5 and USD10 receipts settled the USD15
   invoice; a third USD5 receipt remained unapplied. Signed AppliedAmount, related invoice
   payments and customer-wide unused credits are handled without double-counting.
-- Latest validation: 911 full-suite tests and 42 supplier-application tests pass, including
+- Latest validation: 95 inventory-bill/supplier-credit/application regression tests pass
+  after adding inventory returns; the preceding full suite passed 911 tests. Coverage includes
   exact zero-payment-stub readback, lost-response recovery and compiled native gates.
   Lint, 29-tool stdio checks and source/wheel builds pass. An installed signed restore
-  recovered 22 jobs and 1025 files with valid integrity/audit, paused and without starting
+  recovered 24 jobs and 1089 files with valid integrity/audit, paused and without starting
   the restored service. The restarted TLS service reports ready with live posting false.
   CI57 passed the prior supplier-credit commit; current CI follows the PR update.
 - Supplier payments now pass exact vendor/AP/Bank mapping, partial/full settlement,
@@ -63,7 +66,8 @@ independently queried and the original held attempt reconciled without resending
 - Supplier credits now support non-tax single-currency expense/service and mixed lines,
   original-bill limits after prior Bridge-linked credits, immutable dispatch, independent
   CreditToApply unused amounts and net payable/vendor balance checks. Two native tests
-  passed on the first attempt. Inventory returns and credit applications remain partial.
+  passed on the first attempt. Supplier-credit application and simple average-cost
+  inventory returns are now sample-qualified. Broader currency/cost/settings remain partial.
 - Current step: supplier credit applications and broader adjustment variants, then remaining
   M3–M6 acceptance gates. Sample posting is paused between bounded tests.
 - The [first-release checklist](docs/FIRST_RELEASE_SCOPE.md) is the release target;
