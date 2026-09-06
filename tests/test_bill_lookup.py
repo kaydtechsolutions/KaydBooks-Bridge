@@ -44,6 +44,16 @@ def exact_response(request):
             "Host": [{**HOST, "SupportedQBXMLVersion": ["17.0"]}],
             "Company": [COMPANY_A],
             "Preferences": [{"MultiCurrencyPreferences": {"IsMultiCurrencyOn": "false"}}],
+            "StandardTerms": [
+                {
+                    "ListID": "T-A",
+                    "Name": "Net 30",
+                    "IsActive": "true",
+                    "StdDueDays": "30",
+                    "StdDiscountDays": "0",
+                    "DiscountPct": "0.00",
+                }
+            ],
             "Vendor": [{"ListID": "V-A", "Name": "Synthetic Supplier", "IsActive": "true"}],
             "Account": [
                 {
@@ -167,6 +177,31 @@ def test_preview_cannot_be_reused_as_bill_evidence(exact_case):
             {"transport": "direct-sdk", "connector": "connector-company-a", "id": "994"},
             time.time(),
         )
+
+
+@pytest.mark.parametrize(
+    "due,discount,valid",
+    [("2026-10-06", "0.00", True), ("2026-10-05", "0.00", False), ("2026-10-06", "1.00", False)],
+)
+def test_standard_terms_require_matching_due_date_without_discount(
+    exact_case, due, discount, valid
+):
+    path, _, payload = exact_case
+    raw = json.loads(path.read_text())
+    raw["companies"]["company-a"]["bill_masters"]["terms"] = {"net30": "T-A"}
+    path.write_text(json.dumps(raw))
+    payload.update(terms_id="net30", due_date=due)
+
+    def exchange(request, dest):
+        value = exact_response(request)
+        assert "<StdDueDays>30</StdDueDays>" in value
+        dest.write_text(value.replace("<DiscountPct>0.00", "<DiscountPct>" + discount))
+
+    if valid:
+        assert exact_run(exact_case, exchange=exchange)["state"] == "verified"
+    else:
+        with pytest.raises(BridgeError, match="validation failed"):
+            exact_run(exact_case, exchange=exchange)
 
 
 def response(request):

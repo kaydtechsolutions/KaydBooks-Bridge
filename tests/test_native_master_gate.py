@@ -87,7 +87,11 @@ def test_native_invoice_receipt_gate(tmp_path):
     script = tmp_path / "receipt-gate.ps1"
     script.write_text(
         "$ErrorActionPreference='Stop'\nAdd-Type -ReferencedAssemblies System.Xml.dll -TypeDefinition @'\n"
-        + "using System; public static class ReceiptGate { public static bool Allowed(string xml) { try {\n"
+        + "using System; public static class ReceiptGate {\n"
+        + source[
+            source.index(" static void FixedQuery(") : source.index(" public static void Run(")
+        ]
+        + "public static bool Allowed(string xml) { try {\n"
         + "var doc=new System.Xml.XmlDocument(); doc.LoadXml(xml); var batch=doc.DocumentElement.FirstChild;\n"
         + gate
         + "return true; } catch { return false; } } }\n'@\n"
@@ -151,6 +155,18 @@ def test_native_bill_read_gate_matches_fixed_builder(tmp_path):
         (tmp_path / f"bill-{count}.xml").write_text(rq)
     (tmp_path / "preview.xml").write_text(
         append_preview(DurableQBWCDiscoveryService._discovery_request("1234", "17.0"), "1234")
+    )
+    check = {
+        "queries": [
+            ("Preferences", None),
+            ("Vendor", "V-A"),
+            ("Account", "AP-A"),
+            ("Account", "E-A"),
+            ("StandardTerms", "T-A"),
+        ]
+    }
+    (tmp_path / "terms.xml").write_text(
+        append_check(DurableQBWCDiscoveryService._discovery_request("1234", "17.0"), "1234", check)
     )
     script = tmp_path / "bill-gate.ps1"
     script.write_text(

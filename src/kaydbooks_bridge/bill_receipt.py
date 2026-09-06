@@ -20,6 +20,7 @@ RECEIPT_FIELDS = (
     "TxnDate",
     "DueDate",
     "RefNumber",
+    "TermsRef",
     "AmountDue",
     "OpenAmount",
     "CurrencyRef",
@@ -60,6 +61,8 @@ def add_request(policy, payload, request_id):
         ("RefNumber", "ref_number"),
     ):
         ET.SubElement(add, name).text = payload[key]
+    if "terms_list_id" in binding:
+        ET.SubElement(ET.SubElement(add, "TermsRef"), "ListID").text = binding["terms_list_id"]
     for line, list_id in zip(payload["lines"], binding["expense_list_ids"], strict=True):
         node = ET.SubElement(add, "ExpenseLineAdd")
         ET.SubElement(ET.SubElement(node, "AccountRef"), "ListID").text = list_id
@@ -162,6 +165,8 @@ def validate_receipt(xml, policy, payload, request_id, *, operation="BillQuery",
     ):
         equals(row, name, payload[key])
     equals(row, "IsPaid", "false")
+    if "terms_list_id" in binding:
+        equals(row, "TermsRef/ListID", binding["terms_list_id"])
     if any(
         row.find(name) is not None
         for name in (

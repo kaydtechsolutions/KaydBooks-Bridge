@@ -91,6 +91,7 @@ def discover(
     bill_check: dict | None = None,
     expense_accounts: bool = False,
     bill_receipt_check: dict | None = None,
+    bill_terms: bool = False,
 ) -> dict:
     """Run/resume fixed US qbXML 17 discovery under company permissions and audit.
 
@@ -99,6 +100,21 @@ def discover(
     """
     if type(bill_preview) is not bool:
         raise BridgeError("invalid bill preview mode")
+    if type(bill_terms) is not bool:
+        raise BridgeError("invalid bill terms preview mode")
+    if bill_terms and (
+        accounts
+        or expense_accounts
+        or list_id is not None
+        or invoice_check is not None
+        or master_preview
+        or commercial_preview
+        or receipt_check is not None
+        or bill_receipt_check is not None
+        or bill_preview
+        or bill_check is not None
+    ):
+        raise BridgeError("bill terms preview cannot be combined with another lookup")
     if bill_receipt_check is not None:
         if receipt_check is not None:
             raise BridgeError("select one receipt operation")
@@ -163,6 +179,11 @@ def discover(
     context_hash = None
     receipt_policy = None
     bill_plan = None
+    if bill_terms:
+        from .bill_lookup import append_terms_preview
+
+        request = append_terms_preview(request, run_id)
+        operation = "bill-terms-preview"
     if bill_check is not None:
         from .bill_lookup import append_check
         from .bill_lookup import plan as bill_master_plan
@@ -275,6 +296,10 @@ def discover(
             account_records = None
             master_records = None
             receipt = None
+            if bill_terms:
+                from .bill_lookup import validate_terms_preview
+
+                discovery_response, master_records = validate_terms_preview(response, run_id)
             if bill_plan is not None:
                 from .bill_lookup import validate_check
 
@@ -373,7 +398,7 @@ def discover(
                 if check["currency_id"] is None
                 else "verified-home-currency",
             )
-        if master_preview or bill_preview:
+        if master_preview or bill_preview or bill_terms:
             result.update(
                 operation=operation, masters=master_records, complete=False, limit_per_entity=20
             )
@@ -398,6 +423,9 @@ def main(argv=None):
     parser.add_argument("--recover-read", action="store_true")
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument("--accounts", action="store_true", help="preview at most 20 active accounts")
+    modes.add_argument(
+        "--bill-terms", action="store_true", help="preview at most 20 active standard terms"
+    )
     modes.add_argument(
         "--expense-accounts", action="store_true", help="preview at most 20 active expense accounts"
     )
@@ -443,6 +471,7 @@ def main(argv=None):
             args.run_id,
             recover_read=args.recover_read,
             accounts=args.accounts,
+            bill_terms=args.bill_terms,
             expense_accounts=args.expense_accounts,
             bill_preview=args.bill_preview,
             bill_check=json.loads(args.bill_check.read_text(encoding="utf-8"))

@@ -14,6 +14,7 @@ FIELDS = {
     "Vendor": ("ListID", "Name", "IsActive", "CurrencyRef"),
     "Account": ("ListID", "FullName", "IsActive", "AccountType", "CurrencyRef"),
 }
+TERMS_FIELDS = ("ListID", "Name", "IsActive", "StdDueDays", "StdDiscountDays", "DiscountPct")
 
 
 def append_preview(discovery, run):
@@ -86,9 +87,12 @@ def plan(policy, payload):
         ("Account", binding["payable_list_id"]),
     ]
     queries.extend(("Account", key) for key in sorted(set(binding["expense_list_ids"])))
+    if "terms_list_id" in binding:
+        queries.append(("StandardTerms", binding["terms_list_id"]))
     return {
         "queries": queries,
         "binding": binding,
+        "bill": bill,
         "context_sha256": digest(
             {
                 "operation": "bill-master-check",
@@ -106,7 +110,7 @@ def append_check(discovery, run, check):
         node = ET.SubElement(root[0], entity + "QueryRq", requestID=f"{run}{index}")
         if list_id is not None:
             ET.SubElement(node, "ListID").text = list_id
-        for field in FIELDS[entity]:
+        for field in TERMS_FIELDS if entity == "StandardTerms" else FIELDS[entity]:
             ET.SubElement(node, "IncludeRetElement").text = field
     return '<?xml version="1.0"?><?qbxml version="17.0"?>' + ET.tostring(root, encoding="unicode")
 
@@ -142,9 +146,63 @@ def validate_check(payload, run, check):
         raise BridgeError("initial expense bills require a verified single-currency company")
     if records[4].get("AccountType") != "AccountsPayable":
         raise BridgeError("bill payable account type mismatch")
-    if any(row.get("AccountType") not in ("Expense", "OtherExpense") for row in records[5:]):
+    expense_end = 5 + len(set(check["binding"]["expense_list_ids"]))
+    if any(
+        row.get("AccountType") not in ("Expense", "OtherExpense") for row in records[5:expense_end]
+    ):
         raise BridgeError("bill expense account type mismatch")
+    if "terms_list_id" in check["binding"]:
+        import re
+        from datetime import date, timedelta
+        from decimal import Decimal
+
+        from .invoice_commercial import decimal_evidence
+
+        term = records[-1]
+        days = term.get("StdDueDays")
+        if not isinstance(days, str) or not re.fullmatch(r"[0-9]{1,4}", days) or int(days) > 3650:
+            raise BridgeError("unsupported standard bill terms")
+        if decimal_evidence(term.get("DiscountPct")) != Decimal(0):
+            raise BridgeError("discounted bill terms require a separate adapter")
+        if date.fromisoformat(check["bill"]["txn_date"]) + timedelta(
+            days=int(days)
+        ) != date.fromisoformat(check["bill"]["due_date"]):
+            raise BridgeError("bill due date differs from verified standard terms")
     root = fromstring(payload)
     for node in list(root[0])[2:]:
         root[0].remove(node)
     return ET.tostring(root, encoding="unicode")
+
+
+def append_terms_preview(discovery, run):
+    root = fromstring(discovery)
+    node = ET.SubElement(root[0], "StandardTermsQueryRq", requestID=run + "3")
+    ET.SubElement(node, "MaxReturned").text = "20"
+    ET.SubElement(node, "ActiveStatus").text = "ActiveOnly"
+    for field in TERMS_FIELDS:
+        ET.SubElement(node, "IncludeRetElement").text = field
+    return '<?xml version="1.0"?><?qbxml version="17.0"?>' + ET.tostring(root, encoding="unicode")
+
+
+def validate_terms_preview(payload, run):
+    rows = list(parse_response(payload))
+    if (
+        len(rows) != 3
+        or rows[2].entity != "StandardTerms"
+        or rows[2].request_id != run + "3"
+        or rows[2].status_code != 0
+        or rows[2].status_severity != "Info"
+        or len(rows[2].records) > 20
+    ):
+        raise BridgeError("bill terms preview status, count or correlation mismatch")
+    seen = set()
+    for row in rows[2].records:
+        if row.get("IsActive") != "true" or row.get("ListID") is None or row["ListID"] in seen:
+            raise BridgeError("inactive, duplicate or missing terms")
+        validate_list_id(row["ListID"])
+        seen.add(row["ListID"])
+    root = fromstring(payload)
+    root[0].remove(root[0][2])
+    return ET.tostring(root, encoding="unicode"), [
+        {field: row[field] for field in TERMS_FIELDS if field in row} for row in rows[2].records
+    ]

@@ -10,13 +10,14 @@ from .validation import canonical, digest, money
 def validate_masters(value):
     if value == {}:
         return {}
-    strict_keys(value, {"vendors", "payable", "expenses"})
+    strict_keys(value, {"vendors", "payable", "expenses"}, {"terms"})
     from .account_lookup import validate_list_id
 
     if value["payable"] is None:
         raise BridgeError("bill payable requires an explicit ListID")
     validate_list_id(value["payable"])
-    for kind in ("vendors", "expenses"):
+    kinds = ("vendors", "expenses") + (("terms",) if "terms" in value else ())
+    for kind in kinds:
         if not isinstance(value[kind], dict) or not 1 <= len(value[kind]) <= 1000:
             raise BridgeError("nonempty bounded bill master mappings required")
         for alias, list_id in value[kind].items():
@@ -26,17 +27,28 @@ def validate_masters(value):
             validate_list_id(list_id)
     if value["payable"] in value["expenses"].values():
         raise BridgeError("payable and expense account mappings must differ")
-    return {"payable": value["payable"], **{k: dict(value[k]) for k in ("vendors", "expenses")}}
+    return {
+        "payable": value["payable"],
+        **{k: dict(value[k]) for k in kinds},
+    }
 
 
 def validate_payload(payload, policy):
-    strict_keys(payload, {"vendor_id", "txn_date", "due_date", "ref_number", "currency", "lines"})
+    strict_keys(
+        payload,
+        {"vendor_id", "txn_date", "due_date", "ref_number", "currency", "lines"},
+        {"terms_id"},
+    )
     masters = validate_masters(policy.bill_masters)
     if not masters:
         raise BridgeError("bill master policy is not configured")
     identifier(payload["vendor_id"])
     if payload["vendor_id"] not in masters["vendors"]:
         raise BridgeError("vendor is not in the company bill allowlist")
+    if "terms_id" in payload:
+        identifier(payload["terms_id"])
+        if payload["terms_id"] not in masters.get("terms", {}):
+            raise BridgeError("terms are not in the company bill allowlist")
     import re
 
     dates = []
@@ -83,6 +95,11 @@ def context(policy, payload):
             policy.bill_masters["expenses"][line["expense_id"]] for line in bill["lines"]
         ],
         "currency": policy.currency,
+        **(
+            {"terms_list_id": policy.bill_masters["terms"][bill["terms_id"]]}
+            if "terms_id" in bill
+            else {}
+        ),
     }
 
 

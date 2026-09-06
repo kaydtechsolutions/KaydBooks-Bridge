@@ -1,10 +1,23 @@
 # KaydBooks Bridge project status
 
-Updated: 2026-09-06. Production posting: DISABLED. Three sample invoices and one USD10 expense bill have verified receipts. One rejected bill attempt is permanently failed after read-only absence confirmation. SDK/QBWC reads and isolated Hermes MCP qualification: PASS.
+Updated: 2026-09-06. Production posting: DISABLED. Sample posting: PAUSED. Three sample invoices and one USD10 expense bill have historical verified receipts. A second USD10 bill was saved but is held unverified because exact SDK queries return inconsistent OpenAmount values. One rejected attempt is permanently failed after read-only absence confirmation.
 
 ## M3–M7 sample implementation and qualification
 
 ### Current release plan: return to M3
+
+- BLOCKER: Both same-vendor USD10 bills now return AmountDue10/OpenAmount20, with
+  no linked payments/credits. The new Net30 bill remains unknown; the earlier bill's
+  historical receipt is retained but its fresh balance verification fails. Posting
+  is paused, audit remains valid, and no uncertain attempt will be resent.
+- Standard terms/due-date support is implemented and the actual Net30 lookup passed.
+  Native terms-bill qualification remains blocked by the balance discrepancy, not
+  by missing permission. See [supplier-bill evidence](docs/SUPPLIER_BILLS.md).
+- Latest validation: 646 local tests pass, including native helper compilation and
+  the OpenAmount mismatch regression; lint/formatting and source/wheel builds pass.
+  Current private state has eight jobs: five historical completed/failed records,
+  two undispatched jobs and the held Net30 bill. No further write was sent after
+  the discrepancy; the HTTPS service is available with company posting paused.
 
 - The [first-release scope and acceptance checklist](docs/FIRST_RELEASE_SCOPE.md)
   records the agreed transaction families, all four input methods, required reports,
@@ -34,6 +47,9 @@ Updated: 2026-09-06. Production posting: DISABLED. Three sample invoices and one
   include real expense-bill read-back and 15 discovered MCP tools. A signed 373-file
   snapshot restored seven jobs with valid SQLite integrity/audit in isolation.
   The historical invoice register remains three invoices totaling USD30.
+  CI46 passed all nine Windows/Linux Python3.10–3.13 and lint/build jobs for that
+  expense-bill commit. Subsequent terms/balance regression validation is recorded
+  separately; the seven-job restore predates the additional held Net30 bill.
 
 ### Reusable company onboarding
 

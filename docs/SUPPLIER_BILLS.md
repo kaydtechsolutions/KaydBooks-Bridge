@@ -1,9 +1,32 @@
 # M3 supplier-bill implementation contract
 
 Status: base-currency expense-bill preparation, simulated lifecycle and controlled
-native sample posting/read-back are implemented and qualified. M3-03 remains partial
-in the [release checklist](FIRST_RELEASE_SCOPE.md): item/inventory bills, terms,
+native sample posting/read-back are implemented. Initial one-bill qualification passed;
+a second same-vendor bill exposed an unresolved balance discrepancy. M3-03 remains partial
+in the [release checklist](FIRST_RELEASE_SCOPE.md): item/inventory bills, discounted/date-driven terms,
 tax/currency variants and broader liability-effect testing remain unfinished.
+
+## Current qualification blocker
+
+An additional USD10 bill with explicit Net30 terms was saved successfully, but its
+response reported AmountDue10/OpenAmount20. Independent exact-ID queries then returned
+AmountDue10/OpenAmount20 for both same-vendor test bills, with no linked transactions
+and IsPaid=false. Intuit's [OpenAmount definition](https://static.developer.intuit.com/qbSDK-current/common/newosr/qbsdk/html/OpenAmount.html)
+describes amount due after credits/discounts; this observed result does not satisfy
+that bill-level comparison. The relationship to vendor balance is a hypothesis,
+not a verified interpretation of this SDK behavior.
+
+The second bill remains unknown/unverified, its exact native request and response
+are retained, and sample posting is paused. No retry, deletion or artificial receipt
+success is authorized by this state. The first receipt remains historical evidence;
+its latest balance check also failed. Resolve this discrepancy before qualifying
+payments or claiming current balances. Tests retain the mismatch rejection.
+
+Standard terms support is implemented: optional private `bill_masters.terms` aliases,
+payload `terms_id`, bounded `--bill-terms` preview, exact active standard-term evidence,
+NetDays/due-date comparison and exact saved TermsRef. Discounted terms remain rejected.
+The actual term lookup passed, but the full additional native bill is not qualified
+because of the balance error above.
 
 ## Implemented expense-bill path
 
@@ -114,5 +137,6 @@ invoice and bill evidence cannot be attached to each other's jobs.
 7. Qualify one controlled expense bill in the authorized sample and retain a private
    receipt/audit proof. Do not perform supplier payment or delete that business record.
 
-The controlled expense-bill increment is qualified. The remaining release bill
+The initial controlled expense bill passed qualification. The subsequent balance
+discrepancy above blocks further native bill qualification; remaining release bill
 variants still require their own implementation and native qualification.

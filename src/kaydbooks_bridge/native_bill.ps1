@@ -41,14 +41,17 @@ public static class ControlledSampleBill {
   var rq=batch.FirstChild;
   if(rq.Name!="BillAddRq"||rq.Attributes.Count!=1||rq.Attributes["requestID"]==null||!System.Text.RegularExpressions.Regex.IsMatch(rq.Attributes["requestID"].Value,@"\A[1-9][0-9]{0,18}\z")||rq.ChildNodes.Count!=1||rq.FirstChild.Name!="BillAdd")throw new Exception("One BillAdd required");
   var bill=rq.FirstChild;
-  if(bill.Attributes.Count!=0||bill.ChildNodes.Count<6||bill.ChildNodes.Count>105)throw new Exception("Invalid bill fields");
+  if(bill.Attributes.Count!=0||bill.ChildNodes.Count<6||bill.ChildNodes.Count>106)throw new Exception("Invalid bill fields");
   string[] fields={"VendorRef","APAccountRef","TxnDate","DueDate","RefNumber"};
   for(int i=0;i<5;i++)if(bill.ChildNodes[i].Name!=fields[i])throw new Exception("Invalid bill field order");
   Ref(bill.ChildNodes[0]);Ref(bill.ChildNodes[1]);
   DateTime date,due;
   if(!DateTime.TryParseExact(Text(bill.ChildNodes[2]),"yyyy-MM-dd",System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.None,out date)||!DateTime.TryParseExact(Text(bill.ChildNodes[3]),"yyyy-MM-dd",System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.None,out due)||due<date)throw new Exception("Invalid dates");
   if(!System.Text.RegularExpressions.Regex.IsMatch(Text(bill.ChildNodes[4]),@"\A[A-Za-z0-9-]{1,11}\z"))throw new Exception("Invalid reference");
-  for(int i=5;i<bill.ChildNodes.Count;i++) {
+  int firstLine=5;
+  if(bill.ChildNodes[5].Name=="TermsRef") {Ref(bill.ChildNodes[5]);firstLine=6;}
+  if(bill.ChildNodes.Count<=firstLine||bill.ChildNodes.Count-firstLine>100) throw new Exception("One to 100 expense lines required");
+  for(int i=firstLine;i<bill.ChildNodes.Count;i++) {
    var line=bill.ChildNodes[i];
    if(line.Name!="ExpenseLineAdd"||line.Attributes.Count!=0||line.ChildNodes.Count!=2||line.ChildNodes[0].Name!="AccountRef"||line.ChildNodes[1].Name!="Amount")throw new Exception("Only expense lines permitted");
    Ref(line.ChildNodes[0]);decimal amount;
@@ -63,7 +66,7 @@ public static class ControlledSampleBill {
    var batch=Parse(request).SelectSingleNode("/QBXML/QBXMLMsgsRq");
    if(batch==null||batch.ChildNodes.Count<3)throw new Exception("Preflight required");
    foreach(XmlNode q in batch.ChildNodes)
-    if(Array.IndexOf(new string[]{"HostQueryRq","CompanyQueryRq","PreferencesQueryRq","AccountQueryRq","VendorQueryRq","BillQueryRq"},q.Name)<0)throw new Exception("Unsupported preflight request");
+    if(Array.IndexOf(new string[]{"HostQueryRq","CompanyQueryRq","PreferencesQueryRq","AccountQueryRq","VendorQueryRq","BillQueryRq","StandardTermsQueryRq"},q.Name)<0)throw new Exception("Unsupported preflight request");
    string write=readOnly?null:File.ReadAllText(Path.Combine(root,"write.request.xml"));
    if(!readOnly)CheckWrite(write,hash);
    rp=(IRequestProcessor4)new RequestProcessor2Class();var auth=rp.AuthPreferences;

@@ -292,6 +292,7 @@ def test_bill_authority_rechecked_before_write(queued_bill, change):
         ("V-A", "WRONG"),
         ("IsPaid>false", "IsPaid>true"),
         ("OpenAmount>10.00", "OpenAmount>1.00"),
+        ("OpenAmount>10.00", "OpenAmount>20.00"),
         ("NotBillable", "Billable"),
         ("E-A", "CHANGED"),
     ],
@@ -308,11 +309,17 @@ def test_bill_receipt_rejects_changed_saved_values(queued_bill, old, new):
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows native compiler")
-def test_native_bill_write_allowlist(queued_bill, tmp_path):
+@pytest.mark.parametrize("with_terms", [False, True])
+def test_native_bill_write_allowlist(queued_bill, tmp_path, with_terms):
     from kaydbooks_bridge.bill_receipt import add_request
 
     bridge, _, _, payload = queued_bill
     policy = Config.load(bridge.config_path).companies["company-a"]
+    if with_terms:
+        from dataclasses import replace
+
+        policy = replace(policy, bill_masters={**policy.bill_masters, "terms": {"net30": "T-A"}})
+        payload = {**payload, "terms_id": "net30"}
     request = add_request(policy, payload, "9933")
     file = tmp_path / "bill.xml"
     file.write_text(request)
