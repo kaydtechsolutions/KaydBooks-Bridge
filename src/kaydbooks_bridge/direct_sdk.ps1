@@ -53,9 +53,16 @@ public static class PrivateReadOnlyDiscovery {
    if(batch.ChildNodes.Count==3) {
     var account=batch.ChildNodes[2];
     string expected="<MaxReturned>20</MaxReturned><ActiveStatus>ActiveOnly</ActiveStatus><IncludeRetElement>ListID</IncludeRetElement><IncludeRetElement>FullName</IncludeRetElement><IncludeRetElement>AccountType</IncludeRetElement><IncludeRetElement>IsActive</IncludeRetElement>";
+    if(account.FirstChild!=null && account.FirstChild.Name=="ListID") {
+     var selector=account.FirstChild;
+     if(selector.Attributes.Count!=0 || selector.ChildNodes.Count!=1 || selector.FirstChild.NodeType!=System.Xml.XmlNodeType.Text ||
+        !System.Text.RegularExpressions.Regex.IsMatch(selector.InnerText,@"\A[A-Za-z0-9-]{1,31}\z"))
+      throw new InvalidOperationException("Invalid exact account selector");
+     expected="<ListID>"+selector.InnerText+"</ListID>"+expected.Substring(expected.IndexOf("<IncludeRetElement>"));
+    }
     if(account.Name!="AccountQueryRq" || account.Attributes.Count!=1 || account.Attributes["requestID"]==null ||
        !System.Text.RegularExpressions.Regex.IsMatch(account.Attributes["requestID"].Value,"^[0-9]+$") || account.InnerXml!=expected)
-     throw new InvalidOperationException("Only bounded active-account preview is permitted");
+     throw new InvalidOperationException("Only fixed account preview or exact-ID query is permitted");
    }
    Save(dir,"request.xml",request);
    Save(dir,"dispatch-intent.txt",DateTime.UtcNow.ToString("o"));

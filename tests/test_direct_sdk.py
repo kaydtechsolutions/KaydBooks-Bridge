@@ -227,3 +227,52 @@ def test_account_correlation_rejects_foreign_response(direct, replacement):
 
     with pytest.raises(BridgeError, match="validation"):
         run(direct, wrong, accounts=True)
+
+
+def test_exact_account_recovers_and_selector_is_immutable(direct):
+    def crash(request, path):
+        assert "<ListID>synthetic-account-1</ListID>" in request
+        assert "MaxReturned" not in request and "ActiveStatus" not in request
+        account_transport()(request, path)
+        raise RuntimeError("saved then interrupted")
+
+    with pytest.raises(RuntimeError):
+        run(direct, crash, list_id=ACCOUNT["ListID"])
+    result = run(direct, lambda *_: pytest.fail("must not repeat"), list_id=ACCOUNT["ListID"])
+    assert result["accounts"] == [ACCOUNT]
+    assert result["limit"] == 1 and result["operation"] == "exact-account"
+    for options in ({"list_id": "other"}, {"accounts": True}, {}):
+        with pytest.raises(BridgeError, match="ownership"):
+            run(direct, lambda *_: pytest.fail("must not dispatch"), **options)
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        {"list_id": ""},
+        {"list_id": "<bad/>"},
+        {"list_id": "x" * 32},
+        {"list_id": "abc", "accounts": True},
+    ],
+)
+def test_exact_account_invalid_options_before_dispatch(direct, options):
+    with pytest.raises(BridgeError):
+        run(direct, lambda *_: pytest.fail("must not dispatch"), **options)
+
+
+@pytest.mark.parametrize("case", ["wrong", "missing", "inactive", "company"])
+def test_exact_account_invalid_response_blocks(direct, case):
+    def exchange(request, path):
+        records = (
+            []
+            if case == "missing"
+            else [{**ACCOUNT, "IsActive": "false" if case == "inactive" else "true"}]
+        )
+        account_transport(records, COMPANY_B if case == "company" else COMPANY_A)(request, path)
+        if case == "wrong":
+            path.write_text(path.read_text().replace(ACCOUNT["ListID"], "foreign-account"))
+
+    with pytest.raises(BridgeError, match="validation"):
+        run(direct, exchange, list_id=ACCOUNT["ListID"])
+    with pytest.raises(BridgeError, match="blocked"):
+        run(direct, lambda *_: pytest.fail("must not repeat"), list_id=ACCOUNT["ListID"])

@@ -82,6 +82,7 @@ def discover(
     exchange=windows_exchange,
     recover_read: bool = False,
     accounts: bool = False,
+    list_id: str | None = None,
 ) -> dict:
     """Run/resume fixed US qbXML 17 discovery under company permissions and audit.
 
@@ -102,10 +103,19 @@ def discover(
     request = service._discovery_request(run_id, "17.0")
     if type(accounts) is not bool:
         raise BridgeError("invalid lookup mode")
-    if accounts:
-        from .account_lookup import append_query
+    from .account_lookup import append_query, validate_list_id
 
-        request = append_query(request, run_id)
+    validate_list_id(list_id)
+    if accounts and list_id is not None:
+        raise BridgeError("select preview or exact account, not both")
+    lookup = accounts or list_id is not None
+    operation = (
+        "exact-account"
+        if list_id is not None
+        else ("active-account-preview" if accounts else "discovery")
+    )
+    if lookup:
+        request = append_query(request, run_id, list_id=list_id)
     with company_lock(store.path.with_suffix(".sdk.lock")):
         with store.transaction() as db:
             service._expire_active(db, store, time.time())
@@ -134,7 +144,7 @@ def discover(
                         "run": run_id,
                         "connector": connector_id,
                         "transport": "direct-sdk",
-                        "operation": "active-account-preview" if accounts else "discovery",
+                        "operation": operation,
                     },
                 )
                 row = db.execute("SELECT * FROM sdk_discovery WHERE id=?", (run_id,)).fetchone()
@@ -172,10 +182,10 @@ def discover(
         try:
             discovery_response = response
             account_records = None
-            if accounts:
+            if lookup:
                 from .account_lookup import validate_response
 
-                discovery_response, account_records = validate_response(response, run_id)
+                discovery_response, account_records = validate_response(response, run_id, list_id)
             identity, host = service._verify_discovery_response(
                 discovery_response,
                 {"correlation": run_id, "country": "US", "qbxml_version": "17.0"},
@@ -206,12 +216,12 @@ def discover(
             "transport": "direct-sdk",
             "live_posting": False,
         }
-        if accounts:
+        if lookup:
             result.update(
                 accounts=account_records,
-                limit=20,
+                limit=1 if list_id is not None else 20,
                 complete=False,
-                operation="active-account-preview",
+                operation=operation,
             )
         return result
 
@@ -232,9 +242,9 @@ def main(argv=None):
     parser.add_argument("--connector", required=True)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--recover-read", action="store_true")
-    parser.add_argument(
-        "--accounts", action="store_true", help="preview at most 20 active accounts"
-    )
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument("--accounts", action="store_true", help="preview at most 20 active accounts")
+    modes.add_argument("--list-id", help="read one exact active account by ListID")
     args = parser.parse_args(argv)
     try:
         load_secret_file(args.credentials)
@@ -249,6 +259,7 @@ def main(argv=None):
             args.run_id,
             recover_read=args.recover_read,
             accounts=args.accounts,
+            list_id=args.list_id,
         )
         print(json.dumps(result))
         return 0

@@ -2,6 +2,23 @@
 
 Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK and QBWC discovery, including QBWC post-restart update: PASS.
 
+## Latest implementation: direct SDK exact account lookup qualified
+
+- Added mutually exclusive `--list-id` / `--accounts` CLI modes. Exact ListID is bound
+  to the immutable durable request; run IDs cannot change selector or operation.
+- Shared validator rejects wrong/missing/inactive records. Native C# XML allowlist
+  accepts only the fixed exact selector and projected fields, retaining SDK read-only
+  and no-personal-data authorization and company/session overlap controls.
+- Actual sample lookup returned exactly one matching account with verified company
+  binding and audit. Initial native BeginSession failed on a modal before dispatch;
+  restoring QuickBooks and explicit read recovery succeeded. Fresh-process replay
+  returned the saved result without dispatch. Exact evidence remains private.
+- Local suite: 282 passed; lint, format and build passed. Nine new synthetic cases
+  cover saved-response recovery, immutable selector/mode, invalid inputs and rejected
+  wrong/missing/inactive/wrong-company responses. No production posting is qualified.
+- Next: operation-specific account validation and explicit configurable account roles.
+  Accounting posting stays disabled.
+
 ## Latest qualification: actual QBWC exact-ID lookup passed
 
 - The queued exact-ID job completed against the previously confirmed sample company.

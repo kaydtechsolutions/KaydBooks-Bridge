@@ -75,10 +75,25 @@ Missing, inactive, extra or different records fail closed. SDK warning statuses 
 blocked rather than being interpreted as a successful no-match.
 
 The fixed request uses ListID instead of MaxReturned/ActiveStatus, following the
-Intuit AccountQuery choice schema linked above. This option is QBWC-only; direct SDK
-continues to provide the active-account preview. Exact lookup has synthetic callback
+Intuit AccountQuery choice schema linked above. Both QBWC and direct SDK support this option. Exact lookup has synthetic callback
 and restart coverage. A real sample-company QBWC lookup also returned exactly the
 requested active account, completed with progress 100 and clean closure, and passed
 company-binding and audit verification. Fresh-process retrieval revalidated persisted
 evidence. Raw results remain private. It is not account-type approval for any posting
 operation, production qualification or interrupted-query recovery. Posting stays disabled.
+
+
+## Exact account lookup through direct SDK
+
+Use `--list-id` instead of `--accounts` on the direct SDK CLI. The two modes are
+mutually exclusive. A new numeric run ID binds the exact selector in the immutable
+request; the same run cannot change selector or switch to discovery/preview.
+Response validation requires exactly the requested active account. Native request
+validation allows only the fixed ListID query and the four projected fields.
+
+Real sample-company test returned one matching record with verified company binding
+and audit. The first attempt stopped before dispatch because QuickBooks reported a
+modal; after restoring its window, explicit read recovery completed successfully.
+A fresh Python process replayed the persisted result with dispatch disabled. This is
+not qualification of interruption inside ProcessRequest or production accounting.
+All exact records and native evidence remain private. Posting remains disabled.
