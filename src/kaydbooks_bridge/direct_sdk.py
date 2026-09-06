@@ -86,6 +86,7 @@ def discover(
     invoice_check: dict | None = None,
     master_preview: bool = False,
     commercial_preview: bool = False,
+    receipt_check: dict | None = None,
 ) -> dict:
     """Run/resume fixed US qbXML 17 discovery under company permissions and audit.
 
@@ -132,6 +133,20 @@ def discover(
         operation = "invoice-master-preview"
     check = None
     context_hash = None
+    receipt_policy = None
+    if receipt_check is not None:
+        from .config import strict_keys
+        from .invoice_receipt import append_lookup, lookup_context
+
+        if lookup or master_preview or invoice_check is not None:
+            raise BridgeError("receipt lookup cannot be combined with another mode")
+        strict_keys(receipt_check, {"txn_id", "payload"})
+        receipt_policy = config.authorize(actor, connector.company, "validate")
+        context_hash = lookup_context(
+            receipt_policy, receipt_check["payload"], receipt_check["txn_id"]
+        )
+        request = append_lookup(request, run_id, receipt_check["txn_id"])
+        operation = "invoice-receipt-check"
     if invoice_check is not None:
         if lookup:
             raise BridgeError("select account lookup or invoice compatibility, not both")
@@ -211,6 +226,17 @@ def discover(
             discovery_response = response
             account_records = None
             master_records = None
+            receipt = None
+            if receipt_policy is not None:
+                from .invoice_receipt import validate_lookup
+
+                discovery_response, receipt = validate_lookup(
+                    response,
+                    run_id,
+                    receipt_policy,
+                    receipt_check["payload"],
+                    receipt_check["txn_id"],
+                )
             if lookup:
                 from .account_lookup import validate_response
 
@@ -262,6 +288,8 @@ def discover(
                 complete=False,
                 operation=operation,
             )
+        if receipt is not None:
+            result.update(operation=operation, receipt=receipt, context_sha256=context_hash)
         if check is not None:
             result.update(
                 operation=operation,
@@ -304,6 +332,11 @@ def main(argv=None):
     modes.add_argument("--accounts", action="store_true", help="preview at most 20 active accounts")
     modes.add_argument("--list-id", help="read one exact active account by ListID")
     modes.add_argument(
+        "--receipt-check",
+        type=Path,
+        help="private {txn_id,payload} JSON for saved invoice verification",
+    )
+    modes.add_argument(
         "--invoice-check", type=Path, help="private invoice payload JSON for master compatibility"
     )
     modes.add_argument(
@@ -331,6 +364,9 @@ def main(argv=None):
             master_preview=args.master_preview,
             commercial_preview=args.commercial_preview,
             list_id=args.list_id,
+            receipt_check=json.loads(args.receipt_check.read_text(encoding="utf-8"))
+            if args.receipt_check
+            else None,
             invoice_check=json.loads(args.invoice_check.read_text(encoding="utf-8"))
             if args.invoice_check
             else None,

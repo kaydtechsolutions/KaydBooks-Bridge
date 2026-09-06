@@ -5,7 +5,10 @@ batch, optionally extended with a [bounded active-account preview](ACCOUNT_LOOKU
 using `--accounts`. It uses the same private configuration, principal and connector authentication,
 company permissions, SQLite audit chain, and response/binding verifier as QBWC.
 It has a separate company-scoped discovery journal; results are never represented
-as QBWC callbacks or transaction-job completion. Live posting remains disabled.
+as QBWC callbacks. A fixed `--receipt-check` can verify an existing non-taxable service
+invoice by TxnID; the separate authenticated [receipt attachment](INVOICE_RECEIPTS.md)
+action can then complete an undispatched job with explicit external provenance.
+Live posting remains disabled.
 
 ## Prerequisites and invocation
 

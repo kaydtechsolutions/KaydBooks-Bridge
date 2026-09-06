@@ -273,12 +273,38 @@ class Store:
                 BEFORE INSERT ON invoice_evidence_links WHEN NOT EXISTS
                 (SELECT 1 FROM jobs WHERE id=NEW.job_id AND state='draft')
                 BEGIN SELECT RAISE(ABORT,'evidence requires draft'); END""")
+            if not db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='invoice_receipts'"
+            ).fetchone():
+                db.execute("DROP TRIGGER IF EXISTS jobs_state_transition_guard")
+            db.execute("""CREATE TABLE IF NOT EXISTS invoice_receipts (
+                job_id TEXT PRIMARY KEY REFERENCES jobs(id), txn_id TEXT NOT NULL UNIQUE,
+                actor TEXT NOT NULL, connector TEXT NOT NULL,
+                run_id TEXT NOT NULL REFERENCES sdk_discovery(id),
+                context_hash TEXT NOT NULL, evidence TEXT NOT NULL)""")
+            for operation in ("UPDATE", "DELETE"):
+                db.execute(f"""CREATE TRIGGER IF NOT EXISTS receipt_no_{operation.lower()}
+                    BEFORE {operation} ON invoice_receipts
+                    BEGIN SELECT RAISE(ABORT,'invoice receipts are immutable'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS receipt_insert_guard
+                BEFORE INSERT ON invoice_receipts WHEN NOT EXISTS (
+                    SELECT 1 FROM jobs j JOIN sdk_discovery s ON s.id=NEW.run_id
+                    WHERE j.id=NEW.job_id AND j.submitter=NEW.actor
+                      AND j.operation='invoice.create' AND j.state IN ('validated','queued')
+                      AND j.attempt IS NULL AND j.txn_id IS NULL
+                      AND s.state='verified' AND s.response IS NOT NULL AND s.error=''
+                      AND s.actor=NEW.actor AND s.connector=NEW.connector
+                      AND s.context_hash=NEW.context_hash)
+                BEGIN SELECT RAISE(ABORT,'receipt requires owned undispatched job and SDK evidence'); END""")
             db.execute("""CREATE TRIGGER IF NOT EXISTS jobs_state_transition_guard
                 BEFORE UPDATE OF state ON jobs
                 WHEN NOT (
                     OLD.state = NEW.state
                     OR (OLD.state = 'draft' AND NEW.state = 'validated')
                     OR (OLD.state = 'validated' AND NEW.state = 'queued')
+                    OR (OLD.state IN ('validated','queued') AND NEW.state='verified'
+                        AND OLD.attempt IS NULL AND EXISTS
+                        (SELECT 1 FROM invoice_receipts WHERE job_id=OLD.id AND txn_id=NEW.txn_id))
                     OR (OLD.state IN ('validated','queued') AND NEW.state = 'draft'
                         AND OLD.attempt IS NULL AND NEW.approval_by IS NULL
                         AND NEW.approval_hash IS NULL)
@@ -327,6 +353,11 @@ class Store:
                        OR NEW.txn_id IS NULL
                        OR NEW.state NOT IN ('posted-unverified', 'verified'))
                 BEGIN SELECT RAISE(ABORT, 'invalid transaction receipt mutation'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS external_receipt_terminal_guard
+                BEFORE UPDATE ON jobs WHEN EXISTS
+                (SELECT 1 FROM invoice_receipts WHERE job_id=OLD.id
+                  AND (NEW.state!='verified' OR txn_id IS NOT NEW.txn_id))
+                BEGIN SELECT RAISE(ABORT, 'saved external receipt requires terminal verified job'); END""")
             db.execute("""CREATE TRIGGER IF NOT EXISTS jobs_state_invariant_guard
                 BEFORE UPDATE ON jobs
                 WHEN (OLD.state = 'queued' AND NEW.state = 'in-flight'
@@ -415,6 +446,11 @@ class Store:
         ).fetchone()
         if evidence:
             result["master_evidence"] = json.loads(evidence[0])
+        receipt = db.execute(
+            "SELECT evidence FROM invoice_receipts WHERE job_id=?", (job_id,)
+        ).fetchone()
+        if receipt:
+            result["transaction_receipt"] = json.loads(receipt[0])
         return result
 
     def verify_audit(self, db) -> bool:

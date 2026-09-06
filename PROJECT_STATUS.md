@@ -2,7 +2,25 @@
 
 Updated: 2026-09-06. General live posting: DISABLED. One separately approved sample invoice was saved and verified. Real direct SDK and QBWC discovery, including QBWC post-restart update: PASS.
 
-## Latest qualification: one approved sample invoice and independent receipt checks
+## Latest implementation: durable invoice receipts and shared job reconciliation
+
+- Added a fixed read-only SDK invoice query by TxnID. Current company binding, exact
+  payload/policy, durable request and response, owner and permissions are verified.
+- Added authenticated `attach-receipt` with recover/read/validate permissions. It atomically
+  persists immutable receipt evidence, completes an owned undispatched job and appends audit.
+  Receipt provenance explicitly records an externally saved invoice, not a Bridge dispatch.
+- The approved sample invoice passed real readback and attachment. Its shared job now holds
+  the verified TxnID with no dispatch attempt. Restart, duplicate prevention and audit passed;
+  zero new invoices were written. General posting remains disabled.
+- Duplicate preparation retains terminal receipts even after master evidence expires;
+  conflicting payloads, stale new observations, state regression and receipt replacement fail.
+- Validation: 516 tests pass (515-test regression plus the new CLI case), including
+  native receipt allowlist, current grants, timestamp replay, migration and atomic rollback.
+  Lint, formatting and source/wheel builds pass. Real sample receipt attachment passed.
+- NEXT: QBWC receipt parity and a separately gated posting adapter. No new sample invoice
+  writes are included in the consumed one-invoice authorization.
+
+## Previous qualification: one approved sample invoice and independent receipt checks
 
 - Operator explicitly approved one non-taxable service invoice of 10.00 in the confirmed
   sample company. Fresh SDK master evidence and the validated review were checked before

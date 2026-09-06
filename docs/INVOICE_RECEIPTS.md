@@ -50,3 +50,50 @@ action; this helper has no automatic retry path, even when reconciliation finds 
 The implementation used Intuit's official [InvoiceAdd request schema](https://static.developer.intuit.com/qbSDK-current/common/newosr/qbsdk/json/InvoiceAddRq.json),
 [InvoiceQuery request schema](https://static.developer.intuit.com/qbSDK-current/common/newosr/qbsdk/json/InvoiceQueryRq.json)
 and [InvoiceQuery response schema](https://static.developer.intuit.com/qbSDK-current/common/newosr/qbsdk/json/InvoiceQueryRs.json).
+
+## Durable readback and shared job completion
+
+The direct SDK command supports `--receipt-check` with a private JSON file containing
+`txn_id` and the intended `payload`. It constructs HostQuery, CompanyQuery and exactly
+one InvoiceQuery by TxnID with line items, linked transactions and fixed projected fields.
+The native gate rejects writes, reference searches, multiple IDs and arbitrary fields.
+Both `read` and `validate` permissions are required. The durable SDK run binds owner,
+connector, company, request and current payload/mapping policy. Recovery reuses a saved
+response; replay cannot refresh the first dispatch timestamp.
+
+After this read succeeds, the authenticated core CLI accepts:
+
+```text
+kaydbooks-bridge --config PRIVATE_CONFIG --company COMPANY_ID attach-receipt JOB_ID PRIVATE_REFERENCE_JSON
+```
+
+The reference file contains only:
+
+```json
+{"transport":"direct-sdk","connector":"connector-company-a","id":"1234"}
+```
+
+`Bridge.attach_receipt` requires current `recover`, `read` and `validate` grants and job
+ownership. It resolves the durable verified SDK response, rechecks the exact request,
+payload/policy context, company identity and audit chain, and rejects stale evidence using
+the configured invoice evidence TTL. Client XML, timestamps and success claims are rejected.
+Only an undispatched validated or queued invoice can be attached. No QuickBooks mutation
+occurs, and simulation attempts cannot be relabeled as real dispatches.
+
+The receipt insert, transition to `verified` and audit event commit atomically. The receipt
+has `origin: external-invoice-readback` and `bridge_dispatched: false`; the job records the
+real TxnID with `attempt` still null. Receipts are immutable and a company TxnID can belong
+to only one attached job. The SQLite migration preserves existing jobs and state guards.
+
+An identical owned replay returns the saved receipt even after the observation expires:
+that is historical completion, not a fresh observation of the current invoice. Current
+permissions are still checked. Duplicate preparation returns the same completed job and
+cannot reopen it, change its payload or initiate a dispatch. Status exposes the receipt
+and TxnID. Changed payloads, conflicting keys, new receipt references and state regressions
+fail. Further payments or edits are outside this narrow receipt qualification.
+
+The previously approved sample invoice passed this new read-only transport and attachment
+path. Restart, duplicate preparation and audit verification passed with zero new writes.
+This supersedes the earlier milestone's separate-only receipt record; the job now explicitly
+records verified external provenance. QBWC receipt attachment and general posting remain
+unimplemented, and this code does not enable production writes.

@@ -84,7 +84,20 @@ public static class PrivateReadOnlyDiscovery {
        !System.Text.RegularExpressions.Regex.IsMatch(node.Attributes["requestID"].Value,"^[0-9]+$"))
       throw new InvalidOperationException("Only fixed read-only discovery requests are permitted");
    }
-   if(batch.ChildNodes.Count==3) {
+   if(batch.ChildNodes.Count==3 && batch.ChildNodes[2].Name=="InvoiceQueryRq") {
+    var query=batch.ChildNodes[2];
+    var selector=query.FirstChild;
+    if(query.Attributes.Count!=1 || query.Attributes["requestID"]==null ||
+       !System.Text.RegularExpressions.Regex.IsMatch(query.Attributes["requestID"].Value,@"\A[1-9][0-9]{0,16}\z") ||
+       selector==null || selector.Name!="TxnID" || selector.Attributes.Count!=0 ||
+       selector.ChildNodes.Count!=1 || selector.FirstChild.NodeType!=System.Xml.XmlNodeType.Text ||
+       !System.Text.RegularExpressions.Regex.IsMatch(selector.InnerText,@"\A[A-Za-z0-9-]{1,31}\z"))
+     throw new InvalidOperationException("Exact invoice receipt selector required");
+    string expected="<TxnID>"+selector.InnerText+"</TxnID><IncludeLineItems>true</IncludeLineItems><IncludeLinkedTxns>true</IncludeLinkedTxns>";
+    foreach(string field in "TxnID,EditSequence,CustomerRef,ARAccountRef,TxnDate,RefNumber,IsPending,IsFinanceCharge,Subtotal,SalesTaxTotal,AppliedAmount,BalanceRemaining,CurrencyRef,ExchangeRate,IsPaid,IsToBePrinted,IsToBeEmailed,IsTaxIncluded,CustomerSalesTaxCodeRef,ItemSalesTaxRef,LinkedTxn,InvoiceLineRet,InvoiceLineGroupRet,DiscountLineRet,SalesTaxLineRet,ShippingLineRet".Split(','))
+     expected+="<IncludeRetElement>"+field+"</IncludeRetElement>";
+    if(query.InnerXml!=expected) throw new InvalidOperationException("Only fixed invoice receipt fields permitted");
+   } else if(batch.ChildNodes.Count==3) {
     var account=batch.ChildNodes[2];
     string expected="<MaxReturned>20</MaxReturned><ActiveStatus>ActiveOnly</ActiveStatus><IncludeRetElement>ListID</IncludeRetElement><IncludeRetElement>FullName</IncludeRetElement><IncludeRetElement>AccountType</IncludeRetElement><IncludeRetElement>IsActive</IncludeRetElement>";
     if(account.FirstChild!=null && account.FirstChild.Name=="ListID") {

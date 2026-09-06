@@ -26,6 +26,11 @@ def main(argv=None) -> int:
         commands.add_parser(action).add_argument("job_id")
     commands.add_parser("status").add_argument("job_id", nargs="?")
     commands.add_parser("preview").add_argument("job_id")
+    receipt = commands.add_parser("attach-receipt")
+    receipt.add_argument("job_id")
+    receipt.add_argument(
+        "reference", type=Path, help="private durable receipt evidence reference JSON"
+    )
     for action in ("simulate", "recover", "pause", "resume", "audit"):
         commands.add_parser(action)
     args = parser.parse_args(argv)
@@ -58,6 +63,15 @@ def main(argv=None) -> int:
                 result = bridge.status(token, args.company, args.job_id)
             elif args.command == "preview":
                 result = bridge.preview(token, args.company, args.job_id)
+            elif args.command == "attach-receipt":
+                if args.reference.stat().st_size > 4096:
+                    raise BridgeError("receipt reference too large")
+                result = bridge.attach_receipt(
+                    token,
+                    args.company,
+                    args.job_id,
+                    json.loads(args.reference.read_text(encoding="utf-8")),
+                )
             elif args.command in {"pause", "resume"}:
                 result = bridge.pause(token, args.company, args.command == "pause")
             else:

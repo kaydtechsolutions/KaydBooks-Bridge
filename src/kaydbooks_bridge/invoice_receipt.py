@@ -9,6 +9,70 @@ from qbwc_kit._xml import fromstring
 from .config import BridgeError
 from .invoice_commercial import decimal_evidence
 from .invoice_compatibility import plan, required_id
+from .validation import digest
+
+RECEIPT_FIELDS = (
+    "TxnID",
+    "EditSequence",
+    "CustomerRef",
+    "ARAccountRef",
+    "TxnDate",
+    "RefNumber",
+    "IsPending",
+    "IsFinanceCharge",
+    "Subtotal",
+    "SalesTaxTotal",
+    "AppliedAmount",
+    "BalanceRemaining",
+    "CurrencyRef",
+    "ExchangeRate",
+    "IsPaid",
+    "IsToBePrinted",
+    "IsToBeEmailed",
+    "IsTaxIncluded",
+    "CustomerSalesTaxCodeRef",
+    "ItemSalesTaxRef",
+    "LinkedTxn",
+    "InvoiceLineRet",
+    "InvoiceLineGroupRet",
+    "DiscountLineRet",
+    "SalesTaxLineRet",
+    "ShippingLineRet",
+)
+
+
+def lookup_context(policy, payload, txn_id):
+    required_id(txn_id)
+    check = _check(policy, payload)
+    return digest(
+        {"operation": "invoice-receipt-check", "invoice": check["context_sha256"], "txn_id": txn_id}
+    )
+
+
+def append_lookup(discovery, correlation, txn_id):
+    _request_id(correlation)
+    required_id(txn_id)
+    root = fromstring(discovery)
+    query = ET.SubElement(root.find("QBXMLMsgsRq"), "InvoiceQueryRq", requestID=f"{correlation}3")
+    ET.SubElement(query, "TxnID").text = txn_id
+    ET.SubElement(query, "IncludeLineItems").text = "true"
+    ET.SubElement(query, "IncludeLinkedTxns").text = "true"
+    for field in RECEIPT_FIELDS:
+        ET.SubElement(query, "IncludeRetElement").text = field
+    return '<?xml version="1.0"?><?qbxml version="17.0"?>' + ET.tostring(root, encoding="unicode")
+
+
+def validate_lookup(xml, correlation, policy, payload, txn_id):
+    root = fromstring(xml)
+    if root.tag != "QBXML" or len(root) != 1 or root[0].tag != "QBXMLMsgsRs" or len(root[0]) != 3:
+        raise BridgeError("receipt lookup requires discovery and one invoice response")
+    invoice_root = ET.Element("QBXML")
+    ET.SubElement(invoice_root, "QBXMLMsgsRs").append(root[0][2])
+    receipt = validate_receipt(
+        ET.tostring(invoice_root), policy, payload, f"{correlation}3", txn_id=txn_id
+    )
+    root[0].remove(root[0][2])
+    return ET.tostring(root, encoding="unicode"), receipt
 
 
 def _check(policy, payload):
@@ -28,7 +92,7 @@ def _check(policy, payload):
 
 
 def _request_id(value):
-    if not isinstance(value, str) or not re.fullmatch(r"[1-9][0-9]{0,15}", value):
+    if not isinstance(value, str) or not re.fullmatch(r"[1-9][0-9]{0,16}", value):
         raise BridgeError("invalid invoice request correlation")
     return value
 

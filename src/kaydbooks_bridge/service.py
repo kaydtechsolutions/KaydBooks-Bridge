@@ -82,6 +82,35 @@ class Bridge:
         source_key = canonical([source["namespace"], source["reference"]])
         business_key = canonical([envelope["operation"], payload["ref_number"].casefold()])
         with store.transaction() as db:
+            matches = db.execute(
+                "SELECT id,fingerprint FROM jobs WHERE id IN (SELECT job_id FROM idempotency_keys WHERE key=?) OR source_key=? OR business_key=?",
+                (envelope["idempotency_key"], source_key, business_key),
+            ).fetchall()
+            if matches:
+                if len(matches) != 1 or matches[0]["fingerprint"] != fingerprint:
+                    raise BridgeError(
+                        "duplicate key, source or reference conflicts with existing job"
+                    )
+                existing = store.job(db, matches[0]["id"])
+                if existing.get("transaction_receipt"):
+                    config.authorize(actor, company, "read")
+                    if existing["submitter"] != actor or existing["state"] != "verified":
+                        raise BridgeError("receipt requires an owned verified job")
+                    if not store.verify_audit(db):
+                        raise BridgeError("receipt evidence audit is invalid")
+                    db.execute(
+                        "INSERT OR IGNORE INTO idempotency_keys VALUES (?,?)",
+                        (envelope["idempotency_key"], existing["id"]),
+                    )
+                    store.event(
+                        db,
+                        self.clock(),
+                        actor,
+                        existing["id"],
+                        "duplicate_prevented",
+                        {"surface": envelope["surface"], "receipt_retained": True},
+                    )
+                    return existing
             evidence = None
             if "master_evidence" in envelope:
                 evidence = resolve_evidence(
@@ -96,15 +125,7 @@ class Bridge:
                 )
             elif policy.invoice_masters:
                 raise BridgeError("verified invoice master evidence required")
-            matches = db.execute(
-                "SELECT id,fingerprint FROM jobs WHERE id IN (SELECT job_id FROM idempotency_keys WHERE key=?) OR source_key=? OR business_key=?",
-                (envelope["idempotency_key"], source_key, business_key),
-            ).fetchall()
             if matches:
-                if len(matches) != 1 or matches[0]["fingerprint"] != fingerprint:
-                    raise BridgeError(
-                        "duplicate key, source or reference conflicts with existing job"
-                    )
                 job_id = matches[0]["id"]
                 existing = store.job(db, job_id)
                 if evidence != existing.get("master_evidence"):
@@ -172,6 +193,60 @@ class Bridge:
             (job_id, canonical(evidence)),
         )
         store.event(db, self.clock(), actor, job_id, "invoice_evidence_linked", evidence)
+
+    @audited
+    def attach_receipt(self, token: str, company: str, job_id: str, reference: dict) -> dict:
+        """Mark an already-saved invoice verified; never dispatch a transaction."""
+        from .receipt_evidence import resolve
+
+        config, actor, policy, store = self._context(token, company, "recover")
+        config.authorize(actor, company, "read")
+        config.authorize(actor, company, "validate")
+        strict_keys(reference, {"transport", "connector", "id"})
+        with store.transaction() as db:
+            job = store.job(db, job_id)
+            if job["submitter"] != actor:
+                raise BridgeError("receipt attachment requires job ownership")
+            saved = job.get("transaction_receipt")
+            if saved is not None:
+                if (
+                    saved["reference"] != reference
+                    or job["state"] != "verified"
+                    or not store.verify_audit(db)
+                ):
+                    raise BridgeError("existing receipt cannot be replaced")
+                return job
+            if (
+                job["state"] not in ("validated", "queued")
+                or job["attempt"] is not None
+                or job["operation"] != "invoice.create"
+                or job["txn_id"] is not None
+            ):
+                raise BridgeError("receipt attachment requires an undispatched validated invoice")
+            evidence = resolve(
+                config, policy, store, db, actor, job["payload"], reference, self.clock()
+            )
+            txn_id = evidence["receipt"]["txn_id"]
+            if db.execute("SELECT 1 FROM invoice_receipts WHERE txn_id=?", (txn_id,)).fetchone():
+                raise BridgeError("saved transaction already belongs to another job")
+            db.execute(
+                "INSERT INTO invoice_receipts VALUES (?,?,?,?,?,?,?)",
+                (
+                    job_id,
+                    txn_id,
+                    actor,
+                    reference["connector"],
+                    reference["id"],
+                    evidence["context_sha256"],
+                    canonical(evidence),
+                ),
+            )
+            db.execute(
+                "UPDATE jobs SET state='verified',txn_id=?,detail='verified_external_invoice' WHERE id=?",
+                (txn_id, job_id),
+            )
+            store.event(db, self.clock(), actor, job_id, "invoice_receipt_attached", evidence)
+            return store.job(db, job_id)
 
     @audited
     def preview(self, token: str, company: str, job_id: str) -> dict:
@@ -254,7 +329,7 @@ class Bridge:
                     "jobs": [
                         dict(row)
                         for row in db.execute(
-                            "SELECT id,state,operation,detail FROM jobs ORDER BY rowid"
+                            "SELECT id,state,operation,detail,txn_id FROM jobs ORDER BY rowid"
                         )
                     ],
                     "audit_valid": store.verify_audit(db),
