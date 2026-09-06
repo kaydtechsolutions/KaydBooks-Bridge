@@ -93,8 +93,9 @@ qualification are separate evidence; a passing mock does not establish native su
   verification and independent customer balance decrease from USD25 to USD20. It was
   initially unapplied. A subsequent native USD3 application verified the invoice balance
   10 -> 7, remaining credit 5 -> 2 and unchanged customer balance 20. Both reciprocal
-  links are retained with their native negative sign. Refunds and broader variants remain
-  unqualified; M3-06 stays partial.
+  links are retained with their native negative sign. A recorded USD2 Visa refund then
+  verified credit 2 -> 0, customer balance 20 -> 22 and bank 510 -> 508, without card
+  processing. Other refund and broader variants remain unqualified; M3-06 stays partial.
 - [ ] **M3-07:** Supplier credits: correct vendor/accounts/items and bill applications;
   verify remaining payable and unused credit independently.
 - [ ] **M3-08:** Discounts and additional charges: explicit line/document treatment,
@@ -215,5 +216,5 @@ edition/version support and saved-record projections. Do not infer support from 
 request names in the inherited library. Current supported operation families are listed in the project status; each new
 family requires policy, evidence, durable dispatch and independent native readback.
 
-Current step: **M3-06, customer credit application and refunds**, followed by supplier
-credits and the remaining non-tax acceptance gates. No real company details belong here.
+Current step: **M3-07, supplier credits**, then broader adjustment variants and the
+remaining non-tax acceptance gates. No real company details belong here.

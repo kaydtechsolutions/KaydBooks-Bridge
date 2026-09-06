@@ -56,6 +56,7 @@ class Company:
     sample_supplier_payment_posting: dict = field(default_factory=dict)
     sample_credit_posting: dict = field(default_factory=dict)
     sample_application_posting: dict = field(default_factory=dict)
+    sample_refund_posting: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -83,6 +84,7 @@ def company_policy_context(policy):
         "supplier_payment_masters",
         "sample_supplier_payment_posting",
         "sample_credit_posting",
+        "sample_refund_posting",
         "sample_application_posting",
     ):
         if not value.get(name):
@@ -142,6 +144,7 @@ class Config:
                     "supplier_payment_masters",
                     "sample_supplier_payment_posting",
                     "sample_credit_posting",
+                    "sample_refund_posting",
                     "sample_application_posting",
                 },
             )
@@ -276,6 +279,25 @@ class Config:
                     or type(credit_gate["max_credits"]) is not int
                     or not 1 <= credit_gate["max_credits"] <= 10
                     or type(credit_gate["expires_at"]) not in (int, float)
+                ):
+                    raise BridgeError("invalid controlled sample credit posting gate")
+            refund_gate = companies[name].sample_refund_posting
+            if not isinstance(refund_gate, dict):
+                raise BridgeError("sample credit posting gate must be an object")
+            if refund_gate:
+                strict_keys(
+                    refund_gate,
+                    {"connector", "authorization", "ref_prefix", "max_refunds", "expires_at"},
+                )
+                identifier(refund_gate["connector"])
+                if (
+                    not isinstance(refund_gate["authorization"], str)
+                    or not 20 <= len(refund_gate["authorization"]) <= 1000
+                    or not isinstance(refund_gate["ref_prefix"], str)
+                    or not re.fullmatch(r"[A-Z0-9-]{3,8}", refund_gate["ref_prefix"])
+                    or type(refund_gate["max_refunds"]) is not int
+                    or not 1 <= refund_gate["max_refunds"] <= 10
+                    or type(refund_gate["expires_at"]) not in (int, float)
                 ):
                     raise BridgeError("invalid controlled sample credit posting gate")
             application_gate = companies[name].sample_application_posting

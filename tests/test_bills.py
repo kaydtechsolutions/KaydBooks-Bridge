@@ -187,5 +187,6 @@ def test_legacy_policy_hash_shape_is_preserved(setup):  # noqa: F811
     old_shape.pop("supplier_payment_masters")
     old_shape.pop("sample_supplier_payment_posting")
     old_shape.pop("sample_credit_posting")
+    old_shape.pop("sample_refund_posting")
     old_shape.pop("sample_application_posting")
     assert company_policy_context(policy) == old_shape

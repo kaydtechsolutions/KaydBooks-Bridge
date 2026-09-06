@@ -96,6 +96,8 @@ def discover(
     payment_check: dict | None = None,
     payment_methods: bool = False,
     payment_receipt_check: dict | None = None,
+    refund_check: dict | None = None,
+    refund_receipt_check: dict | None = None,
     application_check: dict | None = None,
     application_receipt_check: dict | None = None,
     credit_check: dict | None = None,
@@ -108,6 +110,15 @@ def discover(
     Unknown reads are held unless recover_read is explicit. This API cannot write.
     Real SDK results are recorded separately from QBWC callback sessions.
     """
+    refund = refund_check is not None or refund_receipt_check is not None
+    if refund:
+        if (
+            credit_check is not None
+            or credit_receipt_check is not None
+            or (refund_check is not None and refund_receipt_check is not None)
+        ):
+            raise BridgeError("refund cannot be combined with another credit lookup")
+        credit_check, credit_receipt_check = refund_check, refund_receipt_check
     application = application_check is not None or application_receipt_check is not None
     if application:
         if (
@@ -260,6 +271,8 @@ def discover(
             from .customer_credits import append_lookup, lookup_context
         if application:
             from .credit_application import append_lookup, lookup_context
+        if refund:
+            from .customer_refunds import append_lookup, lookup_context
 
         strict_keys(payment_receipt_check, {"payload", "txn_id"})
         payment_policy = config.authorize(actor, connector.company, "validate")
@@ -274,7 +287,9 @@ def discover(
             payment_receipt_check["txn_id"],
         )
         operation = (
-            "credit-application-outcome"
+            "customer-refund-outcome"
+            if refund
+            else "credit-application-outcome"
             if application
             else "customer-credit-receipt-check"
             if credit
@@ -300,13 +315,18 @@ def discover(
         if application:
             from .credit_application import append_check
             from .credit_application import plan as payment_master_plan
+        if refund:
+            from .customer_refunds import append_check
+            from .customer_refunds import plan as payment_master_plan
 
         company = config.authorize(actor, connector.company, "validate")
         payment_plan = payment_master_plan(company, payment_check)
         context_hash = payment_plan["context_sha256"]
         request = append_check(request, run_id, payment_plan)
         operation = (
-            "credit-application-check"
+            "customer-refund-check"
+            if refund
+            else "credit-application-check"
             if application
             else "customer-credit-check"
             if credit
@@ -442,6 +462,8 @@ def discover(
                     from .customer_credits import validate_lookup
                 if application:
                     from .credit_application import validate_lookup
+                if refund:
+                    from .customer_refunds import validate_lookup
 
                 discovery_response, receipt = validate_lookup(
                     response,
@@ -463,6 +485,8 @@ def discover(
                     from .customer_credits import validate_check
                 if application:
                     from .credit_application import validate_check
+                if refund:
+                    from .customer_refunds import validate_check
 
                 discovery_response, payment_balances = validate_check(
                     response, run_id, payment_plan
@@ -605,6 +629,9 @@ def main(argv=None):
     parser.add_argument("--recover-read", action="store_true")
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument(
+        "--refund-check", type=Path, help="check unused credits and refund accounts; no posting"
+    )
+    modes.add_argument(
         "--application-check", type=Path, help="check invoice and existing credit; no posting"
     )
     modes.add_argument(
@@ -698,6 +725,9 @@ def main(argv=None):
             if args.payment_check
             else None,
             payment_methods=args.payment_methods,
+            refund_check=json.loads(args.refund_check.read_text(encoding="utf-8"))
+            if args.refund_check
+            else None,
             application_check=json.loads(args.application_check.read_text(encoding="utf-8"))
             if args.application_check
             else None,

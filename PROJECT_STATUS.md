@@ -10,7 +10,9 @@ matching USD30 unpaid invoices minus USD5 unapplied.
 Two USD5 supplier payments settled the mixed bill; Vendor Balance Summary and complete
 BillToPay independently report USD30 across three unpaid bills. One USD5 unapplied service
 credit reduced customer balance to USD20. Applying USD3 of that credit left USD2 unused
-and the original invoice at USD7; customer balance remains USD20. No transaction was resent.
+and the original invoice at USD7. A recorded USD2 Visa refund then exhausted that credit,
+increased customer balance to USD22 and reduced the bank balance 510 -> 508. No transaction
+was resent and no payment processor was invoked.
 
 ## M3â€“M7 sample implementation and qualification
 
@@ -34,11 +36,11 @@ and the original invoice at USD7; customer balance remains USD20. No transaction
   amounts through the durable lifecycle. Native USD5 and USD10 receipts settled the USD15
   invoice; a third USD5 receipt remained unapplied. Signed AppliedAmount, related invoice
   payments and customer-wide unused credits are handled without double-counting.
-- Latest validation: 815 full-suite tests passed, followed by 22 passing application
-  tests after the native sign correction and the added approval/dispatch acceptance test.
-  Lint, native request gates, 23-tool stdio checks and source/wheel builds pass.
-  An installed signed restore recovered 18 jobs with valid integrity and audit; the
-  restored service was not started. CI54 passed all nine jobs for the prior credit commit.
+- Latest validation: 841 full-suite tests passed, followed by 25 passing refund tests
+  after correcting the native query projection. Lint, native request gates, 25-tool
+  stdio checks and source/wheel builds pass. An installed signed restore recovered
+  19 jobs and 929 files with valid integrity and audit; the restored service was not
+  started. CI55 passed all nine jobs for the prior credit-application commit.
 - Supplier payments now pass exact vendor/AP/Bank mapping, partial/full settlement,
   independent saved allocation/payable checks and missing-response recovery tests.
   Native sample readbacks verified the bill balance decreasing 10 -> 5 -> 0.
@@ -48,8 +50,11 @@ and the original invoice at USD7; customer balance remains USD20. No transaction
   customer-balance verification on its first attempt. A subsequent USD3 link-only
   application now verifies invoice 10 -> 7, credit 5 -> 2 and customer balance unchanged
   at 20. The native reciprocal link sign mismatch was corrected and reconciled without
-  resending. Refunds remain unfinished; this does not complete M3-06.
-- Current step: refunds and supplier credits, then remaining
+  resending. A recorded USD2 credit-card refund now independently verifies remaining
+  credit 2 -> 0, customer balance 20 -> 22 and bank balance 510 -> 508. The native query
+  omits CreditRemaining inside the refund allocation; the separate exact credit query
+  remains mandatory. Broader refund variants remain unfinished; M3-06 stays partial.
+- Current step: supplier credits, then remaining
   M3–M6 acceptance gates. Sample posting is paused between bounded tests.
 - The [first-release checklist](docs/FIRST_RELEASE_SCOPE.md) is the release target;
   these qualified simple paths do not complete the wider currency/advanced variants.
@@ -58,7 +63,7 @@ and the original invoice at USD7; customer balance remains USD20. No transaction
   assigned companies by default. Explicit restrictions are respected. Required reviews,
   company binding and production/sample posting gates remain enforced. General role
   management and separately configurable self-approval remain release work.
-- CLI sample invoice/bill/payment commands and 23 narrow MCP tools are implemented. Native
+- CLI sample invoice/bill/payment commands and 25 narrow MCP tools are implemented. Native
   attempts cannot enter simulation recovery; bill receipts are excluded from the
   historical invoice register. All company identity, sources and mappings stay private.
 

@@ -93,6 +93,28 @@ public static class PrivateReadOnlyDiscovery {
     while(batch.ChildNodes.Count>2)batch.RemoveChild(batch.LastChild);
    }
    // Validate and detach fixed credit extensions before validating their invoice-master prefix.
+   if(batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=28 && batch.ChildNodes[6].Name=="PaymentMethodQueryRq" && batch.ChildNodes[7].Name=="CreditMemoQueryRq") {
+    string correlation=batch.FirstChild.Attributes["requestID"].Value;
+    correlation=correlation.Substring(0,correlation.Length-1);
+    FixedQuery(batch.ChildNodes[2],"Preferences","MultiCurrencyPreferences",false);
+    FixedQuery(batch.ChildNodes[3],"Customer","ListID,IsActive,Balance,CurrencyRef",true);
+    for(int i=4;i<6;i++)FixedQuery(batch.ChildNodes[i],"Account","ListID,IsActive,AccountType,Balance,CurrencyRef",true);
+    FixedQuery(batch.ChildNodes[6],"PaymentMethod","ListID,IsActive,PaymentMethodType",true);
+    for(int i=2;i<batch.ChildNodes.Count;i++) {
+     var q=batch.ChildNodes[i];
+     bool receipt=q.Name=="ARRefundCreditCardQueryRq" && i==batch.ChildNodes.Count-1;
+     if(q.Attributes.Count!=1||q.Attributes["requestID"]==null||q.Attributes["requestID"].Value!=correlation+(receipt?"99":(i+1).ToString()))throw new Exception("Refund query correlation differs");
+     if(i<7)continue;
+     if(!receipt&&q.Name!="CreditMemoQueryRq")throw new Exception("Only fixed credit/refund queries allowed");
+     var id=q.FirstChild;
+     if(id==null||id.Name!="TxnID"||!System.Text.RegularExpressions.Regex.IsMatch(id.InnerText,@"\A[A-Za-z0-9-]{1,31}\z"))throw new Exception("Exact refund/credit identity required");
+     string expected="<TxnID>"+id.InnerText+"</TxnID>"+(receipt?"<IncludeLineItems>true</IncludeLineItems>":"");
+     string fields=receipt?"TxnID,EditSequence,CustomerRef,RefundFromAccountRef,ARAccountRef,TxnDate,RefNumber,TotalAmount,PaymentMethodRef,CurrencyRef,ExchangeRate,RefundAppliedToTxnRet":"TxnID,EditSequence,CustomerRef,ARAccountRef,TxnDate,IsPending,TotalAmount,SalesTaxTotal,CreditRemaining,CurrencyRef,ExchangeRate";
+     foreach(string field in fields.Split(','))expected+="<IncludeRetElement>"+field+"</IncludeRetElement>";
+     if(q.InnerXml!=expected)throw new Exception("Fixed refund fields required");
+    }
+    while(batch.ChildNodes.Count>2)batch.RemoveChild(batch.LastChild);
+   }
    if(batch.LastChild!=null && batch.LastChild.Name=="CreditMemoQueryRq") {
     string[] cf="TxnID,EditSequence,CustomerRef,ARAccountRef,TxnDate,RefNumber,IsPending,Subtotal,SalesTaxTotal,CurrencyRef,ExchangeRate,IsToBePrinted,IsToBeEmailed,IsTaxIncluded,CustomerSalesTaxCodeRef,ItemSalesTaxRef,LinkedTxn,CreditMemoLineRet,CreditMemoLineGroupRet,DiscountLineRet,SalesTaxLineRet,ShippingLineRet,TotalAmount,CreditRemaining,Memo".Split(',');
     string correlation=batch.FirstChild.Attributes["requestID"].Value;
