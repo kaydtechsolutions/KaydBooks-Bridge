@@ -9,6 +9,8 @@ from functools import wraps
 from pathlib import Path
 
 from .config import BridgeError, Config, identifier, strict_keys
+from .invoice_evidence import require as require_evidence
+from .invoice_evidence import resolve as resolve_evidence
 from .simulation import SyntheticLedger
 from .store import Store
 from .validation import canonical, digest, validate_invoice, validate_source
@@ -61,8 +63,12 @@ class Bridge:
 
     @audited
     def prepare(self, token: str, company: str, envelope: dict) -> dict:
-        _, actor, policy, store = self._context(token, company, "prepare")
-        strict_keys(envelope, {"operation", "idempotency_key", "surface", "payload", "source"})
+        config, actor, policy, store = self._context(token, company, "prepare")
+        strict_keys(
+            envelope,
+            {"operation", "idempotency_key", "surface", "payload", "source"},
+            {"master_evidence"},
+        )
         if envelope["operation"] != "invoice.create":
             raise BridgeError("operation unavailable; only synthetic invoice.create is implemented")
         if envelope["surface"] not in SURFACES:
@@ -76,6 +82,20 @@ class Bridge:
         source_key = canonical([source["namespace"], source["reference"]])
         business_key = canonical([envelope["operation"], payload["ref_number"].casefold()])
         with store.transaction() as db:
+            evidence = None
+            if "master_evidence" in envelope:
+                evidence = resolve_evidence(
+                    config,
+                    policy,
+                    store,
+                    db,
+                    actor,
+                    payload,
+                    envelope["master_evidence"],
+                    self.clock(),
+                )
+            elif policy.invoice_masters:
+                raise BridgeError("verified invoice master evidence required")
             matches = db.execute(
                 "SELECT id,fingerprint FROM jobs WHERE id IN (SELECT job_id FROM idempotency_keys WHERE key=?) OR source_key=? OR business_key=?",
                 (envelope["idempotency_key"], source_key, business_key),
@@ -86,6 +106,22 @@ class Bridge:
                         "duplicate key, source or reference conflicts with existing job"
                     )
                 job_id = matches[0]["id"]
+                existing = store.job(db, job_id)
+                if evidence != existing.get("master_evidence"):
+                    if evidence is None:
+                        raise BridgeError("linked invoice evidence cannot be removed")
+                    if existing["submitter"] != actor or existing["state"] not in (
+                        "draft",
+                        "validated",
+                        "queued",
+                    ):
+                        raise BridgeError("only the owner may refresh evidence before dispatch")
+                    db.execute(
+                        "UPDATE jobs SET state='draft',approval_by=NULL,approval_hash=NULL WHERE id=?",
+                        (job_id,),
+                    )
+                    self._link_evidence(store, db, actor, job_id, evidence)
+                require_evidence(config, policy, store, db, store.job(db, job_id), self.clock())
                 db.execute(
                     "INSERT OR IGNORE INTO idempotency_keys VALUES (?,?)",
                     (envelope["idempotency_key"], job_id),
@@ -118,6 +154,8 @@ class Bridge:
             db.execute(
                 "INSERT INTO idempotency_keys VALUES (?,?)", (envelope["idempotency_key"], job_id)
             )
+            if evidence is not None:
+                self._link_evidence(store, db, actor, job_id, evidence)
             store.event(
                 db,
                 self.clock(),
@@ -127,6 +165,13 @@ class Bridge:
                 {"surface": envelope["surface"], "fingerprint": fingerprint},
             )
             return store.job(db, job_id)
+
+    def _link_evidence(self, store, db, actor, job_id, evidence):
+        db.execute(
+            "INSERT INTO invoice_evidence_links(job_id,evidence) VALUES (?,?)",
+            (job_id, canonical(evidence)),
+        )
+        store.event(db, self.clock(), actor, job_id, "invoice_evidence_linked", evidence)
 
     @audited
     def action(self, token: str, company: str, job_id: str, action: str) -> dict:
@@ -139,6 +184,7 @@ class Bridge:
             if job["state"] != expected:
                 raise BridgeError("action is invalid for the current job state")
             validate_invoice(job["payload"], policy)
+            require_evidence(config, policy, store, db, job, self.clock())
             validate_source(job["source"], policy)
             if job["source"]["uncertain_fields"]:
                 raise BridgeError(
@@ -220,6 +266,7 @@ class Bridge:
             job = store.job(db, row["id"])
             # Initiator and worker both need current authority. Delegation adds none.
             config.authorize(job["submitter"], company, "submit")
+            require_evidence(config, policy, store, db, job, self.clock())
             validate_invoice(job["payload"], policy)
             validate_source(job["source"], policy)
             self._approval(config, policy, job)
@@ -267,6 +314,7 @@ class Bridge:
                     latest_actor = latest.authenticate(token)
                     latest_policy = latest.authorize(latest_actor, company, "simulate")
                     latest.authorize(job["submitter"], company, "submit")
+                    require_evidence(latest, latest_policy, store, db, job, self.clock())
                     validate_invoice(job["payload"], latest_policy)
                     validate_source(job["source"], latest_policy)
                     self._approval(latest, latest_policy, job)

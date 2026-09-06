@@ -742,15 +742,16 @@ class DurableQBWCDiscoveryService:
         if observed != connector.identity_sha256:
             raise BridgeError("HCP company binding mismatch")
 
-    def _verify_discovery_response(self, payload: str, row, connector: Connector):
+    @classmethod
+    def _verify_discovery_response(cls, payload: str, row, connector: Connector):
         if connector.identity_sha256 == UNCONFIRMED_IDENTITY:
             raise BridgeError("company binding is not operator-confirmed")
         try:
             responses = parse_response(payload)
             if len(responses) != 2:
                 raise BridgeError("discovery response count mismatch")
-            host = self._response(responses, "Host", f"{row['correlation']}1")
-            company = self._response(responses, "Company", f"{row['correlation']}2")
+            host = cls._response(responses, "Host", f"{row['correlation']}1")
+            company = cls._response(responses, "Company", f"{row['correlation']}2")
         except Exception as exc:  # noqa: BLE001 - fail the untrusted callback closed
             if isinstance(exc, BridgeError):
                 raise

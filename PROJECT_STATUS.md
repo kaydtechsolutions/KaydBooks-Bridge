@@ -2,6 +2,25 @@
 
 Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK and QBWC discovery, including QBWC post-restart update: PASS.
 
+## Latest implementation: fresh master evidence required for mapped invoices
+
+- Invoice preparation resolves an owned SDK/QBWC evidence reference from private durable
+  company state. Exact response, current company identity, payload/mappings, read+validate
+  authority and valid audit are required. Client success/timestamp claims are rejected.
+- Companies with master mappings require evidence; unmapped synthetic simulation remains
+  available. Freshness defaults to 900 seconds and uses the original SDK dispatch or QBWC
+  session start. Replay cannot renew it. All lifecycle gates and simulator dispatch recheck.
+- Evidence links and history are append-only. Owner refresh before dispatch retains the
+  invoice/deduplication IDs, returns it to draft and clears prior approval. Already dispatched
+  jobs cannot be refreshed. Removing mappings cannot bypass a linked invoice's checks.
+- Real sample SDK read, draft preparation, validation, fresh-instance duplicate prevention,
+  controlled-clock stale rejection and audit verification passed. Sample prepare permission
+  added; no approve/submit/posting permission. Both transport paths tested synthetically.
+- Validation: 408 full-suite tests passed (54 evidence-link integration cases), including
+  the native allowlist test; lint, formatting, wheel and source builds passed. One inherited
+  Starlette/httpx deprecation warning remains. Raw company evidence stays private.
+- Next: inventory, tax and pricing compatibility rules. Production posting remains disabled.
+
 ## Latest implementation: QBWC invoice compatibility parity qualified
 
 - Added authenticated one-update invoice check CLI and durable per-company queue.

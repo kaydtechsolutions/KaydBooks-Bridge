@@ -46,6 +46,7 @@ class Company:
     approval_required: bool
     account_roles: dict[str, str] = field(default_factory=dict)
     invoice_masters: dict = field(default_factory=dict)
+    invoice_evidence_max_age_seconds: int = 900
 
 
 @dataclass(frozen=True)
@@ -98,7 +99,7 @@ class Config:
                     "sources",
                     "approval_required",
                 },
-                {"account_roles", "invoice_masters"},
+                {"account_roles", "invoice_masters", "invoice_evidence_max_age_seconds"},
             )
             identifier(raw["simulation_identity"])
             if not isinstance(raw["currency"], str) or not re.fullmatch(
@@ -124,6 +125,9 @@ class Config:
             raw["invoice_masters"] = validate_masters(
                 raw.get("invoice_masters", {}), raw["customers"], raw["items"]
             )
+            age = raw.get("invoice_evidence_max_age_seconds", 900)
+            if type(age) is not int or not 60 <= age <= 86400:
+                raise BridgeError("invoice evidence age must be 60-86400 seconds")
             companies[name] = Company(id=name, **raw)
         principals = data["principals"]
         if not isinstance(principals, dict) or not principals:

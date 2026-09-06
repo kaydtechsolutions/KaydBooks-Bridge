@@ -122,3 +122,60 @@ basis is configured-single-currency; explicit CurrencyRef mode remains synthetic
 Synthetic coverage includes repeated callbacks, restart, both currency modes, immutable
 context, changed permission/policy, queue exclusion, disconnect, missing HCP, unsupported
 versions and incompatible/wrong-company responses. No production invoice was posted.
+
+## Link evidence to invoice preparation
+
+Companies with `invoice_masters` configured now require a successful master check
+when preparing an invoice. Companies without mappings retain the synthetic simulator
+workflow; that workflow does not establish QuickBooks compatibility. Existing jobs
+also need evidence at validation, approval and dispatch once mappings are configured.
+
+Add this reference to the ordinary private preparation envelope (alongside `payload`
+and `source`), using the ID of an already completed check:
+
+```json
+"master_evidence": {
+  "transport": "qbwc",
+  "connector": "connector-company-a",
+  "id": "invoice-check-one"
+}
+```
+
+For SDK evidence use `"transport": "direct-sdk"` and a numeric run ID string. These
+are examples, not sample-company deployment identifiers. Use the existing authenticated
+`kaydbooks-bridge --company <company-id> prepare <private-envelope.json>` command.
+The preparer needs `prepare`, `read` and `validate` and must own the lookup. An approver
+can be a different principal; subsequent gates recheck the lookup owner's authority.
+No connector password, raw response or client-claimed success/timestamp is accepted
+in the reference. A queued, failed or wrong-company check cannot be used.
+
+The resolver reads private durable evidence, verifies its audit chain, revalidates
+the exact response and current company binding, and matches the invoice and current
+master/role mappings. It saves the reference, observation time, response digest,
+context digest and company identity digest in an append-only invoice link and audit.
+
+Evidence must be younger than `invoice_evidence_max_age_seconds` on the company
+configuration, default **900 seconds**, allowed range **60–86400**. Age starts at the
+first SDK dispatch recorded in the immutable audit, or QBWC session creation. These
+conservative start times include query and recovery delays. The exact expiry boundary,
+future times and missing timestamps are rejected. Reading results or replaying callbacks
+never renews age. This is a bounded-age observation, not a lock on QuickBooks masters.
+
+Preparation, validation, approval, queue submission and simulator dispatch all enforce
+the gate; the simulator checks again at its write boundary. Policy changes and authority
+revocation take effect on the next action. Removing mappings cannot bypass an existing
+link. Expired evidence requires a **new lookup ID**, not another retrieval of the old ID.
+
+To refresh, run a fresh check for the same payload, then repeat `prepare` with the same
+invoice/source and the new reference. Before any dispatch, the owner can refresh a
+draft, validated or queued invoice. The original invoice ID and business deduplication
+keys remain; it returns to draft and clears approval, requiring validation and approval
+again. Link history is retained. An in-flight or completed invoice cannot be refreshed.
+
+Qualification: a fresh real sample SDK check was linked to one local draft and validated.
+A fresh Bridge instance preserved the invoice ID on retry; a controlled-clock expiry
+check rejected stale evidence and the audit remained valid. Only the sample operator's
+`prepare` permission was added. No approve/submit grant or live posting was enabled.
+Both transport preparation paths, refresh and expiry are covered by synthetic integration
+tests; real QBWC compatibility was qualified separately above. Tax, pricing and inventory
+compatibility are still outside this service-item master check.

@@ -257,12 +257,31 @@ class Store:
                   OR OLD.payload IS NOT NEW.payload
                   OR OLD.source IS NOT NEW.source
                 BEGIN SELECT RAISE(ABORT, 'job identity is immutable'); END""")
+            if not db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='invoice_evidence_links'"
+            ).fetchone():
+                db.execute("DROP TRIGGER IF EXISTS jobs_state_transition_guard")
+                db.execute("DROP TRIGGER IF EXISTS jobs_approval_guard")
+            db.execute("""CREATE TABLE IF NOT EXISTS invoice_evidence_links (
+                sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                job_id TEXT NOT NULL REFERENCES jobs(id), evidence TEXT NOT NULL)""")
+            for operation in ("UPDATE", "DELETE"):
+                db.execute(f"""CREATE TRIGGER IF NOT EXISTS evidence_no_{operation.lower()}
+                    BEFORE {operation} ON invoice_evidence_links
+                    BEGIN SELECT RAISE(ABORT,'invoice evidence is append-only'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS evidence_draft_only
+                BEFORE INSERT ON invoice_evidence_links WHEN NOT EXISTS
+                (SELECT 1 FROM jobs WHERE id=NEW.job_id AND state='draft')
+                BEGIN SELECT RAISE(ABORT,'evidence requires draft'); END""")
             db.execute("""CREATE TRIGGER IF NOT EXISTS jobs_state_transition_guard
                 BEFORE UPDATE OF state ON jobs
                 WHEN NOT (
                     OLD.state = NEW.state
                     OR (OLD.state = 'draft' AND NEW.state = 'validated')
                     OR (OLD.state = 'validated' AND NEW.state = 'queued')
+                    OR (OLD.state IN ('validated','queued') AND NEW.state = 'draft'
+                        AND OLD.attempt IS NULL AND NEW.approval_by IS NULL
+                        AND NEW.approval_hash IS NULL)
                     OR (OLD.state = 'queued' AND NEW.state = 'in-flight')
                     OR (OLD.state = 'in-flight' AND NEW.state IN
                         ('posted-unverified', 'blocked', 'failed', 'unknown'))
@@ -272,8 +291,11 @@ class Store:
                 BEGIN SELECT RAISE(ABORT, 'invalid job state transition'); END""")
             db.execute("""CREATE TRIGGER IF NOT EXISTS jobs_approval_guard
                 BEFORE UPDATE OF approval_by,approval_hash ON jobs
-                WHEN OLD.approval_by IS NOT NEW.approval_by
-                  OR OLD.approval_hash IS NOT NEW.approval_hash
+                WHEN (OLD.approval_by IS NOT NEW.approval_by
+                  OR OLD.approval_hash IS NOT NEW.approval_hash)
+                  AND NOT (OLD.state IN ('validated','queued') AND NEW.state='draft'
+                    AND OLD.attempt IS NULL AND NEW.approval_by IS NULL
+                    AND NEW.approval_hash IS NULL)
                 BEGIN
                     SELECT CASE
                         WHEN OLD.state != 'validated'
@@ -387,6 +409,12 @@ class Store:
         result = dict(row)
         for key in ("payload", "source"):
             result[key] = json.loads(result[key])
+        evidence = db.execute(
+            "SELECT evidence FROM invoice_evidence_links WHERE job_id=? ORDER BY sequence DESC LIMIT 1",
+            (job_id,),
+        ).fetchone()
+        if evidence:
+            result["master_evidence"] = json.loads(evidence[0])
         return result
 
     def verify_audit(self, db) -> bool:
