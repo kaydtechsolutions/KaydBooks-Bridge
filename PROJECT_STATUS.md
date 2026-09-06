@@ -1,8 +1,37 @@
 # KaydBooks Bridge project status
 
-Updated: 2026-09-06. Production posting: DISABLED. One earlier sample invoice was saved and verified. The new native sample adapter is awaiting its QuickBooks permission dialog. Real SDK/QBWC discovery and receipt reads: PASS.
+Updated: 2026-09-06. Production posting: DISABLED. Controlled sample posting/recovery: PASS. Three sample invoices have verified receipts (one earlier invoice and two new USD10 tests). SDK/QBWC reads and isolated Hermes MCP qualification: PASS.
 
-## Current M3: durable controlled sample posting
+## M3–M7 sample implementation and qualification
+
+| Milestone | Current implementation/evidence | Remaining scope |
+| --- | --- | --- |
+| M3 | Durable non-tax service invoice adapter; actual normal write/readback and abrupt-parent-exit recovery; duplicate dispatch refused | Taxable/inventory/broader transactions and production qualification |
+| M4 | Thirteen narrow MCP tools; immutable source bytes/hash, explicit field confidence/review; installed Hermes discovery and actual MCP-to-SDK sample preparation | OCR quality, conversational model runs, draft correction/revision |
+| M5 | Local bounded schedules, occurrence deduplication, dependencies/cancellation, local-only outbox, versioned preferences, canonical delegation, read-only board | Native Hermes cron/channels/delegation/Kanban connections; external delivery |
+| M6 | Historical verified-invoice register with dates, source hashes, observation times, derived totals and private exports | Native QuickBooks financial reports and optional GUI fallback |
+| M7 | Signed quiescent snapshot, isolated restore/integrity/audit drill, private ACL inspection, package qualification | Production pilot authorization, dedicated service account, operational failover and external immutable audit retention |
+
+- Actual MCP qualification retained original source bytes, ran a fresh sample master
+  lookup, prepared/validated/previewed/queued a document invoice, preserved its duplicate
+  job identity and rejected a different company. No accounting write tool is exposed.
+- Uncertain values require review-source permission and exact fingerprint/value
+  confirmation. Original uncertainty is retained and revoked reviewer grants block use.
+  No model calls or OCR accuracy claims are included.
+- Local staging workflows passed; the test schedule was cancelled. Outbox entries are
+  local previews, never deliveries. The report matched three historical receipts totaling
+  USD30; it does not claim current balances or a complete company ledger.
+- An isolated signed restore recovered all five staged jobs with valid SQLite integrity
+  and audit continuity. No restored service or production connector was started.
+- Validation baseline: 568 tests passed, including actual stdio protocol tests against
+  synthetic state. Native QuickBooks and installed Hermes proofs remain separate/private.
+- Current authorized sample path is implemented. Optional integrations and production
+  readiness remain explicitly bounded as above; no merge or release is authorized.
+
+See [Hermes tools](docs/HERMES_TOOLS.md), [local workflows](docs/LOCAL_WORKFLOWS.md),
+and [deployment qualification](docs/DEPLOYMENT_QUALIFICATION.md).
+
+## M3 implementation: durable controlled sample posting
 
 - Added an explicit `post-sample` grant and private expiring, reference-prefix, count-limited
   authorization. Company amount limits still apply. The staged gate permits at most three
@@ -16,12 +45,11 @@ Updated: 2026-09-06. Production posting: DISABLED. One earlier sample invoice wa
 - Validation: 547 tests passed; lint, formatting and complete native helper compilation
   passed. Tests cover lost responses, restart reconciliation, duplicate prevention,
   changed grants/policy/binding, and native request tampering. These posting tests are synthetic.
-- Real preparation passed with retained source bytes/hash and fresh native master evidence
-  for one USD10 non-tax service invoice. The new application permission dialog is open;
-  no native write authorization or accounting write intent has been published.
-- BLOCKER: operator action on the QuickBooks permission dialog. M3 real dispatch/recovery
-  qualification is incomplete; M4-M7 remain planned. No production, merge or release.
-- NEXT: complete native sample qualification, then Hermes tools/document intake.
+- Real preparation passed with retained source bytes/hash and fresh native master evidence.
+  QuickBooks permission was granted. One USD10 invoice completed normally; a second USD10
+  invoice passed abrupt-parent-exit recovery and duplicate dispatch refusal in a fresh process.
+- BLOCKER: none for the controlled sample path. Production and optional integrations remain
+  outside the qualified scope. No production data changes, merge or release occurred.
 
 The following sections retain historical evidence; their older next-action and permission
 statements are superseded by this current section and the operator's M3-M7 authorization.

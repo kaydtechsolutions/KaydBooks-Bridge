@@ -310,5 +310,10 @@ PERMISSIONS = frozenset(
         "recover",
         "pause",
         "post-sample",
+        "review-source",
+        "manage-workflows",
+        "report",
+        "export",
+        "backup",
     }
 )

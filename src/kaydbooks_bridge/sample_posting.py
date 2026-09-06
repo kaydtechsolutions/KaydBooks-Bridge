@@ -153,8 +153,7 @@ def gate(config, actor, policy, job, now):
         raise BridgeError("confirmed sample connector required")
     if job["submitter"] != actor:
         raise BridgeError("sample posting requires job ownership")
-    if validate_source(job["source"], policy)["uncertain_fields"]:
-        raise BridgeError("unresolved source fields")
+    validate_source(job["source"], policy)
     Bridge._approval(config, policy, job)
     return connector
 
@@ -166,6 +165,9 @@ def post(bridge, token, company, job_id, *, exchange=windows_exchange, read_exch
         with store.transaction() as db:
             job = store.job(db, job_id)
             connector = gate(config, actor, policy, job, bridge.clock())
+            from .source_review import require as require_review
+
+            require_review(config, policy, store, db, job)
             if job["state"] != "queued":
                 raise BridgeError(
                     "sample posting requires queued job; never retry a dispatched invoice"
@@ -234,6 +236,7 @@ def post(bridge, token, company, job_id, *, exchange=windows_exchange, read_exch
                 current_connector = gate(
                     current_config, current_actor, current_policy, current, bridge.clock()
                 )
+                require_review(current_config, current_policy, store, db, current)
                 if (
                     current["state"] != "in-flight"
                     or current["attempt"] != attempt

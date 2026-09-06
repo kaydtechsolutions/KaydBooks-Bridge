@@ -26,6 +26,9 @@ def main(argv=None) -> int:
         commands.add_parser(action).add_argument("job_id")
     commands.add_parser("status").add_argument("job_id", nargs="?")
     commands.add_parser("preview").add_argument("job_id")
+    review = commands.add_parser("review-source")
+    review.add_argument("job_id")
+    review.add_argument("review", type=Path, help="fingerprint and confirmed_values JSON")
     for action in ("attach-receipt", "verify-receipt"):
         receipt = commands.add_parser(action)
         receipt.add_argument("job_id")
@@ -70,6 +73,15 @@ def main(argv=None) -> int:
                 result = bridge.status(token, args.company, args.job_id)
             elif args.command == "preview":
                 result = bridge.preview(token, args.company, args.job_id)
+            elif args.command == "review-source":
+                from .config import strict_keys
+                from .source_review import review
+
+                if args.review.stat().st_size > 65536:
+                    raise BridgeError("review too large")
+                values = json.loads(args.review.read_text(encoding="utf-8"))
+                strict_keys(values, {"fingerprint", "confirmed_values"})
+                result = review(bridge, token, args.company, args.job_id, **values)
             elif args.command in ("attach-receipt", "verify-receipt"):
                 if args.reference.stat().st_size > 4096:
                     raise BridgeError("receipt reference too large")

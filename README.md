@@ -26,8 +26,12 @@ as Bridge endpoints: they do not enforce Bridge company permissions or durable j
   receipt checks and a separately gated native sample-invoice adapter.
 
 SDK/QBWC company binding and master/receipt reads have real sample-company evidence.
-Native Hermes adapters, broader transactions/reports, document extraction, schedules,
-notifications, memory and GUI workflows remain planned.
+The optional [Hermes MCP adapter](docs/HERMES_TOOLS.md) adds source capture, preparation
+and narrow tools. [Local workflows](docs/LOCAL_WORKFLOWS.md) add bounded scheduling,
+preferences, delegation, board views and historical receipt reports. Signed snapshots
+and isolated restore drills support [sample deployment qualification](docs/DEPLOYMENT_QUALIFICATION.md).
+Broader transactions, native financial reports, OCR quality, external collaboration
+and GUI accounting workflows remain unqualified or unavailable.
 An interface label in a test envelope does not mean that Hermes interface is connected.
 
 ## Development

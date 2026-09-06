@@ -50,5 +50,14 @@ def inventory() -> dict:
             "landed_cost": "unverified",
             "live_adapter": "disabled",
         },
-        "bridge": {"invoice.create": "simulation_tested", "other_transactions": "planned"},
+        "bridge": {
+            "invoice.create": "simulation_tested",
+            "controlled_sample_invoice": "explicit_private_gate_required",
+            "document_intake": "implemented",
+            "hermes_mcp_tools": "optional_stdio_adapter",
+            "local_workflows": "implemented_no_external_deliveries",
+            "receipt_register": "historical_receipts_only",
+            "backup_restore": "signed_snapshot_and_isolated_drill",
+            "other_transactions": "planned",
+        },
     }

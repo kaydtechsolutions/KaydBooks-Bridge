@@ -42,6 +42,9 @@ which process created a record. Duplicate preparation retains the same completed
 Known limits: a pause cannot retract a write already authorized to the helper. A lost or
 absent result can require operator investigation, and authorization changes may need the
 original private context restored for reconciliation. This is not a production enablement,
-automatic retry facility, full tax/inventory adapter or exactly-once guarantee. The next real
-qualification needs permission for the new Controlled Sample Posting QuickBooks application;
-test transactions are confined to the operator-confirmed sample company.
+automatic retry facility, full tax/inventory adapter or exactly-once guarantee.
+
+Real sample qualification passed for a normal native posting and a second invoice whose
+parent exited after the helper saved its response. A fresh process reconciled the second
+invoice and refused another dispatch. Exact receipts and authorization remain private.
+Production access is outside this qualification.

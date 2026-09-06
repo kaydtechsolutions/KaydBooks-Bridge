@@ -317,10 +317,9 @@ class Bridge:
             validate_invoice(job["payload"], policy)
             require_evidence(config, policy, store, db, job, self.clock())
             validate_source(job["source"], policy)
-            if job["source"]["uncertain_fields"]:
-                raise BridgeError(
-                    "uncertain extracted fields require a corrected source and new job"
-                )
+            from .source_review import require as require_review
+
+            require_review(config, policy, store, db, job)
             if action == "approve":
                 if actor == job["submitter"]:
                     raise BridgeError("approval must come from a different principal")
@@ -405,6 +404,9 @@ class Bridge:
             validate_invoice(job["payload"], policy)
             validate_source(job["source"], policy)
             self._approval(config, policy, job)
+            from .source_review import require as require_review
+
+            require_review(config, policy, store, db, job)
             attempt = uuid.uuid4().hex
             db.execute(
                 "UPDATE jobs SET state='in-flight',attempt=?,lease_until=? WHERE id=?",
@@ -452,6 +454,7 @@ class Bridge:
                     require_evidence(latest, latest_policy, store, db, job, self.clock())
                     validate_invoice(job["payload"], latest_policy)
                     validate_source(job["source"], latest_policy)
+                    require_review(latest, latest_policy, store, db, job)
                     self._approval(latest, latest_policy, job)
                     if ledger.identity() != latest_policy.simulation_identity:
                         raise BridgeError("company changed before write")

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "kaydbooks-bridge"
 version = "0.1.0.dev1"
-description = "Company-scoped QuickBooks Desktop automation foundation with a simulation-only job service."
+description = "Company-scoped QuickBooks Desktop bridge with verified receipts and controlled sample qualification."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -22,11 +22,14 @@ classifiers = [
     "Topic :: Office/Business :: Financial :: Accounting",
     "Topic :: Software Development :: Libraries",
 ]
-dependencies = []
+dependencies = ["tzdata; sys_platform == 'win32'"]
 
 [project.optional-dependencies]
 server = ["fastapi>=0.100", "uvicorn>=0.23"]
 dev = ["pytest>=7", "fastapi>=0.100", "httpx>=0.24", "ruff>=0.4", "uvicorn>=0.23"]
+hermes = [
+    "mcp>=1.10,<2",
+]
 
 [project.urls]
 Homepage = "https://github.com/kaydtechsolutions/KaydBooks-Bridge"
@@ -36,6 +39,9 @@ Issues = "https://github.com/kaydtechsolutions/KaydBooks-Bridge/issues"
 kaydbooks-bridge = "kaydbooks_bridge.cli:main"
 kaydbooks-bridge-qbwc = "kaydbooks_bridge.deployment:serve"
 kaydbooks-bridge-qbwc-config = "kaydbooks_bridge.deployment:profile_cli"
+kaydbooks-bridge-tools = "kaydbooks_bridge.hermes_tools:main"
+kaydbooks-bridge-operations = "kaydbooks_bridge.operations:main"
+kaydbooks-bridge-qualification = "kaydbooks_bridge.qualification:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
