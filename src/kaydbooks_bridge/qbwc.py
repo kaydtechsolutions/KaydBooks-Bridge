@@ -1,8 +1,8 @@
 """Durable, read-only QBWC discovery callbacks.
 
 This service deliberately has no task injection or write request API.  It emits one
-fixed HostQuery/CompanyQuery batch and binds the authenticated connector to configured
-CompanyRet evidence before recording the session as verified.
+fixed HostQuery/CompanyQuery batch, optionally extended by an authenticated bounded
+account preview, and verifies configured CompanyRet evidence before accepting results.
 """
 
 from __future__ import annotations
@@ -188,6 +188,10 @@ class DurableQBWCDiscoveryService:
                     correlation,
                 ),
             )
+            db.execute(
+                "UPDATE qbwc_account_jobs SET ticket=? WHERE connector=? AND ticket IS NULL",
+                (ticket, connector.id),
+            )
             result = [ticket, company_file]
             self._callback(
                 db,
@@ -231,6 +235,16 @@ class DurableQBWCDiscoveryService:
             if row["state"] in ("expired", "closed", "disconnected", "blocked", "verified"):
                 self._callback(db, now, ticket, "sendRequestXML", callback_input, "", row["state"])
                 return ""
+
+            lookup = db.execute(
+                "SELECT * FROM qbwc_account_jobs WHERE ticket=?", (ticket,)
+            ).fetchone()
+            if lookup:
+                try:
+                    self.config.authorize(lookup["actor"], connector.company, "read")
+                except BridgeError:
+                    self._block(db, store, row, now, "account lookup permission revoked")
+                    return ""
 
             if row["state"] == "request-sent":
                 try:
@@ -293,6 +307,12 @@ class DurableQBWCDiscoveryService:
                 if hcp:
                     self._verify_hcp(hcp, connector)
                 request = self._discovery_request(row["correlation"], version)
+                if lookup:
+                    if not hcp or country != "US" or tuple(map(int, version.split("."))) < (4, 0):
+                        raise BridgeError("account lookup requires verified HCP and US qbXML 4+")
+                    from .account_lookup import append_query
+
+                    request = append_query(request, row["correlation"], version)
             except (BridgeError, ValueError, TypeError) as exc:
                 self._block(db, store, row, now, str(exc))
                 self._callback(
@@ -388,8 +408,17 @@ class DurableQBWCDiscoveryService:
                 error = f"QuickBooks request processor error {hresult}"
             else:
                 try:
+                    payload = response
+                    lookup = db.execute(
+                        "SELECT * FROM qbwc_account_jobs WHERE ticket=?", (ticket,)
+                    ).fetchone()
+                    if lookup:
+                        from .account_lookup import validate_response
+
+                        self.config.authorize(lookup["actor"], connector.company, "read")
+                        payload, _ = validate_response(response, row["correlation"])
                     identity_hash, host_evidence = self._verify_discovery_response(
-                        response, row, connector
+                        payload, row, connector
                     )
                     state = "verified"
                     result = 100

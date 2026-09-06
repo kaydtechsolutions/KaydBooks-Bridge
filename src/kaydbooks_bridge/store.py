@@ -61,6 +61,20 @@ class Store:
                 "INSERT OR IGNORE INTO metadata VALUES (?, ?)",
                 [("schema_version", "1"), ("company", company)],
             )
+            db.execute("""CREATE TABLE IF NOT EXISTS qbwc_account_jobs (
+                id TEXT PRIMARY KEY, actor TEXT NOT NULL, connector TEXT NOT NULL,
+                ticket TEXT UNIQUE)""")
+            db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS one_pending_account_job
+                ON qbwc_account_jobs(connector) WHERE ticket IS NULL""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS account_job_immutable
+                BEFORE UPDATE ON qbwc_account_jobs WHEN
+                NEW.id IS NOT OLD.id OR NEW.actor IS NOT OLD.actor OR
+                NEW.connector IS NOT OLD.connector OR
+                (OLD.ticket IS NOT NULL AND NEW.ticket IS NOT OLD.ticket)
+                BEGIN SELECT RAISE(ABORT,'immutable account job'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS account_job_no_delete
+                BEFORE DELETE ON qbwc_account_jobs
+                BEGIN SELECT RAISE(ABORT,'durable account job'); END""")
             db.execute("""CREATE TABLE IF NOT EXISTS sdk_discovery (
                 id TEXT PRIMARY KEY, connector TEXT NOT NULL, actor TEXT NOT NULL,
                 request TEXT NOT NULL, state TEXT NOT NULL

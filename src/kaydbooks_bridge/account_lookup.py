@@ -10,7 +10,7 @@ from .config import BridgeError
 FIELDS = ("ListID", "FullName", "AccountType", "IsActive")
 
 
-def append_query(discovery: str, correlation: str) -> str:
+def append_query(discovery: str, correlation: str, version: str = "17.0") -> str:
     root = fromstring(discovery)
     batch = root.find("QBXMLMsgsRq")
     account = ET.SubElement(batch, "AccountQueryRq", requestID=f"{correlation}3")
@@ -18,7 +18,9 @@ def append_query(discovery: str, correlation: str) -> str:
     ET.SubElement(account, "ActiveStatus").text = "ActiveOnly"
     for name in FIELDS:
         ET.SubElement(account, "IncludeRetElement").text = name
-    return '<?xml version="1.0"?><?qbxml version="17.0"?>' + ET.tostring(root, encoding="unicode")
+    return f'<?xml version="1.0"?><?qbxml version="{version}"?>' + ET.tostring(
+        root, encoding="unicode"
+    )
 
 
 def validate_response(payload: str, correlation: str):

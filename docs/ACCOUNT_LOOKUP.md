@@ -36,5 +36,30 @@ Real sample-company test: 20 projected records returned and company binding veri
 A separate Python process replayed the same result without dispatch and verified the
 audit chain. Records and raw XML remain private. Synthetic tests cover invalid records,
 correlation mismatch, wrong company, recovery, operation immutability and projection.
-Account preview has not been integration-tested through QBWC; its callback service
-continues discovery only. Hermes and production companies remain unqualified.
+Account preview through QBWC is also implemented and real-tested on the sample:
+20 records, progress 100, clean closure, verified binding and audit integrity.
+Hermes and production companies remain unqualified.
+
+## Queue one QBWC lookup
+
+Use `python -m kaydbooks_bridge.qbwc_accounts` with `--config`, `--credentials`,
+`--principal`, `--connector`, `--job` and `--enqueue`. Paths and secrets remain private;
+job IDs use the ordinary Bridge identifier rules. Omit `--enqueue` to retrieve the
+result with current company read permission. The result contains private records.
+
+Enqueueing persists one bounded account preview for the connector's next newly
+authenticated session. An already-active discovery session is not modified. One
+pending job per connector is allowed, and repeating the same job ID is idempotent.
+Ownership and assigned ticket are immutable. A consumed job is never silently moved
+to another session after expiry/disconnect; inspect its state and explicitly queue a
+new read job if needed. Later updates return to ordinary discovery.
+
+The callback rechecks the originating actor's company read permission before returning
+requests and validating responses. US qbXML 4+ and matching HCP company evidence are
+required before issuing the account request. The callback uses the negotiated version,
+persists the exact batch, and shares the direct SDK account-response validator and
+company verifier. Duplicate callbacks and restart reuse the same session evidence.
+Result retrieval revalidates the binding before returning projected records.
+
+No extra QWC import or permission grant is required for an already-qualified connector.
+Keep Auto-Run disabled and trigger one manual update for each explicitly queued test.

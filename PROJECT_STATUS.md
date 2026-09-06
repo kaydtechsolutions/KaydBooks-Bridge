@@ -2,6 +2,24 @@
 
 Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK and QBWC discovery, including QBWC post-restart update: PASS.
 
+## Latest fix: QBWC account lookup implemented and real-tested
+
+- Added an authenticated CLI to queue/read one bounded account preview for a connector's
+  next new QBWC session. Per-company queue ownership and assigned ticket are durable
+  and immutable; repeated enqueue is idempotent. No arbitrary qbXML injection exists.
+- Callbacks recheck originating actor read permission, require matching HCP company
+  evidence and US qbXML 4+, persist the negotiated-version request, and share account
+  and company validation with direct SDK. Results are projected only after validation.
+  Consumed jobs are not silently reassigned after expiry or disconnect.
+- Actual saved Web Connector registration ran the queued lookup on the confirmed sample:
+  20 account records, response_result=100, no error, clean closure and valid audit.
+  Exact records and evidence are private. No new operator setup was needed.
+- Local suite: **264 passed**; lint passed. Four new synthetic tests cover callback
+  restart/repeats/one-shot behavior, missing HCP, permission revocation and wrong company.
+  Posting remains disabled. The previously noted QBWC lookup implementation gap is fixed.
+- Next: exact-ID lookup and operation-specific account validation. Hermes and production
+  accounting remain unqualified; this preview is not a full chart or posting permission.
+
 ## Latest implementation: bounded active-account preview
 
 - Added `--accounts` to the authenticated direct SDK CLI. Fixed AccountQuery reads
