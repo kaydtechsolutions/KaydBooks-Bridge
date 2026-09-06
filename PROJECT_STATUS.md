@@ -2,6 +2,24 @@
 
 Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK discovery: PASS; QBWC qualification: BLOCKED.
 
+## Current QBWC repair decision
+
+- Re-read actual QWCLog: AppLock registration repeatedly failed with SDK 3263 under
+  IsReadOnly=true; the same metadata operation succeeded under IsReadOnly=false.
+  Returning to read-only authorization caused the failure again. This is a permission
+  conflict, not evidence of missing SDK runtime or a TLS certificate problem.
+- Prepared a private, unimported `.qwc.pending` proposal retaining the existing R3
+  connector identity and endpoint, requesting no schedule, no personal data and no
+  required unattended access. It requests broader QuickBooks application permission;
+  that grant cannot be described as metadata-only or QuickBooks-enforced read-only.
+- Applying it requires explicit operator agreement to change the original read-only
+  permission constraint. Bridge accounting posting remains disabled; the shared
+  discovery verifier and existing confirmed binding remain unchanged. No permission,
+  certificate or registration was changed. The default strict QWC generator is intact.
+- Deployment/discovery synthetic regressions: 23 passed. Actual callback qualification
+  remains pending. Next: obtain this specific permission decision, then apply and
+  verify the proposed repair on the confirmed sample only. No repeated bootstrap cycle.
+
 ## Latest qualification: parent interruption with surviving native helper
 
 - Real sample-company test passed: a private helper copy paused after saving the

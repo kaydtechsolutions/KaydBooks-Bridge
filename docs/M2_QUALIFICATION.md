@@ -43,7 +43,25 @@ The installed Web Connector major version matches Intuit's current
 Company identity comes only from the read-only `CompanyQuery` response documented in
 the official [CompanyQuery schema](https://static.developer.intuit.com/qbSDK-current/common/newosr/qbsdk/json/CompanyQueryRs.json?v=13).
 
-## Minimal operator steps
+## Permission conflict: current repair proposal
+
+The original strict read-only import steps below are historical and cannot resolve
+the installed QBWC AppLock failure. Actual logs show SDK 3263 under IsReadOnly=true
+and successful metadata registration under false. Intuit's linked programmer guide
+also documents QBWC stamping FileID into company metadata. Its older IsReadOnly table
+contains contradictory wording; do not use that sentence to reverse the flag's
+observed behavior or claim a successful read-only import.
+
+The prepared private repair proposal retains the existing connector IDs and endpoint
+and requests broader QuickBooks read/write application permission. That permission
+is not restricted to metadata by QuickBooks. The Bridge independently stays query-only
+and posting-disabled. No personal data or unattended access is required, and no
+schedule is requested. Explicit operator agreement is required because this changes
+the original QuickBooks-enforced read-only constraint. The proposal is unimported and
+has a `.pending` extension. Do not remove certificates or repeat bootstrap replacement.
+Actual callbacks and binding must pass after approval before calling the repair fixed.
+
+## Original operator steps (superseded for this installed QBWC)
 
 1. In QuickBooks, close the currently open company. Open a dedicated synthetic test
    company as its QuickBooks Admin. Confirm that it is the approved M2 target. Do not
