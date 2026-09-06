@@ -100,7 +100,10 @@ qualification are separate evidence; a passing mock does not establish native su
   verify remaining payable and unused credit independently. Native USD2 expense and
   USD5 mixed service/expense credits passed source-bill limits, saved lines, independent
   CreditToApply and vendor/net payable balance changes 30 -> 28 -> 23. Vendor Balance
-  Summary independently agrees. Credit application and inventory returns remain unfinished.
+  Summary independently agrees. A native USD2 credit application then verified bill
+  10 -> 8, unused credit 2 -> 0, vendor balance unchanged at 23 and bank unchanged at 508.
+  The generated zero-amount payment stub was independently read and the held attempt
+  reconciled without resend. Inventory returns remain unfinished.
 - [ ] **M3-08:** Discounts and additional charges: explicit line/document treatment,
   non-tax rounding rules, correct accounts and exact saved totals for each operation.
 - **M3-09 — EXCLUDED:** Tax-enabled transaction qualification is outside this release.

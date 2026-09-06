@@ -145,6 +145,39 @@ public static class PrivateReadOnlyDiscovery {
     }
     while(batch.ChildNodes.Count>first)batch.RemoveChild(batch.LastChild);
    }
+   if(batch.ChildNodes.Count==10 && batch.ChildNodes[6].Name=="BillQueryRq" && batch.ChildNodes[7].Name=="VendorCreditQueryRq" && batch.ChildNodes[8].Name=="BillToPayQueryRq") {
+    var q=batch.LastChild;var id=q.FirstChild;
+    string correlation=batch.FirstChild.Attributes["requestID"].Value;
+    correlation=correlation.Substring(0,correlation.Length-1);
+    if(q.Name!="BillPaymentCheckQueryRq"||q.Attributes.Count!=1||q.Attributes["requestID"]==null||q.Attributes["requestID"].Value!=correlation+"10"||id==null||id.Name!="TxnID"||!System.Text.RegularExpressions.Regex.IsMatch(id.InnerText,@"\A[A-Za-z0-9-]{1,31}\z"))throw new Exception("Exact payment stub required");
+    string expected="<TxnID>"+id.InnerText+"</TxnID><IncludeLineItems>true</IncludeLineItems>";
+    foreach(string field in "TxnID,EditSequence,PayeeEntityRef,APAccountRef,TxnDate,RefNumber,Amount,AmountInHomeCurrency,IsToBePrinted,CurrencyRef,ExchangeRate,BankAccountRef,AppliedToTxnRet,Memo".Split(','))expected+="<IncludeRetElement>"+field+"</IncludeRetElement>";
+    if(q.InnerXml!=expected)throw new Exception("Fixed zero payment stub query required");
+    batch.RemoveChild(q);
+   }
+   if(batch.ChildNodes.Count==9 && batch.ChildNodes[6].Name=="BillQueryRq" && batch.ChildNodes[7].Name=="VendorCreditQueryRq" && batch.ChildNodes[8].Name=="BillToPayQueryRq") {
+    string correlation=batch.FirstChild.Attributes["requestID"].Value;
+    correlation=correlation.Substring(0,correlation.Length-1);
+    FixedQuery(batch.ChildNodes[2],"Preferences","MultiCurrencyPreferences",false);
+    FixedQuery(batch.ChildNodes[3],"Vendor","ListID,IsActive,Balance,CurrencyRef",true);
+    for(int i=4;i<6;i++)FixedQuery(batch.ChildNodes[i],"Account","ListID,IsActive,AccountType,Balance,CurrencyRef",true);
+    for(int i=2;i<9;i++) {
+     var q=batch.ChildNodes[i];
+     if(q.Attributes.Count!=1||q.Attributes["requestID"]==null||q.Attributes["requestID"].Value!=correlation+(i+1).ToString())throw new Exception("Supplier application correlation differs");
+     if(i<6)continue;
+     string expected="";
+     if(i==8)expected="<PayeeEntityRef><ListID>"+batch.ChildNodes[3].FirstChild.InnerText+"</ListID></PayeeEntityRef><APAccountRef><ListID>"+batch.ChildNodes[4].FirstChild.InnerText+"</ListID></APAccountRef>";
+     else {
+      var id=q.FirstChild;
+      if(id==null||id.Name!="TxnID"||!System.Text.RegularExpressions.Regex.IsMatch(id.InnerText,@"\A[A-Za-z0-9-]{1,31}\z"))throw new Exception("Exact supplier transaction required");
+      expected="<TxnID>"+id.InnerText+"</TxnID><IncludeLinkedTxns>true</IncludeLinkedTxns>";
+      string fields=i==6?"TxnID,EditSequence,VendorRef,APAccountRef,TxnDate,AmountDue,IsPaid,IsTaxIncluded,SalesTaxCodeRef,CurrencyRef,ExchangeRate,LinkedTxn":"TxnID,EditSequence,VendorRef,APAccountRef,TxnDate,CreditAmount,IsTaxIncluded,SalesTaxCodeRef,CurrencyRef,ExchangeRate,LinkedTxn";
+      foreach(string field in fields.Split(','))expected+="<IncludeRetElement>"+field+"</IncludeRetElement>";
+     }
+     if(q.InnerXml!=expected)throw new Exception("Fixed supplier application fields required");
+    }
+    while(batch.ChildNodes.Count>2)batch.RemoveChild(batch.LastChild);
+   }
    // Supplier-credit extensions retain an exact bill-master prefix.
    if(batch.ChildNodes.Count>=10 && ((batch.LastChild.Name=="BillToPayQueryRq" && batch.ChildNodes[batch.ChildNodes.Count-2].Name=="VendorCreditQueryRq") || (batch.LastChild.Name=="VendorCreditQueryRq" && batch.ChildNodes[batch.ChildNodes.Count-2].Name=="BillToPayQueryRq" && batch.LastChild.FirstChild.Name=="TxnID"))) {
     bool receipt=batch.LastChild.Name=="VendorCreditQueryRq";

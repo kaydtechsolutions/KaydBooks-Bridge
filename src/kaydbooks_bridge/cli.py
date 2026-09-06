@@ -36,6 +36,8 @@ def main(argv=None) -> int:
         "reconcile-sample-supplier-credit",
         "post-sample-refund",
         "reconcile-sample-refund",
+        "post-sample-supplier-application",
+        "reconcile-sample-supplier-application",
         "post-sample-application",
         "reconcile-sample-application",
         "reconcile-sample-credit",
@@ -94,6 +96,8 @@ def main(argv=None) -> int:
                 "reconcile-sample-supplier-credit",
                 "post-sample-refund",
                 "reconcile-sample-refund",
+                "post-sample-supplier-application",
+                "reconcile-sample-supplier-application",
                 "post-sample-application",
                 "reconcile-sample-application",
                 "reconcile-sample-credit",
@@ -108,6 +112,8 @@ def main(argv=None) -> int:
                     from .sample_bill_posting import post, reconcile
                 if args.command.endswith("-refund"):
                     from .sample_refund_posting import post, reconcile
+                elif args.command.endswith("-supplier-application"):
+                    from .sample_supplier_application_posting import post, reconcile
                 elif args.command.endswith("-application"):
                     from .sample_application_posting import post, reconcile
                 elif args.command.endswith("-supplier-credit"):

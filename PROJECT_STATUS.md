@@ -14,7 +14,10 @@ and the original invoice at USD7. A recorded USD2 Visa refund then exhausted tha
 increased customer balance to USD22 and reduced the bank balance 510 -> 508. No transaction
 was resent and no payment processor was invoked. Two subsequent supplier credits
 (USD2 expense and USD5 mixed expense/service) reduced vendor balance and net payables
-30 -> 28 -> 23. Fresh Vendor Balance Summary independently reports USD23.
+30 -> 28 -> 23. Fresh Vendor Balance Summary independently reports USD23. A USD2 supplier-credit
+application subsequently reduced the bill 10 -> 8 and unused credit 2 -> 0, leaving
+vendor 23 and bank 508 unchanged. The generated zero-amount payment stub was
+independently queried and the original held attempt reconciled without resending.
 
 ## M3â€“M7 sample implementation and qualification
 
@@ -38,11 +41,12 @@ was resent and no payment processor was invoked. Two subsequent supplier credits
   amounts through the durable lifecycle. Native USD5 and USD10 receipts settled the USD15
   invoice; a third USD5 receipt remained unapplied. Signed AppliedAmount, related invoice
   payments and customer-wide unused credits are handled without double-counting.
-- Latest validation: 868 full-suite tests passed, plus 28 supplier-credit tests including
-  the added mixed-line case and receipt-label correction. Lint, native request gates,
-  27-tool stdio checks and source/wheel builds pass. An installed signed restore
-  recovered 21 jobs and 993 files with valid integrity and audit, paused and without
-  starting the restored service. CI56 passed the prior refund commit.
+- Latest validation: 911 full-suite tests and 42 supplier-application tests pass, including
+  exact zero-payment-stub readback, lost-response recovery and compiled native gates.
+  Lint, 29-tool stdio checks and source/wheel builds pass. An installed signed restore
+  recovered 22 jobs and 1025 files with valid integrity/audit, paused and without starting
+  the restored service. The restarted TLS service reports ready with live posting false.
+  CI57 passed the prior supplier-credit commit; current CI follows the PR update.
 - Supplier payments now pass exact vendor/AP/Bank mapping, partial/full settlement,
   independent saved allocation/payable checks and missing-response recovery tests.
   Native sample readbacks verified the bill balance decreasing 10 -> 5 -> 0.

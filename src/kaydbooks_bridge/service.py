@@ -22,6 +22,10 @@ SURFACES = frozenset(
 
 
 def validate_payload(operation, payload, policy):
+    if operation == "supplier-credit.apply":
+        from .supplier_application import validate_payload as validate_credit
+
+        return validate_credit(payload, policy)
     if operation == "customer-credit.apply":
         from .credit_application import validate_payload as validate_credit
 
@@ -56,6 +60,10 @@ def validate_payload(operation, payload, policy):
 
 
 def require_evidence(config, policy, store, db, job, now):
+    if job["operation"] == "supplier-credit.apply":
+        from .supplier_application_evidence import require
+
+        return require(config, policy, store, db, job, now)
     if job["operation"] == "customer-credit.apply":
         from .application_evidence import require
 
@@ -145,6 +153,7 @@ class Bridge:
             "supplier-credit.create",
             "customer-refund.create",
             "customer-credit.apply",
+            "supplier-credit.apply",
         ):
             raise BridgeError("operation unavailable")
         if envelope["surface"] not in SURFACES:
@@ -208,6 +217,8 @@ class Bridge:
                     from .supplier_credit_evidence import resolve as resolver
                 if envelope["operation"] == "customer-credit.create":
                     from .credit_evidence import resolve as resolver
+                if envelope["operation"] == "supplier-credit.apply":
+                    from .supplier_application_evidence import resolve as resolver
                 if envelope["operation"] == "customer-credit.apply":
                     from .application_evidence import resolve as resolver
                 if envelope["operation"] == "customer-refund.create":
@@ -229,6 +240,7 @@ class Bridge:
                 "supplier-credit.create",
                 "customer-refund.create",
                 "customer-credit.apply",
+                "supplier-credit.apply",
             ) or (policy.invoice_masters and bill_context is None):
                 raise BridgeError("verified invoice master evidence required")
             if matches:
@@ -316,6 +328,9 @@ class Bridge:
         refund = store.job(db, job_id)["operation"] == "customer-refund.create"
         if refund:
             table = "refund_evidence_links"
+        supplier_application = store.job(db, job_id)["operation"] == "supplier-credit.apply"
+        if supplier_application:
+            table = "supplier_application_evidence_links"
         application = store.job(db, job_id)["operation"] == "customer-credit.apply"
         if application:
             table = "application_evidence_links"
@@ -328,7 +343,9 @@ class Bridge:
             self.clock(),
             actor,
             job_id,
-            "supplier_credit_evidence_linked"
+            "supplier_application_evidence_linked"
+            if supplier_application
+            else "supplier_credit_evidence_linked"
             if supplier_credit
             else "application_evidence_linked"
             if application
@@ -427,6 +444,7 @@ class Bridge:
                 "supplier-credit.create",
                 "customer-refund.create",
                 "customer-credit.apply",
+                "supplier-credit.apply",
             ):
                 raise BridgeError("use dedicated native payment reconciliation")
             evidence = resolve(
@@ -485,6 +503,7 @@ class Bridge:
                 "supplier-credit.create",
                 "customer-refund.create",
                 "customer-credit.apply",
+                "supplier-credit.apply",
             ):
                 from .source_review import require as require_review
 
@@ -623,6 +642,7 @@ class Bridge:
                 "supplier-credit.create",
                 "customer-refund.create",
                 "customer-credit.apply",
+                "supplier-credit.apply",
             ):
                 raise BridgeError("payment requires dedicated native dispatch or reconciliation")
             if db.execute(
@@ -774,6 +794,7 @@ class Bridge:
                 "supplier-credit.create",
                 "customer-refund.create",
                 "customer-credit.apply",
+                "supplier-credit.apply",
             ):
                 raise BridgeError("payment requires dedicated native dispatch or reconciliation")
             if job["state"] not in {"unknown", "posted-unverified"}:
