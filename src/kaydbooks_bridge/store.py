@@ -81,6 +81,28 @@ class Store:
             db.execute("""CREATE TRIGGER IF NOT EXISTS account_job_no_delete
                 BEFORE DELETE ON qbwc_account_jobs
                 BEGIN SELECT RAISE(ABORT,'durable account job'); END""")
+            db.execute("""CREATE TABLE IF NOT EXISTS qbwc_invoice_jobs (
+                id TEXT PRIMARY KEY, actor TEXT NOT NULL, connector TEXT NOT NULL,
+                payload TEXT NOT NULL, context_hash TEXT NOT NULL, ticket TEXT UNIQUE)""")
+            db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS one_pending_invoice_job
+                ON qbwc_invoice_jobs(connector) WHERE ticket IS NULL""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS invoice_job_immutable
+                BEFORE UPDATE ON qbwc_invoice_jobs WHEN NEW.id IS NOT OLD.id OR
+                NEW.actor IS NOT OLD.actor OR NEW.connector IS NOT OLD.connector OR
+                NEW.payload IS NOT OLD.payload OR NEW.context_hash IS NOT OLD.context_hash OR
+                (OLD.ticket IS NOT NULL AND NEW.ticket IS NOT OLD.ticket)
+                BEGIN SELECT RAISE(ABORT,'immutable invoice check'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS invoice_job_no_delete
+                BEFORE DELETE ON qbwc_invoice_jobs
+                BEGIN SELECT RAISE(ABORT,'durable invoice check'); END""")
+            for target, other in (
+                ("qbwc_invoice_jobs", "qbwc_account_jobs"),
+                ("qbwc_account_jobs", "qbwc_invoice_jobs"),
+            ):
+                db.execute(f"""CREATE TRIGGER IF NOT EXISTS {target}_pending_exclusive
+                    BEFORE INSERT ON {target} WHEN NEW.ticket IS NULL AND EXISTS
+                    (SELECT 1 FROM {other} WHERE connector=NEW.connector AND ticket IS NULL)
+                    BEGIN SELECT RAISE(ABORT,'queued read job already exists'); END""")
             db.execute("""CREATE TABLE IF NOT EXISTS sdk_discovery (
                 id TEXT PRIMARY KEY, connector TEXT NOT NULL, actor TEXT NOT NULL,
                 request TEXT NOT NULL, state TEXT NOT NULL

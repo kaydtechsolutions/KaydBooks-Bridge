@@ -61,8 +61,8 @@ The result is `scope=master-evidence-only`. It does not establish tax correctnes
 credit availability, pricing, discounts, parent-job eligibility, inventory/site/lot
 availability or all transaction restrictions. It is not a posting approval or a promise
 that a later write would use unchanged master data. A future posting adapter must
-revalidate relevant facts before dispatch. QBWC invoice compatibility is not implemented;
-its existing account lookups and account-role checks remain supported.
+revalidate relevant facts before dispatch. QBWC also supports these bounded invoice
+checks through an authenticated one-update queue, described below.
 
 ## Bounded master preview
 
@@ -92,3 +92,33 @@ Schema references: Intuit's Desktop [PreferencesQuery](https://developer.intuit.
 [ItemServiceQuery](https://developer.intuit.com/app/developer/qbdesktop/docs/api-reference/qbdesktop/itemservicequery),
 and [CurrencyQuery](https://developer.intuit.com/app/developer/qbdesktop/docs/api-reference/qbdesktop/currencyquery).
 The corresponding official qbSDK-current JSON request/response schemas were inspected.
+
+
+## QBWC invoice compatibility
+
+Use `python -m kaydbooks_bridge.qbwc_invoices` with `--config`, `--credentials`,
+`--principal`, `--connector`, `--job`, `--payload <private-payload.json>` and `--enqueue`.
+Retrieve the result using the same arguments without payload/enqueue. This is a read
+job, not an invoice posting request. It requires the same read+validate permissions,
+exact mappings, confirmed company and shared compatibility rules as direct SDK.
+
+Each job binds its owner, connector, canonical payload and policy hash immutably to
+one future QBWC session. Only one unassigned account or invoice read job may wait
+per connector. Existing active sessions are not changed. Repeating the same enqueue
+is idempotent; changing the payload/policy needs a new job. Consumed jobs are never
+silently moved to another session after disconnect or expiry. A failed queued policy
+check is held, and new result reads recheck current configured policy and permissions.
+Configuration changes require reloading/restarting the service before callbacks use them.
+
+The callback requires matching HCP evidence and US qbXML 17.0 before returning the
+fixed request batch. Restart reuses the persisted exact request. Response validation
+reuses the direct SDK master checks and company verifier. Later ordinary connector
+updates return to discovery. Posting and Auto-Run remain disabled in qualification.
+
+Real sample QBWC qualification passed with the same service-item payload and policy
+as direct SDK: closed session, response_result 100, compatibility matched, no error,
+verified binding and valid audit. Fresh-process CLI retrieval also passed. Currency
+basis is configured-single-currency; explicit CurrencyRef mode remains synthetic-only.
+Synthetic coverage includes repeated callbacks, restart, both currency modes, immutable
+context, changed permission/policy, queue exclusion, disconnect, missing HCP, unsupported
+versions and incompatible/wrong-company responses. No production invoice was posted.

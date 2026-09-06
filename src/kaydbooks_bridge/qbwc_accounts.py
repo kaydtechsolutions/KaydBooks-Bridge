@@ -28,6 +28,11 @@ def account_job(service, token, connector_id, job_id, *, enqueue=False, list_id=
             if not enqueue:
                 raise BridgeError("unknown account lookup job")
             if db.execute(
+                "SELECT 1 FROM qbwc_invoice_jobs WHERE connector=? AND ticket IS NULL",
+                (connector_id,),
+            ).fetchone():
+                raise BridgeError("connector already has a queued invoice check")
+            if db.execute(
                 "SELECT 1 FROM qbwc_account_jobs WHERE connector=? AND ticket IS NULL",
                 (connector_id,),
             ).fetchone():

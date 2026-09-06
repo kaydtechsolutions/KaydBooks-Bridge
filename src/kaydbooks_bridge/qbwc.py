@@ -2,7 +2,7 @@
 
 This service deliberately has no task injection or write request API.  It emits one
 fixed HostQuery/CompanyQuery batch, optionally extended by an authenticated bounded
-account preview, and verifies configured CompanyRet evidence before accepting results.
+account or invoice master check, and verifies CompanyRet evidence before accepting results.
 """
 
 from __future__ import annotations
@@ -192,6 +192,10 @@ class DurableQBWCDiscoveryService:
                 "UPDATE qbwc_account_jobs SET ticket=? WHERE connector=? AND ticket IS NULL",
                 (ticket, connector.id),
             )
+            db.execute(
+                "UPDATE qbwc_invoice_jobs SET ticket=? WHERE connector=? AND ticket IS NULL",
+                (ticket, connector.id),
+            )
             result = [ticket, company_file]
             self._callback(
                 db,
@@ -244,6 +248,30 @@ class DurableQBWCDiscoveryService:
                     self.config.authorize(lookup["actor"], connector.company, "read")
                 except BridgeError:
                     self._block(db, store, row, now, "account lookup permission revoked")
+                    return ""
+
+            invoice = db.execute(
+                "SELECT * FROM qbwc_invoice_jobs WHERE ticket=?", (ticket,)
+            ).fetchone()
+            check = None
+            if invoice:
+                try:
+                    from .qbwc_invoices import current_plan
+
+                    if lookup:
+                        raise BridgeError("conflicting read jobs for session")
+                    check = current_plan(self, invoice, connector)
+                except BridgeError as exc:
+                    self._block(db, store, row, now, str(exc))
+                    self._callback(
+                        db,
+                        now,
+                        ticket,
+                        "sendRequestXML",
+                        callback_input,
+                        "",
+                        "invoice-context-blocked",
+                    )
                     return ""
 
             if row["state"] == "request-sent":
@@ -313,6 +341,12 @@ class DurableQBWCDiscoveryService:
                     from .account_lookup import append_query
 
                     request = append_query(request, row["correlation"], version, lookup["list_id"])
+                if check is not None:
+                    if not hcp or country != "US" or version != "17.0":
+                        raise BridgeError("invoice check requires verified HCP and US qbXML 17.0")
+                    from .invoice_compatibility import append_queries
+
+                    request = append_queries(request, row["correlation"], check)
             except (BridgeError, ValueError, TypeError) as exc:
                 self._block(db, store, row, now, str(exc))
                 self._callback(
@@ -359,6 +393,27 @@ class DurableQBWCDiscoveryService:
             row = self._live_row(db, store, ticket, now)
             connector = self.config.connectors[row["connector"]]
             callback_input = {"callback_hash": input_hash}
+            invoice = db.execute(
+                "SELECT * FROM qbwc_invoice_jobs WHERE ticket=?", (ticket,)
+            ).fetchone()
+            check = None
+            if invoice:
+                try:
+                    from .qbwc_invoices import current_plan
+
+                    check = current_plan(self, invoice, connector)
+                except BridgeError as exc:
+                    self._block(db, store, row, now, str(exc))
+                    self._callback(
+                        db,
+                        now,
+                        ticket,
+                        "receiveResponseXML",
+                        callback_input,
+                        -1,
+                        "invoice-context-blocked",
+                    )
+                    return -1
             if row["response_hash"] is not None:
                 if row["response_hash"] == input_hash:
                     db.execute(
@@ -419,6 +474,14 @@ class DurableQBWCDiscoveryService:
                         payload, _ = validate_response(
                             response, row["correlation"], lookup["list_id"]
                         )
+                    if check is not None:
+                        from .invoice_compatibility import (
+                            validate_response as validate_invoice_response,
+                        )
+
+                        if lookup:
+                            raise BridgeError("conflicting read jobs for session")
+                        payload = validate_invoice_response(response, row["correlation"], check)
                     identity_hash, host_evidence = self._verify_discovery_response(
                         payload, row, connector
                     )

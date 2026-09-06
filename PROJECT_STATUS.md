@@ -2,6 +2,26 @@
 
 Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK and QBWC discovery, including QBWC post-restart update: PASS.
 
+## Latest implementation: QBWC invoice compatibility parity qualified
+
+- Added authenticated one-update invoice check CLI and durable per-company queue.
+  Job owner, connector, payload, policy hash and assigned session are immutable.
+  Pending account/invoice reads are mutually exclusive per connector, including DB
+  constraints. Active sessions are unaffected and consumed jobs are never reassigned.
+- Before dispatch/replay and response acceptance, invoice callbacks recheck read and
+  validate permissions plus policy hash. Requires matching HCP and US qbXML 17.0.
+  Exact request/response evidence uses the existing durable callback lifecycle.
+- Shared customer/service-item/AR/income/currency checks now work through both SDK and
+  QBWC. Result reads reverify company binding and current configured policy. No writes.
+- Real sample QBWC check passed: closed, progress 100, compatibility matched, no error,
+  valid audit and fresh-process CLI retrieval. Currency basis configured-single-currency.
+  Explicit CurrencyRef mode remains synthetic-only. Exact evidence stays private.
+- Local suite: 354 passed; lint, formatting and build passed. New tests cover restart,
+  repeated callbacks, changed contexts, both currency modes, queue conflicts, immutable
+  job context, disconnect and invalid HCP/version/master/company responses.
+- Next: connect verified master evidence to invoice preparation with explicit stale
+  evidence handling. Inventory/tax/pricing and production posting remain unqualified.
+
 ## Latest implementation: invoice currency/customer/service-item compatibility
 
 - Added direct SDK --invoice-check using private exact customer/item/income mappings,
