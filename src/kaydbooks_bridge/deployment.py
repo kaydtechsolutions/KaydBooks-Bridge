@@ -67,6 +67,7 @@ class QWCProfile:
     auth_flags: int
     is_read_only: bool
     unattended_mode_pref: str
+    app_unique_name: str
 
     @classmethod
     def load(cls, path: str | Path) -> QWCProfile:
@@ -86,6 +87,7 @@ class QWCProfile:
                 "auth_flags",
                 "is_read_only",
                 "unattended_mode_pref",
+                "app_unique_name",
             },
         )
         if data["schema_version"] != 1:
@@ -107,6 +109,11 @@ class QWCProfile:
         unattended = data["unattended_mode_pref"]
         if unattended != "umpOptional":
             raise BridgeError("qualification QWC must make unattended access optional")
+        unique_name = data["app_unique_name"]
+        if not isinstance(unique_name, str) or not re.fullmatch(
+            r"[A-Za-z0-9._ -]{1,80}", unique_name
+        ):
+            raise BridgeError("invalid QWC unique application name")
         return cls(
             app_name=data["app_name"],
             endpoint_url=_https_url(data["endpoint_url"], "endpoint", endpoint=True),
@@ -118,6 +125,7 @@ class QWCProfile:
             auth_flags=flags,
             is_read_only=True,
             unattended_mode_pref=unattended,
+            app_unique_name=unique_name,
         )
 
     def render(self) -> str:
@@ -136,6 +144,8 @@ class QWCProfile:
             auth_flags=self.auth_flags,
             is_read_only=self.is_read_only,
             unattended_mode_pref=self.unattended_mode_pref,
+            app_display_name=self.app_name,
+            app_unique_name=self.app_unique_name,
         )
 
     def write_stable(self, destination: str | Path) -> Path:

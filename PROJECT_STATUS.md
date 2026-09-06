@@ -141,6 +141,11 @@ Updated: 2026-09-06. Live posting: DISABLED. Real QuickBooks integration tests: 
   required FileID data-extension definition under read-only authorization. A private,
   same-ID registration bootstrap is staged for this QBWC limitation. It must never run
   an update; the stable read-only QWC must replace it before any callback.
+- A removal experiment established that QBWC's Remove action deletes the FileID value
+  from the company, so it cannot mediate the transition back to read-only. No callback
+  occurred. The corrected private v3 QWC uses the same IDs plus Intuit's documented
+  `AppUniqueName` replacement path; the generator and profile now support and require
+  this stable name.
 
 ## Blockers and next actions
 
@@ -149,10 +154,10 @@ Updated: 2026-09-06. Live posting: DISABLED. Real QuickBooks integration tests: 
   completed. Actual installed version/tool enablement evidence is stored privately
   outside Git. Bridge-specific permissions, profile, schemas and integration behavior
   remain unverified. No Hermes settings, schedules, recipients or boards were changed.
-- The sole immediate M2 action is to import the private same-ID registration bootstrap
-  against the confirmed sample company, without entering a password or running an update,
-  then replace it with the stable read-only QWC. Real callback behavior and company
-  binding remain unverified.
+- The sole immediate M2 action is to re-import the private same-ID registration bootstrap
+  without entering a password, removing it, or running an update, then import the v3
+  stable-name read-only replacement. Real callback behavior and company binding remain
+  unverified.
 - Real Hermes and QuickBooks integration tests: **none**. Production-enabled features:
   **none**. Real transaction/report/tax/inventory/landed-cost support is unverified.
 - Planned: real qualification of the synthetic-tested QBWC discovery adapter;

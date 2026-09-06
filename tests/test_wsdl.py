@@ -66,6 +66,8 @@ def test_qwc_file_is_well_formed_and_carries_the_ids():
         is_read_only=True,
         unattended_mode_pref="umpOptional",
         personal_data_pref="pdpNotNeeded",
+        app_display_name="Books Bridge Display",
+        app_unique_name="Books Bridge Stable",
     )
     root = ET.fromstring(qwc)
     assert root.tag == "QBWCXML"
@@ -75,6 +77,8 @@ def test_qwc_file_is_well_formed_and_carries_the_ids():
     assert root.findtext("IsReadOnly") == "true"
     assert root.findtext("UnattendedModePref") == "umpOptional"
     assert root.findtext("PersonalDataPref") == "pdpNotNeeded"
+    assert root.findtext("AppDisplayName") == "Books Bridge Display"
+    assert root.findtext("AppUniqueName") == "Books Bridge Stable"
     assert root.find("Scheduler").findtext("RunEveryNSeconds") == "300"
 
 

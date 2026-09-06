@@ -171,6 +171,8 @@ def build_qwc(
     is_read_only: bool | None = None,
     unattended_mode_pref: str | None = None,
     personal_data_pref: str | None = None,
+    app_display_name: str | None = None,
+    app_unique_name: str | None = None,
 ) -> str:
     """Render the ``.qwc`` file a user imports into the Web Connector.
 
@@ -202,7 +204,17 @@ def build_qwc(
         '<?xml version="1.0"?>'
         "<QBWCXML>"
         f"<AppName>{escape(app_name)}</AppName>"
-        f"<AppID>{escape(app_id)}</AppID>"
+        + (
+            f"<AppDisplayName>{escape(app_display_name)}</AppDisplayName>"
+            if app_display_name is not None
+            else ""
+        )
+        + (
+            f"<AppUniqueName>{escape(app_unique_name)}</AppUniqueName>"
+            if app_unique_name is not None
+            else ""
+        )
+        + f"<AppID>{escape(app_id)}</AppID>"
         f"<AppURL>{escape(app_url)}</AppURL>"
         f"<AppDescription>{escape(app_description)}</AppDescription>"
         f"<AppSupport>{escape(support)}</AppSupport>"

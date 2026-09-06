@@ -25,6 +25,7 @@ def profile_file(tmp_path: Path) -> Path:
                 "auth_flags": 8,
                 "is_read_only": True,
                 "unattended_mode_pref": "umpOptional",
+                "app_unique_name": "Synthetic Bridge Qualification",
             }
         ),
         encoding="utf-8",
@@ -42,6 +43,8 @@ def test_stable_qwc_generation_refuses_changed_profile(tmp_path):
     assert root.findtext("AuthFlags") == "0x8"
     assert root.findtext("IsReadOnly") == "true"
     assert root.findtext("UnattendedModePref") == "umpOptional"
+    assert root.findtext("AppDisplayName") == "Synthetic Bridge Qualification"
+    assert root.findtext("AppUniqueName") == "Synthetic Bridge Qualification"
 
     data = json.loads(profile_path.read_text(encoding="utf-8"))
     data["file_id"] = "{57F3B9B0-86F1-4FCC-B1EE-566DE1813D22}"

@@ -102,8 +102,11 @@ For a dedicated synthetic company only, create a private one-time bootstrap QWC 
 the same AppName, OwnerID and FileID, `IsReadOnly=false`, optional unattended access,
 and an explicit registration-only description. Import it while the sample company is
 open, allow access only while QuickBooks is running, and do not enable personal data.
-Do not configure its password or run an update. After QBWC creates the FileID, replace
-the registration with the stable `IsReadOnly=true` QWC before any service callback.
+Do not configure its password, run an update, or use Web Connector's Remove button:
+Remove deletes the FileID value from the company. After QBWC creates the FileID and
+AppLock, import the stable `IsReadOnly=true` QWC with the same IDs and a stable
+`AppUniqueName`; that tag invokes QBWC's replacement path. Replace the registration
+before any service callback.
 The temporary QuickBooks permission is broader only because of QBWC's registration
 behavior; the Bridge remains query-only and live posting remains disabled throughout.
 Retain the exact QBWC log as real qualification evidence.
