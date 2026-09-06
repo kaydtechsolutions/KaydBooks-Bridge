@@ -81,6 +81,7 @@ def discover(
     *,
     exchange=windows_exchange,
     recover_read: bool = False,
+    accounts: bool = False,
 ) -> dict:
     """Run/resume fixed US qbXML 17 discovery under company permissions and audit.
 
@@ -99,6 +100,12 @@ def discover(
         raise BridgeError("company binding is not operator-confirmed")
     store = service._stores[connector.company]
     request = service._discovery_request(run_id, "17.0")
+    if type(accounts) is not bool:
+        raise BridgeError("invalid lookup mode")
+    if accounts:
+        from .account_lookup import append_query
+
+        request = append_query(request, run_id)
     with company_lock(store.path.with_suffix(".sdk.lock")):
         with store.transaction() as db:
             service._expire_active(db, store, time.time())
@@ -123,7 +130,12 @@ def discover(
                     actor,
                     None,
                     "sdk_discovery_prepared",
-                    {"run": run_id, "connector": connector_id, "transport": "direct-sdk"},
+                    {
+                        "run": run_id,
+                        "connector": connector_id,
+                        "transport": "direct-sdk",
+                        "operation": "active-account-preview" if accounts else "discovery",
+                    },
                 )
                 row = db.execute("SELECT * FROM sdk_discovery WHERE id=?", (run_id,)).fetchone()
             if (
@@ -158,8 +170,14 @@ def discover(
         with store.transaction() as db:
             db.execute("UPDATE sdk_discovery SET response=? WHERE id=?", (response, run_id))
         try:
+            discovery_response = response
+            account_records = None
+            if accounts:
+                from .account_lookup import validate_response
+
+                discovery_response, account_records = validate_response(response, run_id)
             identity, host = service._verify_discovery_response(
-                response,
+                discovery_response,
                 {"correlation": run_id, "country": "US", "qbxml_version": "17.0"},
                 connector,
             )
@@ -182,12 +200,20 @@ def discover(
                 "sdk_discovery_verified",
                 {"run": run_id, "identity_hash": identity, "transport": "direct-sdk"},
             )
-        return {
+        result = {
             "run": run_id,
             "state": "verified",
             "transport": "direct-sdk",
             "live_posting": False,
         }
+        if accounts:
+            result.update(
+                accounts=account_records,
+                limit=20,
+                complete=False,
+                operation="active-account-preview",
+            )
+        return result
 
 
 def main(argv=None):
@@ -206,6 +232,9 @@ def main(argv=None):
     parser.add_argument("--connector", required=True)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--recover-read", action="store_true")
+    parser.add_argument(
+        "--accounts", action="store_true", help="preview at most 20 active accounts"
+    )
     args = parser.parse_args(argv)
     try:
         load_secret_file(args.credentials)
@@ -219,6 +248,7 @@ def main(argv=None):
             os.environ.get(connector.password_env, ""),
             args.run_id,
             recover_read=args.recover_read,
+            accounts=args.accounts,
         )
         print(json.dumps(result))
         return 0

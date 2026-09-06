@@ -2,6 +2,24 @@
 
 Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK and QBWC discovery, including QBWC post-restart update: PASS.
 
+## Latest implementation: bounded active-account preview
+
+- Added `--accounts` to the authenticated direct SDK CLI. Fixed AccountQuery reads
+  at most 20 active records and projects ListID, FullName, AccountType and IsActive.
+  Intuit's official request schema was inspected; no iterator support is assumed.
+- Reuses the company-scoped durable SDK lifecycle, read/recover permissions, immutable
+  request/response evidence, audit and binding verification. Native XML allowlist
+  permits only the fixed extension. Operation changes under the same run ID, wrong
+  correlation, malformed/duplicate/inactive records and excessive results are blocked.
+- Real sample-company preview returned 20 records, matched the confirmed binding and
+  passed new-process replay without dispatch and audit verification. Exact records
+  and XML remain private. Results explicitly indicate that the preview is incomplete.
+- Local suite: 260 passed; lint and format passed. No accounting writes enabled.
+  Account preview via QBWC and Hermes is not implemented or real-tested. Discovery
+  via QBWC retains its previously verified behavior. See docs/ACCOUNT_LOOKUP.md.
+- Next: exact-ID account lookup and capability-specific validation; do not use preview
+  records as posting authorization or assume a complete chart of accounts.
+
 ## Verified QBWC post-restart update
 
 - Operator ran a second manual update after the staged bridge process restarted.

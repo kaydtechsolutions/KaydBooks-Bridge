@@ -151,3 +151,79 @@ def test_terminal_response_is_immutable_and_audited(direct):
             db.execute("UPDATE sdk_discovery SET response='replacement'")
         with pytest.raises(sqlite3.IntegrityError):
             db.execute("DELETE FROM sdk_discovery")
+
+
+ACCOUNT = {
+    "ListID": "synthetic-account-1",
+    "FullName": "Synthetic Sales",
+    "AccountType": "Income",
+    "IsActive": "true",
+}
+
+
+def account_transport(records=None, company=COMPANY_A):
+    def exchange(request, path):
+        host = {**HOST, "SupportedQBXMLVersion": ["17.0"]}
+        path.write_text(
+            FakeQuickBooks(
+                entities={
+                    "Host": [host],
+                    "Company": [company],
+                    "Account": [ACCOUNT] if records is None else records,
+                }
+            )(request)
+        )
+
+    return exchange
+
+
+def test_account_preview_recovers_and_prevents_operation_change(direct):
+    def crash(request, path):
+        account_transport()(request, path)
+        raise RuntimeError("saved then interrupted")
+
+    with pytest.raises(RuntimeError):
+        run(direct, crash, accounts=True)
+    result = run(direct, lambda *_: pytest.fail("replayed"), accounts=True)
+    assert result["accounts"] == [ACCOUNT]
+    assert result["complete"] is False
+    with pytest.raises(BridgeError, match="ownership"):
+        run(direct, transport())
+
+
+@pytest.mark.parametrize(
+    "records",
+    [
+        [ACCOUNT] * 21,
+        [ACCOUNT, ACCOUNT],
+        [{**ACCOUNT, "IsActive": "false"}],
+        [{"ListID": "missing-fields"}],
+    ],
+)
+def test_account_preview_invalid_records_block(direct, records):
+    with pytest.raises(BridgeError, match="validation"):
+        run(direct, account_transport(records), accounts=True)
+
+
+def test_account_preview_wrong_company_never_returns_records(direct):
+    with pytest.raises(BridgeError, match="validation"):
+        run(direct, account_transport(company=COMPANY_B), accounts=True)
+
+
+def test_account_preview_projection_excludes_extra_data(direct):
+    result = run(
+        direct, account_transport([{**ACCOUNT, "BankNumber": "synthetic-private"}]), accounts=True
+    )
+    assert result["accounts"] == [ACCOUNT]
+
+
+@pytest.mark.parametrize("replacement", ["999", "12345"])
+def test_account_correlation_rejects_foreign_response(direct, replacement):
+    def wrong(request, path):
+        account_transport()(request, path)
+        path.write_text(
+            path.read_text().replace('requestID="12343"', 'requestID="' + replacement + '"')
+        )
+
+    with pytest.raises(BridgeError, match="validation"):
+        run(direct, wrong, accounts=True)

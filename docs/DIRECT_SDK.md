@@ -1,7 +1,8 @@
 # Durable direct SDK discovery
 
-The direct SDK adapter supports only a fixed US qbXML 17.0 HostQuery/CompanyQuery
-batch. It uses the same private configuration, principal and connector authentication,
+The direct SDK adapter supports a fixed US qbXML 17.0 HostQuery/CompanyQuery
+batch, optionally extended with a [bounded active-account preview](ACCOUNT_LOOKUP.md)
+using `--accounts`. It uses the same private configuration, principal and connector authentication,
 company permissions, SQLite audit chain, and response/binding verifier as QBWC.
 It has a separate company-scoped discovery journal; results are never represented
 as QBWC callbacks or transaction-job completion. Live posting remains disabled.

@@ -42,13 +42,20 @@ public static class PrivateReadOnlyDiscovery {
    var root=doc.DocumentElement;
    if(root.Name!="QBXML" || root.ChildNodes.Count!=1) throw new InvalidOperationException("Invalid discovery envelope");
    var batch=root.FirstChild;
-   if(batch.Name!="QBXMLMsgsRq" || batch.ChildNodes.Count!=2) throw new InvalidOperationException("Invalid discovery batch");
+   if(batch.Name!="QBXMLMsgsRq" || (batch.ChildNodes.Count!=2 && batch.ChildNodes.Count!=3)) throw new InvalidOperationException("Invalid discovery batch");
    string[] names={"HostQueryRq","CompanyQueryRq"};
    for(int i=0;i<2;i++) {
     var node=batch.ChildNodes[i];
     if(node.Name!=names[i] || node.HasChildNodes || node.Attributes.Count!=1 || node.Attributes["requestID"]==null ||
        !System.Text.RegularExpressions.Regex.IsMatch(node.Attributes["requestID"].Value,"^[0-9]+$"))
       throw new InvalidOperationException("Only fixed read-only discovery requests are permitted");
+   }
+   if(batch.ChildNodes.Count==3) {
+    var account=batch.ChildNodes[2];
+    string expected="<MaxReturned>20</MaxReturned><ActiveStatus>ActiveOnly</ActiveStatus><IncludeRetElement>ListID</IncludeRetElement><IncludeRetElement>FullName</IncludeRetElement><IncludeRetElement>AccountType</IncludeRetElement><IncludeRetElement>IsActive</IncludeRetElement>";
+    if(account.Name!="AccountQueryRq" || account.Attributes.Count!=1 || account.Attributes["requestID"]==null ||
+       !System.Text.RegularExpressions.Regex.IsMatch(account.Attributes["requestID"].Value,"^[0-9]+$") || account.InnerXml!=expected)
+     throw new InvalidOperationException("Only bounded active-account preview is permitted");
    }
    Save(dir,"request.xml",request);
    Save(dir,"dispatch-intent.txt",DateTime.UtcNow.ToString("o"));
