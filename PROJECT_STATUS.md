@@ -2,6 +2,21 @@
 
 Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK and QBWC discovery, including QBWC post-restart update: PASS.
 
+## Latest qualification: staged account-role blocker cleared
+
+- On explicit operator request, added only validate to the staged operator's sample
+  company grants and configured the invoice receivables role using the sole active
+  AccountsReceivable record in the previously verified preview. Private config was
+  backed up and validated before replacement; mode remains simulation.
+- New real exact lookups for that configured account passed via direct SDK and QBWC.
+  Both role checks returned role-matched with saved-evidence-only scope, reverified
+  company binding and valid audit. QBWC completed and closed; direct SDK verified.
+- A fresh-process direct SDK CLI role check also passed. Records, mapping, credentials
+  and evidence remain private. No posting/submit/approve permissions were added.
+- Staged role testing is now qualified for this sample and the permission blocker is
+  cleared. Prior full suite: 306 passed; application code unchanged in this update.
+- Next: currency, customer and item compatibility checks. Accounting posting disabled.
+
 ## Latest implementation: configurable invoice receivables role checks
 
 - Added optional private company account_roles mapping and authenticated account-role
@@ -13,8 +28,8 @@ Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK and QBWC discovery,
   report saved-evidence-only scope. No invoice state transitions or posting enabled.
 - Local suite: 306 passed; lint, format and build passed. Synthetic tests cover both
   transports and changed policy, permission, binding, owner, type and unsupported rules.
-  Actual staged role validation is unqualified: staged operator lacks validate grant;
-  existing grants remain unchanged. See docs/ACCOUNT_ROLES.md.
+  Actual staged role validation subsequently passed after the explicitly authorized
+  sample-company validate grant; see qualification above and docs/ACCOUNT_ROLES.md.
 - Next: define and validate transaction-specific currency/customer/item dependencies
   before connecting these preflight checks to invoice preparation. Posting disabled.
 

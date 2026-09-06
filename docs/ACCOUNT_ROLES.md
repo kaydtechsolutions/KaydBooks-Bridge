@@ -30,12 +30,16 @@ return account names or raw records.
 This is a preflight role match against saved evidence, not posting approval, a fresh
 master-data check or full invoice validation. Currency, customer, linked transaction
 and item-account compatibility still require separate checks. No check changes an
-invoice job's state. No live transaction is enabled and no staged permission is added.
+invoice job's state. No live transaction is enabled.
 Intuit's [Desktop SDK Programmer's Guide](https://static.developer.intuit.com/resources/QBSDK_ProGuide.pdf)
 documents currency-specific ARAccountRef restrictions; matching account type alone
 cannot establish transaction compatibility.
 
 Synthetic tests cover both transports, policy changes, type mismatch, missing roles,
 previews, revoked permission, company-binding changes, evidence ownership and audit.
-The staged operator lacks `validate` permission, so actual staged role validation has
-not been claimed. Real exact lookup qualification remains a separate completed check.
+Actual sample-company role validation passed for both QBWC and direct SDK after the
+operator explicitly authorized adding company `validate` permission. New exact reads
+matched the configured active receivables account; both role checks and company audit
+verified. A fresh-process direct SDK CLI check also passed. Only `validate` was added;
+no submit, approve or posting permission was granted. Exact mapping and evidence stay
+private. Currency/customer/item compatibility is still outside this role-only check.
