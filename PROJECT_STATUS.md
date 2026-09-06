@@ -4,6 +4,19 @@ Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK discovery: PASS; QB
 
 ## Current QBWC repair decision
 
+- Operator subsequently approved broader QuickBooks permission. The approved profile
+  was imported and its QuickBooks grant confirmed: only while the sample is open,
+  with personal data excluded. Bridge posting is still disabled.
+- Existing R3 identity then failed with `Unique OwnerID/FileID pair value required`;
+  Web Connector showed no registered applications. Retained existing stamps and
+  created one fresh stable registration profile, preserving endpoint, credentials
+  and confirmed Bridge company binding. Removed replacement-only AppUniqueName
+  from that fresh profile after the old replacement path logged a null appName.
+- Before that fresh import, native input failed with `GetCursorPos failed: Access
+  is denied (0x80070005)`. Reconnect/unlock the interactive Windows session to proceed.
+  The new profile and exact evidence are private. No real successful callback cycle
+  is claimed. Next: import the prepared fresh profile, then verify manual discovery.
+
 - Re-read actual QWCLog: AppLock registration repeatedly failed with SDK 3263 under
   IsReadOnly=true; the same metadata operation succeeded under IsReadOnly=false.
   Returning to read-only authorization caused the failure again. This is a permission
