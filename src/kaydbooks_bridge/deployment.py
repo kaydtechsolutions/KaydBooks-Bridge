@@ -65,6 +65,8 @@ class QWCProfile:
     file_id: str
     run_every_seconds: int
     auth_flags: int
+    is_read_only: bool
+    unattended_mode_pref: str
 
     @classmethod
     def load(cls, path: str | Path) -> QWCProfile:
@@ -82,6 +84,8 @@ class QWCProfile:
                 "file_id",
                 "run_every_seconds",
                 "auth_flags",
+                "is_read_only",
+                "unattended_mode_pref",
             },
         )
         if data["schema_version"] != 1:
@@ -98,6 +102,11 @@ class QWCProfile:
         flags = data["auth_flags"]
         if type(flags) is not int or not 0 <= flags <= 0xF:
             raise BridgeError("invalid QWC edition flags")
+        if data["is_read_only"] is not True:
+            raise BridgeError("qualification QWC must require QuickBooks read-only access")
+        unattended = data["unattended_mode_pref"]
+        if unattended != "umpOptional":
+            raise BridgeError("qualification QWC must make unattended access optional")
         return cls(
             app_name=data["app_name"],
             endpoint_url=_https_url(data["endpoint_url"], "endpoint", endpoint=True),
@@ -107,6 +116,8 @@ class QWCProfile:
             file_id=_guid(data["file_id"], "FileID"),
             run_every_seconds=interval,
             auth_flags=flags,
+            is_read_only=True,
+            unattended_mode_pref=unattended,
         )
 
     def render(self) -> str:
@@ -123,6 +134,8 @@ class QWCProfile:
             run_every_n_seconds=self.run_every_seconds,
             support_url=self.support_url,
             auth_flags=self.auth_flags,
+            is_read_only=self.is_read_only,
+            unattended_mode_pref=self.unattended_mode_pref,
         )
 
     def write_stable(self, destination: str | Path) -> Path:

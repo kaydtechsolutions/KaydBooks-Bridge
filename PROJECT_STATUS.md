@@ -127,6 +127,13 @@ Updated: 2026-09-06. Live posting: DISABLED. Real QuickBooks integration tests: 
   Exact private fingerprint evidence remains available for a separate hygiene task.
 - Exact-path private operator instructions plus local password-copy, clipboard-clear and
   candidate-export helpers are staged outside Git. The helpers contain no credentials.
+- The first actual QWC import reached QuickBooks but failed before any service callback:
+  Web Connector 34 logged QBWC1039 and QuickBooks reported that the application had not
+  previously been authorized by the company Admin. No `CompanyRet` was received. The
+  deployment profile now requires Intuit's `IsReadOnly=true` authorization preference
+  and permits only optional unattended access. This QuickBooks request-processor control
+  is independent of the Bridge's enforced query-only mode. Focused tests are synthetic;
+  the failed authorization attempt is real integration evidence, not a successful test.
 
 ## Blockers and next actions
 
@@ -135,12 +142,10 @@ Updated: 2026-09-06. Live posting: DISABLED. Real QuickBooks integration tests: 
   completed. Actual installed version/tool enablement evidence is stored privately
   outside Git. Bridge-specific permissions, profile, schemas and integration behavior
   remain unverified. No Hermes settings, schedules, recipients or boards were changed.
-- The sole remaining immediate M2 requirement is an operator-confirmed dedicated
-  synthetic QuickBooks company opened as QuickBooks Admin. The staged service/QWC are
-  ready, but the current open company is not identifiable as synthetic and must not be
-  used. Follow the exact-path private operator guide or `docs/M2_QUALIFICATION.md` to
-  import the QWC and initiate one fail-closed candidate-capture update. Real callback
-  behavior and company binding remain unverified.
+- The sole immediate M2 action is to import the corrected private QWC while the dedicated
+  synthetic company is open as its QuickBooks Admin, approve read-only access, enter the
+  password locally, and run one update. Real callback behavior and company binding remain
+  unverified.
 - Real Hermes and QuickBooks integration tests: **none**. Production-enabled features:
   **none**. Real transaction/report/tax/inventory/landed-cost support is unverified.
 - Planned: real qualification of the synthetic-tested QBWC discovery adapter;

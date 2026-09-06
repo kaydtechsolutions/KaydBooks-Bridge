@@ -168,6 +168,9 @@ def build_qwc(
     run_every_n_seconds: int = 900,
     support_url: str | None = None,
     auth_flags: int = 0,
+    is_read_only: bool | None = None,
+    unattended_mode_pref: str | None = None,
+    personal_data_pref: str | None = None,
 ) -> str:
     """Render the ``.qwc`` file a user imports into the Web Connector.
 
@@ -181,7 +184,20 @@ def build_qwc(
     """
     if type(auth_flags) is not int or auth_flags < 0 or auth_flags > 0xF:
         raise ValueError("auth_flags must be an integer from 0x0 through 0xF")
+    if is_read_only is not None and type(is_read_only) is not bool:
+        raise ValueError("is_read_only must be a boolean or None")
+    if unattended_mode_pref not in {None, "umpRequired", "umpOptional"}:
+        raise ValueError("invalid unattended_mode_pref")
+    if personal_data_pref not in {None, "pdpNotNeeded", "pdpOptional", "pdpRequired"}:
+        raise ValueError("invalid personal_data_pref")
     support = support_url or app_url
+    auth_preferences = ""
+    if is_read_only is not None:
+        auth_preferences += f"<IsReadOnly>{str(is_read_only).lower()}</IsReadOnly>"
+    if unattended_mode_pref is not None:
+        auth_preferences += f"<UnattendedModePref>{unattended_mode_pref}</UnattendedModePref>"
+    if personal_data_pref is not None:
+        auth_preferences += f"<PersonalDataPref>{personal_data_pref}</PersonalDataPref>"
     return (
         '<?xml version="1.0"?>'
         "<QBWCXML>"
@@ -195,6 +211,7 @@ def build_qwc(
         f"<FileID>{escape(file_id)}</FileID>"
         "<QBType>QBFS</QBType>"
         f"<AuthFlags>0x{auth_flags:X}</AuthFlags>"
+        f"{auth_preferences}"
         f"<Scheduler><RunEveryNSeconds>{int(run_every_n_seconds)}</RunEveryNSeconds></Scheduler>"
         "</QBWCXML>"
     )

@@ -16,7 +16,8 @@ Git, with an inherited-access-disabled ACL for the current Windows operator. It 
 
 - generated connector credentials in `credentials.json`;
 - simulation-only Bridge configuration with an unconfirmed all-zero identity sentinel;
-- stable OwnerID/FileID and an Enterprise-only `AuthFlags` value in `qwc-profile.json`;
+- stable OwnerID/FileID, an Enterprise-only `AuthFlags` value, mandatory
+  `IsReadOnly=true`, and optional unattended access in `qwc-profile.json`;
 - `KaydBooks-Bridge-M2-ReadOnly.qwc`, which points to the local HTTPS endpoint;
 - a 30-day localhost TLS leaf certificate and private key; the leaf certificate is in
   the current user's trusted root store;
@@ -81,3 +82,13 @@ qualify HostRet, CompanyRet, binding, duplicate callbacks and close/recovery evi
 If the observed identity differs, retain the evidence, keep the sentinel or prior
 expected digest, close the session, and investigate. Never switch the expected binding
 to make an unexpected company pass.
+
+## Authorization failures happen before callbacks
+
+QBWC1039 with QuickBooks reporting that an application has not accessed the company
+before means QuickBooks rejected the initial application authorization. No service
+callback or `CompanyRet` exists to inspect in that case. QuickBooks must be running
+with the dedicated synthetic company open as that company's QuickBooks Admin before
+the QWC is imported. The QWC's `IsReadOnly=true` asks the QuickBooks request processor
+for read-only access. The Bridge independently enforces read-only discovery and has no
+posting hook; these are separate controls.

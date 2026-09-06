@@ -23,6 +23,8 @@ def profile_file(tmp_path: Path) -> Path:
                 "file_id": "{57F3B9B0-86F1-4fcc-B1EE-566DE1813D21}",
                 "run_every_seconds": 900,
                 "auth_flags": 8,
+                "is_read_only": True,
+                "unattended_mode_pref": "umpOptional",
             }
         ),
         encoding="utf-8",
@@ -38,6 +40,8 @@ def test_stable_qwc_generation_refuses_changed_profile(tmp_path):
     assert first == second
     root = ET.fromstring(target.read_text(encoding="utf-8"))
     assert root.findtext("AuthFlags") == "0x8"
+    assert root.findtext("IsReadOnly") == "true"
+    assert root.findtext("UnattendedModePref") == "umpOptional"
 
     data = json.loads(profile_path.read_text(encoding="utf-8"))
     data["file_id"] = "{57F3B9B0-86F1-4FCC-B1EE-566DE1813D22}"
@@ -52,6 +56,15 @@ def test_qwc_profile_requires_https_and_exact_callback_path(tmp_path):
     data["endpoint_url"] = "http://localhost:8443/qbwc"
     path.write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises(BridgeError, match="endpoint URL"):
+        QWCProfile.load(path)
+
+
+def test_qwc_profile_cannot_enable_quickbooks_writes(tmp_path):
+    path = profile_file(tmp_path)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["is_read_only"] = False
+    path.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(BridgeError, match="must require QuickBooks read-only"):
         QWCProfile.load(path)
 
 
