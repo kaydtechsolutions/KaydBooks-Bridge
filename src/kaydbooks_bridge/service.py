@@ -30,6 +30,10 @@ def validate_payload(operation, payload, policy):
         from .customer_refunds import validate_payload as validate_refund
 
         return validate_refund(payload, policy)
+    if operation == "supplier-credit.create":
+        from .supplier_credits import validate_payload as validate_credit
+
+        return validate_credit(payload, policy)
     if operation == "customer-credit.create":
         from .customer_credits import validate_payload as validate_credit
 
@@ -58,6 +62,10 @@ def require_evidence(config, policy, store, db, job, now):
         return require(config, policy, store, db, job, now)
     if job["operation"] == "customer-refund.create":
         from .refund_evidence import require
+
+        return require(config, policy, store, db, job, now)
+    if job["operation"] == "supplier-credit.create":
+        from .supplier_credit_evidence import require
 
         return require(config, policy, store, db, job, now)
     if job["operation"] == "customer-credit.create":
@@ -134,6 +142,7 @@ class Bridge:
             "customer-payment.create",
             "supplier-payment.create",
             "customer-credit.create",
+            "supplier-credit.create",
             "customer-refund.create",
             "customer-credit.apply",
         ):
@@ -195,6 +204,8 @@ class Bridge:
                     from .payment_evidence import resolve as resolver
                 if envelope["operation"] == "supplier-payment.create":
                     from .supplier_payment_evidence import resolve as resolver
+                if envelope["operation"] == "supplier-credit.create":
+                    from .supplier_credit_evidence import resolve as resolver
                 if envelope["operation"] == "customer-credit.create":
                     from .credit_evidence import resolve as resolver
                 if envelope["operation"] == "customer-credit.apply":
@@ -215,6 +226,7 @@ class Bridge:
                 "customer-payment.create",
                 "supplier-payment.create",
                 "customer-credit.create",
+                "supplier-credit.create",
                 "customer-refund.create",
                 "customer-credit.apply",
             ) or (policy.invoice_masters and bill_context is None):
@@ -295,6 +307,9 @@ class Bridge:
             table = "payment_evidence_links"
         if supplier_payment:
             table = "supplier_payment_evidence_links"
+        supplier_credit = store.job(db, job_id)["operation"] == "supplier-credit.create"
+        if supplier_credit:
+            table = "supplier_credit_evidence_links"
         credit = store.job(db, job_id)["operation"] == "customer-credit.create"
         if credit:
             table = "credit_evidence_links"
@@ -313,7 +328,9 @@ class Bridge:
             self.clock(),
             actor,
             job_id,
-            "application_evidence_linked"
+            "supplier_credit_evidence_linked"
+            if supplier_credit
+            else "application_evidence_linked"
             if application
             else "refund_evidence_linked"
             if refund
@@ -407,6 +424,7 @@ class Bridge:
                 "customer-payment.create",
                 "supplier-payment.create",
                 "customer-credit.create",
+                "supplier-credit.create",
                 "customer-refund.create",
                 "customer-credit.apply",
             ):
@@ -464,6 +482,7 @@ class Bridge:
                 "customer-payment.create",
                 "supplier-payment.create",
                 "customer-credit.create",
+                "supplier-credit.create",
                 "customer-refund.create",
                 "customer-credit.apply",
             ):
@@ -477,7 +496,7 @@ class Bridge:
                     "payload": job["payload"],
                     "balances": job["master_evidence"]["balances"],
                     "total": job["payload"]["total_amount"]
-                    if job["operation"] != "customer-credit.create"
+                    if job["operation"] not in ("customer-credit.create", "supplier-credit.create")
                     else format(
                         sum(Decimal(line["amount"]) for line in job["payload"]["lines"]), ".2f"
                     ),
@@ -601,6 +620,7 @@ class Bridge:
                 "customer-payment.create",
                 "supplier-payment.create",
                 "customer-credit.create",
+                "supplier-credit.create",
                 "customer-refund.create",
                 "customer-credit.apply",
             ):
@@ -751,6 +771,7 @@ class Bridge:
                 "customer-payment.create",
                 "supplier-payment.create",
                 "customer-credit.create",
+                "supplier-credit.create",
                 "customer-refund.create",
                 "customer-credit.apply",
             ):

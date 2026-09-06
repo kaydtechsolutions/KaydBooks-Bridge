@@ -32,6 +32,8 @@ All calls require an explicit company. Config and grants are rechecked per opera
 | check_credit_application_v1 | Fixed read-only invoice/credit balances and reciprocal links |
 | prepare_customer_refund_v1 | Prepare a recorded refund against existing unused credits |
 | check_customer_refund_v1 | Read exact credit, customer, bank and payment-method evidence |
+| prepare_supplier_credit_v1 | Prepare an unapplied credit tied to an original supplier bill |
+| check_supplier_credit_v1 | Read bill limits, credit history and independent payable evidence |
 | validate_v1 | Validate a draft against current policy and source/master evidence |
 | submit_v1 | Queue a validated transaction; never dispatch |
 | status_v1 | Read canonical job state |

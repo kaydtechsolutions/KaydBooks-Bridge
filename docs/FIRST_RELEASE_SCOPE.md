@@ -97,7 +97,10 @@ qualification are separate evidence; a passing mock does not establish native su
   verified credit 2 -> 0, customer balance 20 -> 22 and bank 510 -> 508, without card
   processing. Other refund and broader variants remain unqualified; M3-06 stays partial.
 - [ ] **M3-07:** Supplier credits: correct vendor/accounts/items and bill applications;
-  verify remaining payable and unused credit independently.
+  verify remaining payable and unused credit independently. Native USD2 expense and
+  USD5 mixed service/expense credits passed source-bill limits, saved lines, independent
+  CreditToApply and vendor/net payable balance changes 30 -> 28 -> 23. Vendor Balance
+  Summary independently agrees. Credit application and inventory returns remain unfinished.
 - [ ] **M3-08:** Discounts and additional charges: explicit line/document treatment,
   non-tax rounding rules, correct accounts and exact saved totals for each operation.
 - **M3-09 — EXCLUDED:** Tax-enabled transaction qualification is outside this release.

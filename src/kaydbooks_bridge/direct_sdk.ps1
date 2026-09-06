@@ -145,6 +145,38 @@ public static class PrivateReadOnlyDiscovery {
     }
     while(batch.ChildNodes.Count>first)batch.RemoveChild(batch.LastChild);
    }
+   // Supplier-credit extensions retain an exact bill-master prefix.
+   if(batch.ChildNodes.Count>=10 && ((batch.LastChild.Name=="BillToPayQueryRq" && batch.ChildNodes[batch.ChildNodes.Count-2].Name=="VendorCreditQueryRq") || (batch.LastChild.Name=="VendorCreditQueryRq" && batch.ChildNodes[batch.ChildNodes.Count-2].Name=="BillToPayQueryRq" && batch.LastChild.FirstChild.Name=="TxnID"))) {
+    bool receipt=batch.LastChild.Name=="VendorCreditQueryRq";
+    int first=batch.ChildNodes.Count-(receipt?5:4);
+    if(first<6||first>406)throw new Exception("Supplier credit master prefix required");
+    string correlation=batch.FirstChild.Attributes["requestID"].Value;
+    correlation=correlation.Substring(0,correlation.Length-1);
+    var vendor=batch.ChildNodes[first];
+    FixedQuery(vendor,"Vendor","ListID,IsActive,Balance,CurrencyRef",true);
+    if(vendor.Attributes["requestID"].Value!=correlation+"90")throw new Exception("Supplier credit correlation differs");
+    string vendorId=vendor.FirstChild.InnerText;
+    for(int j=first+1;j<batch.ChildNodes.Count;j++) {
+     var q=batch.ChildNodes[j];bool original=j==first+1,history=j==first+2,payable=j==first+3;
+     string kind=original?"BillQueryRq":payable?"BillToPayQueryRq":"VendorCreditQueryRq";
+     string suffix=original?"91":history?"92":payable?"93":"99";
+     if(q.Name!=kind||q.Attributes.Count!=1||q.Attributes["requestID"]==null||q.Attributes["requestID"].Value!=correlation+suffix)throw new Exception("Supplier credit query correlation differs");
+     string expected;
+     if(payable) {
+      var ap=q.SelectSingleNode("APAccountRef/ListID");
+      if(ap==null||!System.Text.RegularExpressions.Regex.IsMatch(ap.InnerText,@"\A[A-Za-z0-9-]{1,31}\z"))throw new Exception("Exact payable identity required");
+      expected="<PayeeEntityRef><ListID>"+vendorId+"</ListID></PayeeEntityRef><APAccountRef><ListID>"+ap.InnerText+"</ListID></APAccountRef>";
+     } else {
+      if(history)expected="<EntityFilter><ListID>"+vendorId+"</ListID></EntityFilter>";
+      else {var id=q.FirstChild;if(id==null||id.Name!="TxnID"||!System.Text.RegularExpressions.Regex.IsMatch(id.InnerText,@"\A[A-Za-z0-9-]{1,31}\z"))throw new Exception("Exact supplier credit/source required");expected="<TxnID>"+id.InnerText+"</TxnID>";}
+      expected+="<IncludeLineItems>true</IncludeLineItems>";
+      string fields="TxnID,EditSequence,VendorRef,APAccountRef,TxnDate,RefNumber,"+(original?"AmountDue":"CreditAmount")+",IsTaxIncluded,SalesTaxCodeRef,CurrencyRef,ExchangeRate,ExpenseLineRet,ItemLineRet,ItemGroupLineRet"+(original?"":",Memo,LinkedTxn,OpenAmount");
+      foreach(string field in fields.Split(','))expected+="<IncludeRetElement>"+field+"</IncludeRetElement>";
+     }
+     if(q.InnerXml!=expected)throw new Exception("Fixed supplier credit evidence required");
+    }
+    while(batch.ChildNodes.Count>first)batch.RemoveChild(batch.LastChild);
+   }
    bool supplierPaymentCheck=batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=28 && batch.ChildNodes[3].Name=="VendorQueryRq" && batch.ChildNodes[6].Name=="BillQueryRq";
    bool paymentCheck=batch.ChildNodes.Count>=7 && batch.ChildNodes.Count<=28 && batch.ChildNodes[6].Name=="PaymentMethodQueryRq";
    bool billReceipt=!supplierPaymentCheck && batch.ChildNodes.Count>=4 && batch.ChildNodes.Count<=104 && batch.ChildNodes[2].Name=="BillQueryRq" && batch.ChildNodes[3].Name=="BillToPayQueryRq";

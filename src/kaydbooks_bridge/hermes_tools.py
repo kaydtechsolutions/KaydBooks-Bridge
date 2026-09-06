@@ -64,6 +64,7 @@ class Tools:
             "prepare_customer_credit_v1",
             "prepare_credit_application_v1",
             "prepare_customer_refund_v1",
+            "prepare_supplier_credit_v1",
         }:
             strict_keys(
                 arguments,
@@ -75,7 +76,9 @@ class Tools:
                 self.token,
                 company,
                 **arguments,
-                operation="customer-refund.create"
+                operation="supplier-credit.create"
+                if name == "prepare_supplier_credit_v1"
+                else "customer-refund.create"
                 if name == "prepare_customer_refund_v1"
                 else "customer-credit.apply"
                 if name == "prepare_credit_application_v1"
@@ -115,6 +118,7 @@ class Tools:
             "check_customer_credit_v1",
             "check_credit_application_v1",
             "check_customer_refund_v1",
+            "check_supplier_credit_v1",
         }:
             strict_keys(arguments, {"connector", "payload"})
             config = Config.load(self.bridge.config_path)
@@ -132,7 +136,9 @@ class Tools:
                 os.environ.get(connector.password_env, ""),
                 run,
                 **{
-                    "refund_check"
+                    "supplier_credit_check"
+                    if name == "check_supplier_credit_v1"
+                    else "refund_check"
                     if name == "check_customer_refund_v1"
                     else "application_check"
                     if name == "check_credit_application_v1"
@@ -320,6 +326,35 @@ def server(config_path, token):
         """Read original invoice, customer balance and prior credits to check service credit limits."""
         return tools.call(
             "check_customer_credit_v1", company, {"connector": connector, "payload": payload}
+        )
+
+    @app.tool()
+    def prepare_supplier_credit_v1(
+        company: str,
+        document_id: str,
+        idempotency_key: str,
+        payload: dict,
+        confidence: dict,
+        master_evidence: dict,
+    ) -> dict:
+        """Prepare an unapplied supplier credit draft tied to an original bill; never post or refund."""
+        return tools.call(
+            "prepare_supplier_credit_v1",
+            company,
+            {
+                "document_id": document_id,
+                "idempotency_key": idempotency_key,
+                "payload": payload,
+                "confidence": confidence,
+                "master_evidence": master_evidence,
+            },
+        )
+
+    @app.tool()
+    def check_supplier_credit_v1(company: str, connector: str, payload: dict) -> dict:
+        """Read original bill, vendor balance and prior credits to check service credit limits."""
+        return tools.call(
+            "check_supplier_credit_v1", company, {"connector": connector, "payload": payload}
         )
 
     @app.tool()

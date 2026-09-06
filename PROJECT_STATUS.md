@@ -12,7 +12,9 @@ BillToPay independently report USD30 across three unpaid bills. One USD5 unappli
 credit reduced customer balance to USD20. Applying USD3 of that credit left USD2 unused
 and the original invoice at USD7. A recorded USD2 Visa refund then exhausted that credit,
 increased customer balance to USD22 and reduced the bank balance 510 -> 508. No transaction
-was resent and no payment processor was invoked.
+was resent and no payment processor was invoked. Two subsequent supplier credits
+(USD2 expense and USD5 mixed expense/service) reduced vendor balance and net payables
+30 -> 28 -> 23. Fresh Vendor Balance Summary independently reports USD23.
 
 ## M3â€“M7 sample implementation and qualification
 
@@ -36,11 +38,11 @@ was resent and no payment processor was invoked.
   amounts through the durable lifecycle. Native USD5 and USD10 receipts settled the USD15
   invoice; a third USD5 receipt remained unapplied. Signed AppliedAmount, related invoice
   payments and customer-wide unused credits are handled without double-counting.
-- Latest validation: 841 full-suite tests passed, followed by 25 passing refund tests
-  after correcting the native query projection. Lint, native request gates, 25-tool
-  stdio checks and source/wheel builds pass. An installed signed restore recovered
-  19 jobs and 929 files with valid integrity and audit; the restored service was not
-  started. CI55 passed all nine jobs for the prior credit-application commit.
+- Latest validation: 868 full-suite tests passed, plus 28 supplier-credit tests including
+  the added mixed-line case and receipt-label correction. Lint, native request gates,
+  27-tool stdio checks and source/wheel builds pass. An installed signed restore
+  recovered 21 jobs and 993 files with valid integrity and audit, paused and without
+  starting the restored service. CI56 passed the prior refund commit.
 - Supplier payments now pass exact vendor/AP/Bank mapping, partial/full settlement,
   independent saved allocation/payable checks and missing-response recovery tests.
   Native sample readbacks verified the bill balance decreasing 10 -> 5 -> 0.
@@ -54,7 +56,11 @@ was resent and no payment processor was invoked.
   credit 2 -> 0, customer balance 20 -> 22 and bank balance 510 -> 508. The native query
   omits CreditRemaining inside the refund allocation; the separate exact credit query
   remains mandatory. Broader refund variants remain unfinished; M3-06 stays partial.
-- Current step: supplier credits, then remaining
+- Supplier credits now support non-tax single-currency expense/service and mixed lines,
+  original-bill limits after prior Bridge-linked credits, immutable dispatch, independent
+  CreditToApply unused amounts and net payable/vendor balance checks. Two native tests
+  passed on the first attempt. Inventory returns and credit applications remain partial.
+- Current step: supplier credit applications and broader adjustment variants, then remaining
   M3–M6 acceptance gates. Sample posting is paused between bounded tests.
 - The [first-release checklist](docs/FIRST_RELEASE_SCOPE.md) is the release target;
   these qualified simple paths do not complete the wider currency/advanced variants.
@@ -63,7 +69,7 @@ was resent and no payment processor was invoked.
   assigned companies by default. Explicit restrictions are respected. Required reviews,
   company binding and production/sample posting gates remain enforced. General role
   management and separately configurable self-approval remain release work.
-- CLI sample invoice/bill/payment commands and 25 narrow MCP tools are implemented. Native
+- CLI sample invoice/bill/payment commands and 27 narrow MCP tools are implemented. Native
   attempts cannot enter simulation recovery; bill receipts are excluded from the
   historical invoice register. All company identity, sources and mappings stay private.
 
