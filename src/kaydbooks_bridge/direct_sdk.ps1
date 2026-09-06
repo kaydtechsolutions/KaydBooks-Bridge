@@ -34,6 +34,20 @@ public static class PrivateReadOnlyDiscovery {
   foreach(string field in fields.Split(',')) expected+="<IncludeRetElement>"+field+"</IncludeRetElement>";
   if(node.InnerXml!=expected) throw new InvalidOperationException("Only fixed projected master fields permitted");
  }
+ static void CommercialQuery(System.Xml.XmlNode node) {
+  bool preview=node.FirstChild!=null && node.FirstChild.Name=="MaxReturned";
+  switch(node.Name) {
+   case "PreferencesQueryRq": FixedQuery(node,"Preferences","MultiCurrencyPreferences,SalesTaxPreferences,SalesAndCustomersPreferences,PurchasesAndVendorsPreferences,MultiLocationInventoryPreferences,ItemsAndInventoryPreferences",false); break;
+   case "CurrencyQueryRq": FixedQuery(node,"Currency","ListID,IsActive,CurrencyCode",!preview,preview); break;
+   case "AccountQueryRq": FixedQuery(node,"Account","ListID,IsActive,AccountType,CurrencyRef",!preview,preview); break;
+   case "CustomerQueryRq": FixedQuery(node,"Customer","ListID,IsActive,CurrencyRef,SalesTaxCodeRef,ItemSalesTaxRef,PriceLevelRef",!preview,preview); break;
+   case "ItemServiceQueryRq": FixedQuery(node,"ItemService","ListID,IsActive,SalesOrPurchase,SalesAndPurchase,SalesTaxCodeRef,UnitOfMeasureSetRef,IsTaxIncluded",!preview,preview); break;
+   case "ItemInventoryQueryRq": FixedQuery(node,"ItemInventory","ListID,IsActive,SalesPrice,IncomeAccountRef,COGSAccountRef,AssetAccountRef,QuantityOnHand,QuantityOnSalesOrder,SalesTaxCodeRef,UnitOfMeasureSetRef,IsTaxIncluded",!preview,preview); break;
+   case "SalesTaxCodeQueryRq": FixedQuery(node,"SalesTaxCode","ListID,IsActive,IsTaxable",!preview,preview); break;
+   case "ItemSalesTaxQueryRq": FixedQuery(node,"ItemSalesTax","ListID,IsActive,TaxRate",!preview,preview); break;
+   default: throw new InvalidOperationException("Unsupported commercial query");
+  }
+ }
  public static void Run(string dir, string requestFile, string outputFile) {
   IRequestProcessor4 rp=null; string ticket=null; bool opened=false; string response=null;
   Save(dir,"started.txt",DateTime.UtcNow.ToString("o")+" direct SDK diagnostic; transport evidence; binding validation required");
@@ -59,9 +73,10 @@ public static class PrivateReadOnlyDiscovery {
    var root=doc.DocumentElement;
    if(root.Name!="QBXML" || root.ChildNodes.Count!=1) throw new InvalidOperationException("Invalid discovery envelope");
    var batch=root.FirstChild;
-   bool single=batch.ChildNodes.Count>=7 && batch.ChildNodes.Count<=45 && batch.ChildNodes.Count%2==1 && batch.ChildNodes[3].Name=="AccountQueryRq";
-   bool invoice=single || (batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=46 && batch.ChildNodes.Count%2==0);
-   if(batch.Name!="QBXMLMsgsRq" || (batch.ChildNodes.Count!=2 && batch.ChildNodes.Count!=3 && batch.ChildNodes.Count!=7 && !invoice)) throw new InvalidOperationException("Invalid discovery batch");
+   bool commercial=batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=88 && batch.ChildNodes[2].Name=="PreferencesQueryRq" && batch.ChildNodes[2].InnerXml.Contains("<IncludeRetElement>SalesTaxPreferences</IncludeRetElement>");
+   bool single=!commercial && batch.ChildNodes.Count>=7 && batch.ChildNodes.Count<=45 && batch.ChildNodes.Count%2==1 && batch.ChildNodes[3].Name=="AccountQueryRq";
+   bool invoice=!commercial && (single || (batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=46 && batch.ChildNodes.Count%2==0));
+   if(batch.Name!="QBXMLMsgsRq" || (batch.ChildNodes.Count!=2 && batch.ChildNodes.Count!=3 && batch.ChildNodes.Count!=7 && !invoice && !commercial)) throw new InvalidOperationException("Invalid discovery batch");
    string[] names={"HostQueryRq","CompanyQueryRq"};
    for(int i=0;i<2;i++) {
     var node=batch.ChildNodes[i];
@@ -89,6 +104,9 @@ public static class PrivateReadOnlyDiscovery {
     FixedQuery(batch.ChildNodes[4],"Customer","ListID,IsActive,CurrencyRef",false,true);
     FixedQuery(batch.ChildNodes[5],"ItemService","ListID,IsActive,SalesOrPurchase,SalesAndPurchase",false,true);
     FixedQuery(batch.ChildNodes[6],"Account","ListID,IsActive,AccountType,CurrencyRef",false,true);
+   }
+   if(commercial) {
+    for(int i=2;i<batch.ChildNodes.Count;i++) CommercialQuery(batch.ChildNodes[i]);
    }
    if(invoice) {
     FixedQuery(batch.ChildNodes[2],"Preferences","MultiCurrencyPreferences",false);

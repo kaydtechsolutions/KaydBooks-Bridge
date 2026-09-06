@@ -179,3 +179,75 @@ check rejected stale evidence and the audit remained valid. Only the sample oper
 Both transport preparation paths, refresh and expiry are covered by synthetic integration
 tests; real QBWC compatibility was qualified separately above. Tax, pricing and inventory
 compatibility are still outside this service-item master check.
+
+## Inventory, tax and list-price checks
+
+Optional `invoice_masters.commercial` policy adds explicit commercial checks to the
+same SDK and QBWC evidence lifecycle and preparation gate:
+
+```json
+"commercial": {
+  "sales_tax_code_id": "operator-selected-code-id",
+  "tax_item_id": "operator-selected-tax-item-id",
+  "tax_rate": "10.00",
+  "pricing": "list-price",
+  "inventory": "uncommitted-on-hand"
+}
+```
+
+The IDs above and the 10% rate are synthetic examples, not deployment or tax advice.
+A null `tax_item_id` requires zero rate and an explicitly non-taxable SalesTaxCode.
+Otherwise the exact active ItemSalesTax rate must match policy; tax groups are excluded.
+The customer's tax code and, for taxable invoices, sales-tax item must match. Each
+item must have the same explicit tax-code reference. Missing references are not inferred
+from names, defaults or absent preferences. Tax-inclusive pricing is rejected.
+
+Commercial lines require `quantity` and `unit_price` as positive decimal strings with
+at most six fractional places. Existing `amount` must equal quantity times price rounded
+half-up to cents. Top-level `tax_amount` is required, including `"0.00"` for non-taxable
+invoices. It must equal subtotal times configured rate, rounded half-up to cents; the
+company total limit includes tax. Mixed taxability, discounts, free lines and other
+rounding policies are excluded. Both transports compare each rate with the returned item
+list price. Customer price levels, percentage-priced services and unit-of-measure sets
+are rejected. This deliberately narrow policy does not qualify every pricing feature.
+
+Service mappings keep their current shape (optional `"kind": "Service"`). Inventory
+mappings add `"kind": "Inventory"`, `cogs_account_id` and `asset_account_id` and require
+commercial policy. Exact active account references must match Income, CostOfGoodsSold
+and OtherCurrentAsset respectively. For inventory the preferences must explicitly show
+inventory enabled, multiple locations disabled, no serial/lot tracking and bins disabled.
+Quantity requested is summed across repeated lines and may not exceed QuantityOnHand
+minus QuantityOnSalesOrder. Missing or malformed stock/commitment evidence is rejected.
+This checks a recent snapshot; it neither reserves stock nor predicts future availability.
+Inventory assemblies, site/bin/serial/lot allocation and UOM conversions remain excluded.
+
+Result fields now distinguish `service_item_count`, `inventory_item_count`, and
+`commercial_checks` (`matched` or `not-requested`). `scope` remains master-evidence-only:
+the result does not verify a saved QuickBooks invoice or authorize accounting posting.
+Adding/changing commercial policy changes the evidence context hash and requires a new
+lookup before preparation. Existing amount-only service checks keep their narrower scope.
+
+Direct SDK `--commercial-preview` returns at most 20 active records per projected entity,
+including inventory and tax masters. It cannot qualify an invoice. Status 1/Info with no
+records is accepted only as an empty commercial preview list; an exact lookup still fails.
+The existing disabled-currency preview handling is retained. Native C# checks the fixed
+projected field sets and exact-ID/bounded-preview selectors and accepts no write request.
+
+The official Intuit [SDK onscreen reference](https://static.developer.intuit.com/qbSDK-current/common/newosr/index.html)
+and its [inventory schema](https://static.developer.intuit.com/qbSDK-current/common/newosr/qbsdk/json/ItemInventoryQueryRs.json),
+[preferences schema](https://static.developer.intuit.com/qbSDK-current/common/newosr/qbsdk/json/PreferencesQueryRs.json),
+[sales-tax code schema](https://static.developer.intuit.com/qbSDK-current/common/newosr/qbsdk/json/SalesTaxCodeQueryRs.json)
+and [sales-tax item schema](https://static.developer.intuit.com/qbSDK-current/common/newosr/qbsdk/json/ItemSalesTaxQueryRs.json)
+were checked for the projected fields. Company-specific tax and inventory policies remain
+operator-controlled; the Bridge performs compatibility comparisons, not legal tax selection.
+
+Qualification: 443 full-suite tests passed, including both transports, taxable/non-taxable
+service/inventory preparation, restart, account/type mismatches, stock commitments, repeated
+item lines, pricing, tax, totals, preferences, unsafe native requests and empty previews.
+The real sample commercial preview passed. Positive real commercial qualification is held:
+the configured customer has a price level, the service has a UOM set and no tax-code reference,
+and the preview found no sales-tax items. None of these conditions was silently bypassed.
+A private review proposes four isolated sample test masters (tax vendor, tax item, service,
+customer) and an unposted local draft of 2 × 5.00 + synthetic 10% tax = 11.00. No setup writes
+have been executed. A separate QuickBooks write grant and explicit test-master authorization
+are required; Windows full access alone does not alter the current read-only SDK grant.

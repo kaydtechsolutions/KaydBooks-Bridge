@@ -85,7 +85,11 @@ def invoice_job(service, token, connector_id, job_id, *, payload=None, enqueue=F
                 compatibility="matched",
                 scope="master-evidence-only",
                 context_sha256=check["context_sha256"],
-                service_item_count=check["item_count"],
+                service_item_count=sum(
+                    s.get("kind", "Service") == "Service" for s in check["item_specs"]
+                ),
+                inventory_item_count=sum(s.get("kind") == "Inventory" for s in check["item_specs"]),
+                commercial_checks="matched" if "commercial" in check else "not-requested",
                 currency_basis="configured-single-currency"
                 if check["currency_id"] is None
                 else "verified-home-currency",

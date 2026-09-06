@@ -28,7 +28,11 @@ def required_id(value):
 def validate_masters(value, customers, items):
     if value == {}:
         return {}
-    strict_keys(value, {"currency_id", "customers", "items"})
+    strict_keys(value, {"currency_id", "customers", "items"}, {"commercial"})
+    if "commercial" in value:
+        from .invoice_commercial import validate_policy
+
+        validate_policy(value["commercial"])
     if value["currency_id"] is not None:
         required_id(value["currency_id"])
     for name, allowed in (("customers", customers), ("items", items)):
@@ -38,7 +42,21 @@ def validate_masters(value, customers, items):
         ids = []
         for entry in mapping.values():
             if name == "items":
-                strict_keys(entry, {"list_id", "income_account_id"})
+                strict_keys(
+                    entry,
+                    {"list_id", "income_account_id"},
+                    {"kind", "cogs_account_id", "asset_account_id"},
+                )
+                kind = entry.get("kind", "Service")
+                if kind not in ("Service", "Inventory"):
+                    raise BridgeError("only service and inventory items are supported")
+                if kind == "Inventory":
+                    if "commercial" not in value:
+                        raise BridgeError("inventory requires commercial compatibility policy")
+                    required_id(entry.get("cogs_account_id"))
+                    required_id(entry.get("asset_account_id"))
+                elif "cogs_account_id" in entry or "asset_account_id" in entry:
+                    raise BridgeError("service items cannot use inventory accounts")
                 required_id(entry["income_account_id"])
                 entry = entry["list_id"]
             ids.append(required_id(entry))
@@ -71,18 +89,37 @@ def plan(company, payload):
         ("Account", ar),
         ("Customer", masters["customers"][invoice["customer_id"]]),
     ]
+    specs = []
     for alias in aliases:
         entry = masters["items"][alias]
-        queries.extend([("ItemService", entry["list_id"]), ("Account", entry["income_account_id"])])
-    return {
+        specs.append({"alias": alias, "offset": len(queries) + 2, **entry})
+        queries.extend(
+            [
+                ("Item" + entry.get("kind", "Service"), entry["list_id"]),
+                ("Account", entry["income_account_id"]),
+            ]
+        )
+        if entry.get("kind") == "Inventory":
+            queries.extend(
+                [("Account", entry["cogs_account_id"]), ("Account", entry["asset_account_id"])]
+            )
+    result = {
         "queries": queries,
         "currency": company.currency,
         "currency_id": masters["currency_id"],
         "item_count": len(aliases),
+        "item_specs": specs,
         "context_sha256": digest(
             {"invoice": invoice, "masters": masters, "roles": company.account_roles}
         ),
     }
+    if "commercial" in masters:
+        from .invoice_commercial import extend_plan
+
+        extend_plan(result, masters["commercial"], invoice)
+    elif "tax_amount" in invoice or any("quantity" in line for line in invoice["lines"]):
+        raise BridgeError("quantity, price and tax require commercial compatibility policy")
+    return result
 
 
 def append_queries(discovery, correlation, check):
@@ -92,7 +129,7 @@ def append_queries(discovery, correlation, check):
         query = ET.SubElement(batch, entity + "QueryRq", requestID=f"{correlation}{index}")
         if list_id is not None:
             ET.SubElement(query, "ListID").text = list_id
-        for field in QUERY_FIELDS[entity]:
+        for field in check.get("fields", QUERY_FIELDS)[entity]:
             ET.SubElement(query, "IncludeRetElement").text = field
     return '<?xml version="1.0"?><?qbxml version="17.0"?>' + ET.tostring(root, encoding="unicode")
 
@@ -100,27 +137,33 @@ def append_queries(discovery, correlation, check):
 PREVIEW_ENTITIES = ("Preferences", "Currency", "Customer", "ItemService", "Account")
 
 
-def preview_request(discovery, correlation):
+def preview_request(discovery, correlation, *, commercial=False):
+    from .invoice_commercial import FIELDS
+
+    fields = FIELDS if commercial else QUERY_FIELDS
+    entities = tuple(fields) if commercial else PREVIEW_ENTITIES
     root = fromstring(discovery)
     batch = root.find("QBXMLMsgsRq")
-    for index, entity in enumerate(PREVIEW_ENTITIES, 3):
+    for index, entity in enumerate(entities, 3):
         node = ET.SubElement(batch, entity + "QueryRq", requestID=f"{correlation}{index}")
         if entity != "Preferences":
             ET.SubElement(node, "MaxReturned").text = "20"
             ET.SubElement(node, "ActiveStatus").text = "ActiveOnly"
-        for field in QUERY_FIELDS[entity]:
+        for field in fields[entity]:
             ET.SubElement(node, "IncludeRetElement").text = field
     return '<?xml version="1.0"?><?qbxml version="17.0"?>' + ET.tostring(root, encoding="unicode")
 
 
-def preview_response(payload, correlation):
+def preview_response(payload, correlation, *, commercial=False):
+    from .invoice_commercial import FIELDS
+
+    fields = FIELDS if commercial else QUERY_FIELDS
+    entities = tuple(fields) if commercial else PREVIEW_ENTITIES
     responses = list(parse_response(payload))
-    if len(responses) != 7:
+    if len(responses) != len(entities) + 2:
         raise BridgeError("master preview response set mismatch")
     result = {}
-    for index, (response, entity) in enumerate(
-        zip(responses[2:], PREVIEW_ENTITIES, strict=True), 3
-    ):
+    for index, (response, entity) in enumerate(zip(responses[2:], entities, strict=True), 3):
         unavailable_currency = (
             entity == "Currency"
             and response.status_code == 3250
@@ -131,10 +174,17 @@ def preview_response(payload, correlation):
             .get("IsMultiCurrencyOn")
             == "false"
         )
+        empty_commercial = (
+            commercial
+            and entity != "Preferences"
+            and response.status_code == 1
+            and response.status_severity == "Info"
+            and not response.records
+        )
         if (
             response.entity != entity
             or response.request_id != f"{correlation}{index}"
-            or (response.status_code != 0 and not unavailable_currency)
+            or (response.status_code != 0 and not unavailable_currency and not empty_commercial)
             or (response.status_severity != "Info" and not unavailable_currency)
             or len(response.records) > 20
         ):
@@ -149,7 +199,7 @@ def preview_response(payload, correlation):
                 if key in seen or record.get("IsActive") != "true":
                     raise BridgeError("duplicate or inactive preview master")
                 seen.add(key)
-            rows.append({key: record[key] for key in QUERY_FIELDS[entity] if key in record})
+            rows.append({key: record[key] for key in fields[entity] if key in record})
         result[entity] = rows
     root = fromstring(payload)
     batch = root.find("QBXMLMsgsRs")
@@ -213,8 +263,16 @@ def validate_response(payload, correlation, check):
             raise BridgeError("customer or receivables currency differs from invoice currency")
     if records[ar_index].get("AccountType") != "AccountsReceivable":
         raise BridgeError("invoice receivables account type mismatch")
-    for offset in range(ar_index + 2, len(records), 2):
+    for spec in check["item_specs"]:
+        offset = spec["offset"]
         item, income = records[offset : offset + 2]
+        if spec.get("kind") == "Inventory":
+            if (
+                ref(item, "IncomeAccountRef") != income["ListID"]
+                or income.get("AccountType") != "Income"
+            ):
+                raise BridgeError("inventory income account mismatch")
+            continue
         sale = item.get("SalesOrPurchase")
         both = item.get("SalesAndPurchase")
         if (sale is None) == (both is None):
@@ -229,6 +287,10 @@ def validate_response(payload, correlation, check):
             account_id = ref(both, "IncomeAccountRef")
         if account_id != income["ListID"] or income.get("AccountType") != "Income":
             raise BridgeError("service item income account mapping or type mismatch")
+    if "commercial" in check:
+        from .invoice_commercial import validate_commercial
+
+        validate_commercial(records, ar_index, check)
     root = fromstring(payload)
     batch = root.find("QBXMLMsgsRs")
     for node in list(batch)[2:]:

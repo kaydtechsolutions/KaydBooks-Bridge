@@ -85,6 +85,7 @@ def discover(
     list_id: str | None = None,
     invoice_check: dict | None = None,
     master_preview: bool = False,
+    commercial_preview: bool = False,
 ) -> dict:
     """Run/resume fixed US qbXML 17 discovery under company permissions and audit.
 
@@ -103,7 +104,7 @@ def discover(
         raise BridgeError("company binding is not operator-confirmed")
     store = service._stores[connector.company]
     request = service._discovery_request(run_id, "17.0")
-    if type(accounts) is not bool or type(master_preview) is not bool:
+    if any(type(flag) is not bool for flag in (accounts, master_preview, commercial_preview)):
         raise BridgeError("invalid lookup mode")
     from .account_lookup import append_query, validate_list_id
 
@@ -118,12 +119,16 @@ def discover(
     )
     if lookup:
         request = append_query(request, run_id, list_id=list_id)
+    if commercial_preview and master_preview:
+        raise BridgeError("select one preview mode")
+    if commercial_preview:
+        master_preview = True
     if master_preview and (lookup or invoice_check is not None):
         raise BridgeError("master preview cannot be combined with another mode")
     if master_preview:
         from .invoice_compatibility import preview_request
 
-        request = preview_request(request, run_id)
+        request = preview_request(request, run_id, commercial=commercial_preview)
         operation = "invoice-master-preview"
     check = None
     context_hash = None
@@ -213,7 +218,9 @@ def discover(
             if master_preview:
                 from .invoice_compatibility import preview_response
 
-                discovery_response, master_records = preview_response(response, run_id)
+                discovery_response, master_records = preview_response(
+                    response, run_id, commercial=commercial_preview
+                )
             if check is not None:
                 from .invoice_compatibility import validate_response as validate_masters_response
 
@@ -261,7 +268,11 @@ def discover(
                 scope="master-evidence-only",
                 compatibility="matched",
                 context_sha256=context_hash,
-                service_item_count=check["item_count"],
+                service_item_count=sum(
+                    s.get("kind", "Service") == "Service" for s in check["item_specs"]
+                ),
+                inventory_item_count=sum(s.get("kind") == "Inventory" for s in check["item_specs"]),
+                commercial_checks="matched" if "commercial" in check else "not-requested",
                 currency_basis="configured-single-currency"
                 if check["currency_id"] is None
                 else "verified-home-currency",
@@ -298,6 +309,11 @@ def main(argv=None):
     modes.add_argument(
         "--master-preview", action="store_true", help="bounded private invoice master preview"
     )
+    modes.add_argument(
+        "--commercial-preview",
+        action="store_true",
+        help="bounded private inventory, tax and pricing master preview",
+    )
     args = parser.parse_args(argv)
     try:
         load_secret_file(args.credentials)
@@ -313,6 +329,7 @@ def main(argv=None):
             recover_read=args.recover_read,
             accounts=args.accounts,
             master_preview=args.master_preview,
+            commercial_preview=args.commercial_preview,
             list_id=args.list_id,
             invoice_check=json.loads(args.invoice_check.read_text(encoding="utf-8"))
             if args.invoice_check

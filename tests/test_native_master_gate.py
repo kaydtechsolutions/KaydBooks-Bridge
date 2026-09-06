@@ -26,6 +26,12 @@ def test_native_master_fields_reject_extra_or_unbounded_requests(tmp_path):
    return true;
   } catch { return false; }
  }
+ public static bool CommercialAllowed(string xml) {
+  try {
+   var doc=new System.Xml.XmlDocument(); doc.LoadXml(xml);
+   CommercialQuery(doc.DocumentElement); return true;
+  } catch { return false; }
+ }
 }
 '@
 $fields='<IncludeRetElement>ListID</IncludeRetElement><IncludeRetElement>IsActive</IncludeRetElement><IncludeRetElement>CurrencyRef</IncludeRetElement>'
@@ -37,6 +43,11 @@ foreach($bad in @($exact.Replace('</ListID>','</ListID><ListID>other</ListID>'),
  if ([Gate]::Allowed($bad,$true,$false)) {throw 'unsafe exact accepted'}
 }
 if ([Gate]::Allowed($preview.Replace('>20<','>21<'),$false,$true)) {throw 'unbounded preview accepted'}
+$tax='<SalesTaxCodeQueryRq requestID="139"><ListID>tax-code</ListID><IncludeRetElement>ListID</IncludeRetElement><IncludeRetElement>IsActive</IncludeRetElement><IncludeRetElement>IsTaxable</IncludeRetElement></SalesTaxCodeQueryRq>'
+if (-not [Gate]::CommercialAllowed($tax)) {throw 'tax projection rejected'}
+foreach($bad in @($tax.Replace('QueryRq','AddRq'),$tax.Replace('</ListID>','</ListID><ListID>other</ListID>'),$tax.Replace('IsTaxable','CreditCardInfo'),$tax.Replace('<ListID>tax-code</ListID>','<MaxReturned>21</MaxReturned><ActiveStatus>ActiveOnly</ActiveStatus>'))) {
+ if ([Gate]::CommercialAllowed($bad)) {throw 'unsafe commercial query accepted'}
+}
 Write-Output 'Native master gate passed'
 """,
         encoding="utf-8",

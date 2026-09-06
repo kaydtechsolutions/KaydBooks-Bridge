@@ -2,6 +2,28 @@
 
 Updated: 2026-09-06. Live posting: DISABLED. Real direct SDK and QBWC discovery, including QBWC post-restart update: PASS.
 
+## Latest implementation: bounded inventory, tax and pricing compatibility
+
+- Added optional commercial policy and explicit quantity/unit-price/tax fields. Both
+  transports check list prices, configured active tax code/rate, customer/item tax references,
+  line arithmetic and tax-inclusive total limits; context binding covers the new policy.
+- Inventory checks include exact Income/COGS/asset accounts, explicit simple inventory
+  preferences and aggregate requested quantity versus on-hand less sales-order commitments.
+  Price levels, UOM, inclusive tax, groups and site/bin/serial/lot inventory remain excluded.
+- Extended fixed native read allowlist and private bounded commercial master preview.
+  Empty 1/Info preview lists are valid absence, never exact-lookup success. SDK request and
+  response schemas were checked against official Intuit OSR. All accounting writes disabled.
+- Validation: 443 tests pass; lint, format and builds pass. Both transports have synthetic
+  taxable/non-taxable service/inventory preparation coverage; real commercial preview passed.
+- BLOCKER: Positive real commercial qualification needs compatible sample masters. Existing
+  customer has a price level; service has UOM and no tax reference; no sales-tax items were
+  returned. A private review proposes four isolated test masters and an unposted 11.00 local
+  invoice draft. Creating them needs explicit QuickBooks test-write authorization and a
+  separate SDK read/write grant. No master records or company settings have been changed.
+- NEXT after authorization: collision-check, create/read-back the reviewed synthetic sample
+  masters with durable receipts, then qualify commercial checks. Inventory positive real
+  qualification remains separate. No production posting, merge or release.
+
 ## Latest implementation: fresh master evidence required for mapped invoices
 
 - Invoice preparation resolves an owned SDK/QBWC evidence reference from private durable

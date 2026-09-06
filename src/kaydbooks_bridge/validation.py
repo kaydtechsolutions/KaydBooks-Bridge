@@ -6,7 +6,7 @@ import hashlib
 import json
 import re
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from .config import BridgeError, Company, identifier, strict_keys
 
@@ -31,7 +31,9 @@ def money(value: str) -> Decimal:
 
 
 def validate_invoice(payload: dict, company: Company) -> dict:
-    strict_keys(payload, {"customer_id", "txn_date", "ref_number", "currency", "lines"})
+    strict_keys(
+        payload, {"customer_id", "txn_date", "ref_number", "currency", "lines"}, {"tax_amount"}
+    )
     identifier(payload["customer_id"])
     if payload["customer_id"] not in company.customers:
         raise BridgeError("customer is not in the company master allowlist")
@@ -53,14 +55,36 @@ def validate_invoice(payload: dict, company: Company) -> dict:
         raise BridgeError("invoice requires 1-100 lines")
     total = Decimal("0")
     for line in payload["lines"]:
-        strict_keys(line, {"item_id", "amount"})
+        strict_keys(line, {"item_id", "amount"}, {"quantity", "unit_price"})
         identifier(line["item_id"])
         if line["item_id"] not in company.items:
             raise BridgeError("item is not in the company master allowlist")
         total += money(line["amount"])
+        if "quantity" in line or "unit_price" in line:
+            quantity = positive_decimal(line.get("quantity"))
+            price = positive_decimal(line.get("unit_price"))
+            if (quantity * price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) != money(
+                line["amount"]
+            ):
+                raise BridgeError("line amount differs from rounded quantity times unit price")
+    if "tax_amount" in payload:
+        tax = payload["tax_amount"]
+        if not isinstance(tax, str) or not re.fullmatch(r"(?:0|[1-9][0-9]{0,11})\.[0-9]{2}", tax):
+            raise BridgeError("tax amount must be a nonnegative two-place decimal string")
+        total += Decimal(tax)
     if total > money(company.max_total):
         raise BridgeError("company total limit exceeded")
     return json.loads(canonical(payload))
+
+
+def positive_decimal(value):
+    if (
+        not isinstance(value, str)
+        or not re.fullmatch(r"(?:0|[1-9][0-9]{0,8})(?:\.[0-9]{1,6})?", value)
+        or Decimal(value) <= 0
+    ):
+        raise BridgeError("quantity and unit price require positive bounded decimal strings")
+    return Decimal(value)
 
 
 def validate_source(source: dict, company: Company) -> dict:

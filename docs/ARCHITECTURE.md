@@ -58,7 +58,10 @@ or a copied database with a different company binding fail closed.
 
 SQLite triggers enforce queue invariants after restart. Jobs and idempotency aliases
 cannot be deleted; prepared identity, payload and source fields cannot change;
-approvals and transaction receipts cannot be rewritten; dispatch attempts are created
+transaction receipts cannot be rewritten; an owner may refresh master evidence before
+dispatch, returning a draft/validated/queued invoice to draft and clearing approval.
+The evidence history is append-only and the canonical invoice identity is retained.
+Dispatch attempts are created
 only while claiming queued work; and state changes follow the explicit graph. Initial
 inserts must be clean drafts. Metadata is immutable and pause control remains boolean
 and durable. These constraints protect against application defects. An OS-level
@@ -94,8 +97,8 @@ signed checkpoints/immutable audit export are future production requirements.
 | --- | --- | --- |
 | M0: prerequisites and inherited baseline | Isolated branch, incorporate unmerged PR #1, Windows TTL regression, prevent inherited publishing | Complete locally |
 | M1: foundation | Company isolation, strict private config, authenticated CLI, durable queue/audit, duplicate controls, simulated saved-record comparison and recovery; concurrent/crash/permission tests | Implemented; synthetic tests |
-| M2: SDK discovery and read-only transport | Bind authenticated QBWC connector to configured company through HCP preflight plus correlated Host/Company queries; negotiate qbXML version; persist requests/callbacks and reject cross-session replay | Implemented; synthetic-tested, real qualification blocked |
-| M3: first real transaction adapter | Pick one verified operation in one authorized synthetic test company; fresh master resolution, tax/account/currency validation, duplicate query, response identifiers and independent complete read-back; timeout/restart reconciliation | Planned |
+| M2: SDK discovery and read-only transport | Bind authenticated QBWC connector to configured company through HCP preflight plus correlated Host/Company queries; negotiate qbXML version; persist requests/callbacks and reject cross-session replay | Implemented; SDK/QBWC real discovery and account/master reads qualified |
+| M3: first real transaction adapter | Pick one verified operation in one authorized synthetic test company; fresh master resolution, tax/account/currency validation, duplicate query, response identifiers and independent complete read-back; timeout/restart reconciliation | Fresh master linkage and bounded commercial checks implemented; positive real commercial qualification needs authorized compatible test masters; transaction writes remain absent |
 | M4: Hermes tools and document intake | Versioned narrow tools for prepare/validate/submit/status/lookup/verify/recover, immutable source bytes, field confidence and review, no raw qbXML/SQL; isolated Hermes profile contract tests | Planned |
 | M5: scheduling and optional collaboration | Schedule occurrence keys, dependencies, timezone, cancellation, no overlaps; notification outbox; versioned memory; delegated jobs; Kanban as a projection | Planned |
 | M6: reports and optional desktop/browser | Inventory each report and filters; source totals and derived calculation labels; approved capability-specific GUI flow shares duplicate reconciliation and evidence | Planned |
