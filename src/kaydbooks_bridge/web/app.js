@@ -1040,6 +1040,17 @@ async function openJob(id) {
   }
   if (job.approval_by)
     p.append(el("p", { class: "small" }, "Approved by " + job.approval_by));
+  const receipt = job.transaction_receipt?.receipt;
+  const stockEffects = receipt?.stock_effects || receipt?.balance_effects?.stock_effects;
+  if (stockEffects && job.state === "verified")
+    p.append(el("h3", {}, "Verified inventory effects"),
+      table(["Item", "Before", "Change", "After", "Average cost"], Object.entries(stockEffects).map(([id, effect]) => [
+        catalog.report_items.find(item => item.id === id)?.label || id,
+        effect.before,
+        effect.sold !== undefined ? "−" + effect.sold : "+" + (effect.returned ?? effect.received),
+        effect.after,
+        effect.average_cost_after !== undefined ? catalog.currency + " " + effect.average_cost_after : "—",
+      ])));
   if (job.txn_id)
     p.append(
       el(

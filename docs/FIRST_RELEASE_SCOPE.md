@@ -96,7 +96,12 @@ qualification are separate evidence; a passing mock does not establish native su
   10 -> 7, remaining credit 5 -> 2 and unchanged customer balance 20. Both reciprocal
   links are retained with their native negative sign. A recorded USD2 Visa refund then
   verified credit 2 -> 0, customer balance 20 -> 22 and bank 510 -> 508, without card
-  processing. Other refund and broader variants remain unqualified; M3-06 stays partial.
+  processing. A later USD15 mixed inventory/service credit verified a two-unit stock
+  return (0 -> 2), unchanged USD5 average cost, customer balance 54 -> 39 and USD10
+  inventory valuation. Independent ledger entries balance and reverse inventory/COGS;
+  source-invoice limits, missing-baseline rejection and no-resend recovery are tested.
+  See [customer inventory returns](CUSTOMER_INVENTORY_RETURNS.md). Other refund and
+  broader currency/cost/settings variants remain unqualified; M3-06 stays partial.
 - [ ] **M3-07:** Supplier credits: correct vendor/accounts/items and bill applications;
   verify remaining payable and unused credit independently. Native USD2 expense and
   USD5 mixed service/expense credits passed source-bill limits, saved lines, independent

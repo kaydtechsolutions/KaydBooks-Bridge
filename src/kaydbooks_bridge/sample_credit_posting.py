@@ -365,6 +365,7 @@ def reconcile(bridge, token, company, job_id, *, exchange=windows_exchange, read
             current["payload"],
             json.loads(baseline[0]["data"]).get("credit_before"),
             proof["receipt"]["balances"],
+            inventory=plan(latest_policy, current["payload"]).get("inventory", {}),
         )
         db.execute(
             "UPDATE jobs SET state='verified',txn_id=?,detail='native_credit_verified' WHERE id=?",

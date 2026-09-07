@@ -1,5 +1,22 @@
 # KaydBooks Bridge project status
 
+Customer inventory returns and stock reconciliation are installed-sample qualified.
+A separately approved USD15 mixed credit returned two stock units plus one service
+line against the verified original invoice. Stock increased 0 -> 2, average cost
+remained USD5, and customer balance decreased USD54 -> USD39. Independent customer
+and vendor summaries both report USD39; inventory valuation reports two units/USD10.
+Five General Ledger entries independently balance USD25 debit/credit, including
+the inventory asset and cost-of-goods reversal. The first attempt verified; repeat
+posting was refused. Missing stock baselines or cost/quantity mismatches stay held.
+Installed desktop/mobile review displays verified stock effects. Signed isolated
+restore preserved 56 jobs and 2,374 files with valid audit/integrity, paused and no
+restored service started. All 1,274 tests passed with browser/OCR enabled; lint,
+JavaScript syntax and package build passed. Company posting is paused and the
+bounded credit quota is exhausted. Production remains disabled; tax is excluded.
+See [customer inventory returns](docs/CUSTOMER_INVENTORY_RETURNS.md).
+The 28 unfinished gates remain: M3—9, M4—2, M5—2, M6—11, M7—4. Broader return/refund
+variants keep M3-06 partial. Stop here for the user's requested mini report/review.
+
 Payment, credit and refund forms now select searchable verified Bridge originals.
 Company/connector identity, retained response hashes, correlated native transaction
 and party IDs are checked; current remapped aliases cannot select another party's

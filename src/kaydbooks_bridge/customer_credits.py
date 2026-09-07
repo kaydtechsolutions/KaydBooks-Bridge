@@ -1,4 +1,4 @@
-"""Non-tax service credit notes tied to a specific source invoice; no automatic application."""
+"""Non-tax service/inventory credits tied to an invoice; no automatic application."""
 
 from decimal import Decimal
 from xml.etree import ElementTree as ET
@@ -47,9 +47,7 @@ def validate_payload(payload, policy):
     base = validate_invoice(invoice_payload(payload), policy)
     if "adjustments" in base:
         raise BridgeError("credit-note invoice adjustments are not yet qualified")
-    check = _check(policy, base)
-    if any(s.get("kind", "Service") != "Service" for s in check["item_specs"]):
-        raise BridgeError("credit qualification currently supports service items only")
+    _check(policy, base)
     return {**base, "invoice_txn_id": payload["invoice_txn_id"]}
 
 
@@ -60,17 +58,38 @@ def memo(payload):
 def plan(policy, payload):
     credit = validate_payload(payload, policy)
     check = _check(policy, invoice_payload(credit))
+    inventory = {
+        spec["list_id"]: {
+            "alias": spec["alias"],
+            "list_id": spec["list_id"],
+            "asset_list_id": spec["asset_account_id"],
+            "cogs_list_id": spec["cogs_account_id"],
+            "income_list_id": spec["income_account_id"],
+        }
+        for spec in check["item_specs"]
+        if spec.get("kind") == "Inventory"
+    }
+    if inventory:
+        # A return adds stock. Sale availability must not reject a sold-out return.
+        # Identity, price, accounts, source capacity and all inventory settings still apply.
+        check["skip_inventory_availability"] = True
+        check["fields"] = {
+            **check["fields"],
+            "ItemInventory": (*check["fields"]["ItemInventory"], "AverageCost"),
+        }
     return {
         "credit": credit,
         "master_plan": check,
         "customer": policy.invoice_masters["customers"][credit["customer_id"]],
         "receivable": policy.account_roles["invoice_receivable"],
         "item_ids": {a: v["list_id"] for a, v in policy.invoice_masters["items"].items()},
+        **({"inventory": inventory} if inventory else {}),
         "context_sha256": digest(
             {
                 "schema": "service-credit-check-v1",
                 "credit": credit,
                 "masters": check["context_sha256"],
+                **({"stock_contract": "customer-return-v1"} if inventory else {}),
             }
         ),
     }
@@ -234,7 +253,29 @@ def validate_check(xml, run, check, *, recovering=False):
     for n in list(root[0])[count:]:
         root[0].remove(n)
     discovery = validate_masters(ET.tostring(root), run, check["master_plan"])
+    inventory, stock = check.get("inventory", {}), {}
+    if inventory:
+        from .bill_lookup import validate_inventory_item, validate_inventory_preferences
+
+        validate_inventory_preferences(responses[2].records[0])
+        for rs in responses[:count]:
+            if rs.entity != "ItemInventory":
+                continue
+            for item in rs.records:
+                item_id = item["ListID"]
+                observation = validate_inventory_item(item, inventory[item_id])
+                if decimal_evidence(observation["average_cost"]) <= 0:
+                    raise BridgeError("inventory credit requires verified positive average cost")
+                returned = sum(
+                    Decimal(line["quantity"])
+                    for line in check["credit"]["lines"]
+                    if line["item_id"] == inventory[item_id]["alias"]
+                )
+                stock[item_id] = {**observation, "return_quantity": str(returned)}
+        if set(stock) != set(inventory):
+            raise BridgeError("complete customer return stock required")
     return discovery, {
+        **({"stock": stock} if inventory else {}),
         "customer_balance": str(balance),
         "source_invoice": invoice["TxnID"],
         "prior_credit_count": len(credits),
@@ -359,7 +400,7 @@ def validate_lookup(xml, run, policy, payload, txn_id):
     return discovery, {**receipt, "balances": balances}
 
 
-def verify_balance_effect(payload, before, after):
+def verify_balance_effect(payload, before, after, *, inventory=None):
     if (
         not isinstance(before, dict)
         or before.get("source_invoice") != payload["invoice_txn_id"]
@@ -371,7 +412,48 @@ def verify_balance_effect(payload, before, after):
         after.get("customer_balance")
     ):
         raise BridgeError("credit customer balance effect differs; never resend")
+    stock_effects = {}
+    if inventory or "stock" in before or "stock" in after:
+        if (
+            not inventory
+            or not isinstance(before.get("stock"), dict)
+            or not isinstance(after.get("stock"), dict)
+            or set(before["stock"]) != set(inventory)
+            or set(after["stock"]) != set(inventory)
+        ):
+            raise BridgeError("customer return stock baseline or observation missing")
+        for key, spec in inventory.items():
+            old, new = before["stock"][key], after["stock"][key]
+            prior = decimal_evidence(old.get("quantity_on_hand"))
+            current = decimal_evidence(new.get("quantity_on_hand"))
+            cost = decimal_evidence(old.get("average_cost"))
+            returned = sum(
+                Decimal(line["quantity"])
+                for line in payload["lines"]
+                if line["item_id"] == spec["alias"]
+            )
+            if (
+                prior < 0
+                or returned <= 0
+                or current != prior + returned
+                or cost <= 0
+                or decimal_evidence(new.get("average_cost")) != cost
+                or decimal_evidence(old.get("return_quantity")) != returned
+                or decimal_evidence(new.get("return_quantity")) != returned
+            ):
+                raise BridgeError(
+                    "customer return stock or average cost effect differs; never resend"
+                )
+            stock_effects[key] = {
+                "before": str(prior),
+                "returned": str(returned),
+                "after": str(current),
+                "average_cost_before": str(cost),
+                "average_cost_after": new["average_cost"],
+                "verification": "matched-native-stock-increase-and-average-cost",
+            }
     return {
+        **({"stock_effects": stock_effects} if stock_effects else {}),
         "before": before["customer_balance"],
         "credit": str(total),
         "after": after["customer_balance"],

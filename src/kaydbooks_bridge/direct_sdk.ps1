@@ -44,7 +44,7 @@ public static class PrivateReadOnlyDiscovery {
    case "ItemServiceQueryRq": FixedQuery(node,"ItemService","ListID,IsActive,SalesOrPurchase,SalesAndPurchase,SalesTaxCodeRef,UnitOfMeasureSetRef,IsTaxIncluded",!preview,preview); break;
    case "ItemDiscountQueryRq": FixedQuery(node,"ItemDiscount","ListID,IsActive,AccountRef,DiscountRate,DiscountRatePercent,SalesTaxCodeRef",true); break;
    case "ItemOtherChargeQueryRq": FixedQuery(node,"ItemOtherCharge","ListID,IsActive,SalesOrPurchase,SalesAndPurchase,SalesTaxCodeRef,UnitOfMeasureSetRef,IsTaxIncluded,SpecialItemType",true); break;
-   case "ItemInventoryQueryRq": FixedQuery(node,"ItemInventory","ListID,IsActive,SalesPrice,IncomeAccountRef,COGSAccountRef,AssetAccountRef,QuantityOnHand,QuantityOnSalesOrder,SalesTaxCodeRef,UnitOfMeasureSetRef,IsTaxIncluded",!preview,preview); break;
+   case "ItemInventoryQueryRq": FixedQuery(node,"ItemInventory","ListID,IsActive,SalesPrice,IncomeAccountRef,COGSAccountRef,AssetAccountRef,QuantityOnHand,QuantityOnSalesOrder,SalesTaxCodeRef,UnitOfMeasureSetRef,IsTaxIncluded"+(!preview && node.SelectSingleNode("IncludeRetElement[text()='AverageCost']")!=null?",AverageCost":""),!preview,preview); break;
    case "SalesTaxCodeQueryRq": FixedQuery(node,"SalesTaxCode","ListID,IsActive,IsTaxable",!preview,preview); break;
    case "ItemSalesTaxQueryRq": FixedQuery(node,"ItemSalesTax","ListID,IsActive,TaxRate",!preview,preview); break;
    default: throw new InvalidOperationException("Unsupported commercial query");
