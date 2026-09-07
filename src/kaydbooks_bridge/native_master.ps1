@@ -40,13 +40,14 @@ public static class ControlledSampleMaster {
   var doc=Parse(xml);var batch=doc.SelectSingleNode("/QBXML/QBXMLMsgsRq");
   if(batch==null||batch.ChildNodes.Count!=1)throw new Exception("One master write required");
   var rq=batch.FirstChild;
-  if(!OneOf(rq.Name,"CustomerAddRq,CustomerModRq,VendorAddRq,VendorModRq,ItemServiceAddRq,ItemServiceModRq,ItemInventoryAddRq,ItemInventoryModRq")||rq.ChildNodes.Count!=1||rq.FirstChild.Name!=rq.Name.Substring(0,rq.Name.Length-2))throw new Exception("Unsupported master request");
+  if(!OneOf(rq.Name,"CustomerAddRq,CustomerModRq,VendorAddRq,VendorModRq,ItemServiceAddRq,ItemServiceModRq,ItemInventoryAddRq,ItemInventoryModRq,ItemDiscountAddRq,ItemDiscountModRq,ItemOtherChargeAddRq,ItemOtherChargeModRq")||rq.ChildNodes.Count!=1||rq.FirstChild.Name!=rq.Name.Substring(0,rq.Name.Length-2))throw new Exception("Unsupported master request");
   var node=rq.FirstChild;bool add=rq.Name.EndsWith("AddRq");
   string common=add?"Name,IsActive,ExternalGUID":"ListID,EditSequence,Name,IsActive";
   if(!add&&(node.SelectSingleNode("ListID")==null||node.SelectSingleNode("EditSequence")==null))throw new Exception("Modification identity required");
   if(add&&(node.SelectSingleNode("Name")==null||node.SelectSingleNode("ExternalGUID")==null))throw new Exception("Creation identity required");
   if(rq.Name.StartsWith("Customer")||rq.Name.StartsWith("Vendor"))Fields(node,common+",CompanyName,Phone,Email",false);
   else if(rq.Name.StartsWith("ItemInventory"))Fields(node,common+",SalesDesc,SalesPrice,PurchaseDesc,PurchaseCost"+(add?",IncomeAccountRef,COGSAccountRef,AssetAccountRef":""),add);
+  else if(rq.Name.StartsWith("ItemDiscount"))Fields(node,common+",ItemDesc,DiscountRate"+(add?",AccountRef":""),add);
   else {
    string aggregate=null;
    foreach(XmlNode child in node.ChildNodes)if(child.Name.StartsWith("Sales")) {
@@ -65,7 +66,7 @@ public static class ControlledSampleMaster {
    var batch=Parse(request).SelectSingleNode("/QBXML/QBXMLMsgsRq");
    if(batch==null||batch.ChildNodes.Count<2||batch.ChildNodes.Count>12)throw new Exception("Bounded read batch required");
    foreach(XmlNode q in batch.ChildNodes) {
-    if(!OneOf(q.Name,"HostQueryRq,CompanyQueryRq,PreferencesQueryRq,AccountQueryRq,CustomerQueryRq,VendorQueryRq,ItemServiceQueryRq,ItemInventoryQueryRq,EntityQueryRq,ItemQueryRq"))throw new Exception("Unsupported preflight request");
+    if(!OneOf(q.Name,"HostQueryRq,CompanyQueryRq,PreferencesQueryRq,AccountQueryRq,CustomerQueryRq,VendorQueryRq,ItemServiceQueryRq,ItemInventoryQueryRq,ItemDiscountQueryRq,ItemOtherChargeQueryRq,EntityQueryRq,ItemQueryRq"))throw new Exception("Unsupported preflight request");
     foreach(XmlNode f in q.ChildNodes)if(!OneOf(f.Name,"ListID,FullName,IncludeRetElement")||f.ChildNodes.Count!=1||f.FirstChild.NodeType!=XmlNodeType.Text)throw new Exception("Fixed read selectors required");
    }
    string write=readOnly?null:File.ReadAllText(Path.Combine(root,"write.request.xml"));if(!readOnly)CheckWrite(write,hash);

@@ -9,7 +9,16 @@ from qbwc_kit._xml import fromstring
 
 from .config import BridgeError, company_policy_context, strict_keys
 from .direct_sdk import company_lock
-from .master_records import ACCOUNTS, FIELDS, KINDS, record, target_reference, validate, xml
+from .master_records import (
+    ACCOUNTS,
+    FIELDS,
+    KINDS,
+    SALES_KINDS,
+    record,
+    target_reference,
+    validate,
+    xml,
+)
 from .qbwc import DurableQBWCDiscoveryService
 from .service import audited
 from .validation import canonical, digest
@@ -90,7 +99,7 @@ def request(policy, spec, run):
         # Enterprise 24 omits item ExternalGUID when IncludeRetElement is used,
         # even when explicitly requested. Read the one exact item in full and
         # retain only the reviewed projection below. Never broaden its selector.
-        if kind not in ("ItemService", "ItemInventory"):
+        if kind not in ("ItemService", "ItemInventory", "ItemOtherCharge", "ItemDiscount"):
             for field in fields:
                 ET.SubElement(node, "IncludeRetElement").text = field
     return xml(root)
@@ -137,8 +146,8 @@ def response(text, policy, connector, spec, run):
         if kind not in ("Entity", "Item") and rs[0].tag != kind + "Ret":
             raise BridgeError("unexpected master record type")
         projection = {f.text for f in query.findall("IncludeRetElement")}
-        if kind in ("ItemService", "ItemInventory"):
-            projection = FIELDS["service" if kind == "ItemService" else "inventory"]
+        if kind in ("ItemService", "ItemInventory", "ItemOtherCharge", "ItemDiscount"):
+            projection = FIELDS[next(k for k, v in KINDS.items() if v == kind)]
         value = record(rs[0], projection)
         if query.findtext("ListID") and value.get("ListID") != query.findtext("ListID"):
             raise BridgeError("master ListID differs")
@@ -157,13 +166,19 @@ def response(text, policy, connector, spec, run):
         target_reference(original)
         if original.get("ParentRef") or original.get("UnitOfMeasureSetRef"):
             raise BridgeError("hierarchical or unit-of-measure master edits unsupported")
+        if (
+            original.get("SpecialItemType")
+            or "DiscountRatePercent" in original
+            or "PricePercent" in original.get("SalesOrPurchase", {})
+        ):
+            raise BridgeError("special or percentage adjustment items are unsupported")
     payload = spec.get("payload")
     if payload:
         if payload["action"] == "update":
             if target_reference(original) != payload["target"]:
                 raise BridgeError("stale master: re-read and review its edit sequence")
             if (
-                payload["kind"] == "service"
+                payload["kind"] in SALES_KINDS
                 and (
                     "SalesAndPurchase"
                     if payload["service_mode"] == "sales-purchase"

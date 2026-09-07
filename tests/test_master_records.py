@@ -34,6 +34,7 @@ def master_case(direct):
     ]
     raw["companies"]["company-a"]["account_roles"] = {
         "master_income": "income-id",
+        "master_discount": "income-id",
         "master_expense": "expense-id",
         "master_cogs": "cogs-id",
         "master_asset": "asset-id",
@@ -46,6 +47,12 @@ def proposal(kind):
     fields = {"name": "TEST Master", "active": True}
     if kind in ("customer", "supplier"):
         fields.update(company_name="Test Company", phone="555-0100", email="test@example.invalid")
+    elif kind == "discount":
+        fields.update(
+            discount_description="Test discount",
+            discount_amount="1.00",
+            discount_account="master_discount",
+        )
     else:
         fields.update(
             sales_description="Test service", sales_price="5.00", income_account="master_income"
@@ -59,7 +66,7 @@ def proposal(kind):
         "kind": kind,
         "action": "create",
         "fields": fields,
-        **({"service_mode": "sales"} if kind == "service" else {}),
+        **({"service_mode": "sales"} if kind in masters.SALES_KINDS else {}),
     }
 
 
@@ -80,7 +87,11 @@ def existing(kind):
             Email="test@example.invalid",
             Balance="0.00",
         )
-    elif kind == "service":
+    elif kind == "discount":
+        value.update(
+            ItemDesc="Test discount", DiscountRate="1.00", AccountRef={"ListID": "income-id"}
+        )
+    elif kind in masters.SALES_KINDS:
         value["SalesOrPurchase"] = {
             "Desc": "Test service",
             "Price": "5.00",
@@ -362,3 +373,50 @@ def test_compiled_master_write_gate(master_case, tmp_path):
         creationflags=subprocess.CREATE_NO_WINDOW,
     )
     assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize(
+    "kind,change",
+    [
+        ("discount", "percentage"),
+        ("other-charge", "percentage"),
+        ("other-charge", "special"),
+    ],
+)
+def test_adjustment_master_rejects_percentage_or_special_conversion(master_case, kind, change):
+    b, t, p = master_case
+    saved = existing(kind)
+    if kind == "discount":
+        saved.pop("DiscountRate")
+        saved["DiscountRatePercent"] = "5"
+    elif change == "special":
+        saved["SpecialItemType"] = "FinanceCharge"
+    else:
+        saved["SalesOrPurchase"].pop("Price")
+        saved["SalesOrPurchase"]["PricePercent"] = "5"
+    value = proposal(kind)
+    value.update(
+        action="update", target=masters.target_reference(saved), fields={"name": "TEST Revised"}
+    )
+    with pytest.raises(BridgeError, match="percentage"):
+        checks.read(
+            b,
+            t,
+            p.id,
+            "connector-company-a",
+            kind,
+            payload=value,
+            transport=transport({masters.KINDS[kind]: [saved]}),
+        )
+
+
+def test_adjustment_item_update_cannot_change_discount_account(master_case):
+    _, _, p = master_case
+    value = proposal("discount")
+    value.update(
+        action="update",
+        target=masters.target_reference(existing("discount")),
+        fields={"discount_account": "master_income"},
+    )
+    with pytest.raises(BridgeError, match="unsupported fields"):
+        masters.validate(value, p)

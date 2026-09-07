@@ -176,6 +176,8 @@ def test_native_create_update_and_duplicate_rejection(configured, kind):
         target=masters.target_reference(native.saved),
         fields={"phone": "555-0101"}
         if kind in ("customer", "supplier")
+        else {"discount_amount": "2.00"}
+        if kind == "discount"
         else {"sales_price": "7.00"},
     )
     value["ref_number"] = "MASTER-002"

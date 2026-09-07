@@ -16,7 +16,11 @@ KINDS = {
     "supplier": "Vendor",
     "service": "ItemService",
     "inventory": "ItemInventory",
+    "discount": "ItemDiscount",
+    "other-charge": "ItemOtherCharge",
 }
+SALES_KINDS = {"service", "other-charge"}
+DISCOUNT = {"discount_description": ("ItemDesc", 4095), "discount_amount": ("DiscountRate", None)}
 CONTACT = {"company_name": ("CompanyName", 41), "phone": ("Phone", 21), "email": ("Email", 1023)}
 ITEM = {
     "sales_description": ("SalesDesc", 4095),
@@ -29,6 +33,7 @@ ACCOUNTS = {
     "expense_account": ("ExpenseAccountRef", {"Expense", "CostOfGoodsSold"}),
     "cogs_account": ("COGSAccountRef", {"CostOfGoodsSold"}),
     "asset_account": ("AssetAccountRef", {"OtherCurrentAsset"}),
+    "discount_account": ("AccountRef", {"Income"}),
 }
 
 
@@ -76,6 +81,17 @@ FIELDS = {
 }
 
 
+FIELDS["other-charge"] = FIELDS["service"] + ("SpecialItemType",)
+FIELDS["discount"] = COMMON + (
+    "FullName",
+    "ParentRef",
+    "ItemDesc",
+    "DiscountRate",
+    "DiscountRatePercent",
+    "AccountRef",
+)
+
+
 def validate(payload, policy):
     strict_keys(payload, {"ref_number", "kind", "action", "fields"}, {"target", "service_mode"})
     if (
@@ -89,15 +105,19 @@ def validate(payload, policy):
     ):
         raise BridgeError("explicit bounded master proposal reference required")
     kind, action, fields = payload["kind"], payload["action"], payload["fields"]
-    if kind == "service":
+    if kind in SALES_KINDS:
         if payload.get("service_mode") not in ("sales", "sales-purchase"):
             raise BridgeError("explicit service sales/purchase mode required")
     elif "service_mode" in payload:
-        raise BridgeError("service mode is only valid for service items")
-    is_item = kind in ("service", "inventory")
-    allowed = {"name", "active"} | (set(ITEM) if is_item else set(CONTACT))
+        raise BridgeError("sales/purchase mode is only valid for service and other-charge items")
+    is_item = kind not in ("customer", "supplier")
+    attributes = DISCOUNT if kind == "discount" else ITEM if is_item else CONTACT
+    allowed = {"name", "active"} | set(attributes)
     required = {"name"} if action == "create" else set()
-    if is_item and action == "create":
+    if kind == "discount" and action == "create":
+        required |= {"discount_amount", "discount_account"}
+        allowed |= {"discount_account"}
+    elif is_item and action == "create":
         required |= {"sales_price", "income_account"}
         allowed |= {"income_account"}
         if kind == "inventory":
@@ -106,7 +126,7 @@ def validate(payload, policy):
         elif payload.get("service_mode") == "sales-purchase":
             required |= {"purchase_cost", "expense_account"}
             allowed |= {"expense_account"}
-    if kind == "service" and payload["service_mode"] == "sales":
+    if kind in SALES_KINDS and payload["service_mode"] == "sales":
         allowed -= {"purchase_cost", "purchase_description", "expense_account"}
     strict_keys(fields, required, allowed - required)
     if not fields:
@@ -132,17 +152,13 @@ def validate(payload, policy):
         elif name in ACCOUNTS:
             if not isinstance(value, str) or value not in policy.account_roles:
                 raise BridgeError("master account must be a configured company role")
-        elif name in ("sales_price", "purchase_cost"):
+        elif name in ("sales_price", "purchase_cost", "discount_amount"):
             if not isinstance(value, str) or not re.fullmatch(
                 r"(?:0|[1-9][0-9]{0,11})\.[0-9]{2}", value
             ):
                 raise BridgeError("master price/cost requires nonnegative two-place decimal")
         else:
-            limit = (
-                (31 if is_item else 41)
-                if name == "name"
-                else (ITEM if is_item else CONTACT)[name][1]
-            )
+            limit = (31 if is_item else 41) if name == "name" else attributes[name][1]
             if not isinstance(value, str) or len(value) > limit or any(ord(c) < 32 for c in value):
                 raise BridgeError("invalid bounded master text")
             if name == "name" and (not value or value != value.strip() or ":" in value):
@@ -174,11 +190,19 @@ def request(payload, policy, run, *, external_guid=None):
         for name, (tag, _) in CONTACT.items():
             if name in fields:
                 ET.SubElement(node, tag).text = fields[name]
+    elif value["kind"] == "discount":
+        for name, (tag, _) in DISCOUNT.items():
+            if name in fields:
+                ET.SubElement(node, tag).text = fields[name]
+        if "discount_account" in fields:
+            ET.SubElement(ET.SubElement(node, "AccountRef"), "ListID").text = policy.account_roles[
+                fields["discount_account"]
+            ]
     else:
         if not any(name in fields for name in set(ITEM) | set(ACCOUNTS)):
             return xml(root)
         target = node
-        if value["kind"] == "service":
+        if value["kind"] in SALES_KINDS:
             purchased = value["service_mode"] == "sales-purchase"
             # Updates must retain the existing sales/purchase aggregate shape.
             target = ET.SubElement(
@@ -284,9 +308,15 @@ def compare(payload, policy, saved, original=None):
         for name, (tag, _) in CONTACT.items():
             if name in fields:
                 expected[tag] = fields[name]
+    elif value["kind"] == "discount":
+        for name, (tag, _) in DISCOUNT.items():
+            if name in fields:
+                expected[tag] = fields[name]
+        if "discount_account" in fields:
+            expected["AccountRef"] = {"ListID": policy.account_roles[fields["discount_account"]]}
     else:
         container = expected
-        if value["kind"] == "service":
+        if value["kind"] in SALES_KINDS:
             purchased = value["service_mode"] == "sales-purchase"
             aggregate = "SalesAndPurchase" if purchased else "SalesOrPurchase"
             if original is not None and aggregate not in original:
@@ -302,10 +332,10 @@ def compare(payload, policy, saved, original=None):
                         "ListID": policy.account_roles[fields["income_account"]]
                     }
         for name, (tag, _) in ITEM.items():
-            if name in fields and (value["kind"] != "service" or purchased):
+            if name in fields and (value["kind"] not in SALES_KINDS or purchased):
                 container[tag] = fields[name]
         for name, (tag, _) in ACCOUNTS.items():
-            if name in fields and (value["kind"] != "service" or purchased):
+            if name in fields and (value["kind"] not in SALES_KINDS or purchased):
                 container[tag] = {"ListID": policy.account_roles[fields[name]]}
 
     def matches(want, actual, field=None):
@@ -315,6 +345,7 @@ def compare(payload, policy, saved, original=None):
             )
         if field in {
             "Price",
+            "DiscountRate",
             "SalesPrice",
             "PurchaseCost",
             "Balance",

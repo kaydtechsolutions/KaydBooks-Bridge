@@ -1,5 +1,15 @@
 # KaydBooks Bridge project status
 
+Fixed-discount and additional-charge masters now use the reviewed master lifecycle.
+Installed sample qualification created and updated three isolated items (discount,
+sales charge and purchased charge); all six attempts independently verified. The
+original purchase aggregate was preserved on update. Customer/vendor balance summaries
+remain USD25/USD15. Desktop/mobile original lookup and stale-check rejection passed.
+Signed isolated restore preserved 51 jobs and 2,104 files, including all 16 verified
+master attempts; integrity/audit passed, paused, with no restored service started.
+The full suite passed 1,184 tests, lint and build. The master quota is exhausted.
+This is supporting M3-08 work: invoice/document adjustments remain unfinished.
+
 Explicit customer/supplier settlement discounts are now installed-sample qualified.
 USD6 cash plus USD1 discount settled a USD7 invoice; USD7 cash plus USD1 discount
 settled a USD8 bill. Saved amounts/accounts and independent balances match; fresh

@@ -31,7 +31,13 @@ def page(setup, monkeypatch):
     raw = setup[2]
     raw["principals"]["operator-a"]["companies"]["company-a"] = sorted(PERMISSIONS)
     raw["companies"]["company-a"].update(
-        account_roles={"customer_discount": "DISC-INCOME", "supplier_discount": "DISC-EXPENSE"},
+        account_roles={
+            "customer_discount": "DISC-INCOME",
+            "supplier_discount": "DISC-EXPENSE",
+            "master_discount": "DISC-INCOME",
+            "master_income": "INCOME",
+            "master_expense": "EXPENSE",
+        },
         bill_masters={
             "vendors": {"vendor-a": "V-A"},
             "payable": "AP-A",
@@ -434,3 +440,44 @@ def test_browser_explicit_payment_discount_fields(page, monkeypatch, kind):
     ]
     form.locator('input[data-field="discount_amount"]').fill("2")
     assert page.get_by_role("button", name="Save and review", exact=True).is_disabled()
+
+
+@pytest.mark.parametrize(
+    "kind,mode", [("discount", None), ("other-charge", "sales"), ("other-charge", "sales-purchase")]
+)
+def test_browser_adjustment_item_master_fields(page, monkeypatch, kind, mode):
+    observed = []
+
+    def check(*args, **kwargs):
+        observed.append(kwargs["payload"])
+        return {"evidence": None}
+
+    monkeypatch.setattr(web_ui, "check_masters", check)
+    page.get_by_role("button", name="Customers, suppliers & items", exact=True).click()
+    page.get_by_label("Kind", exact=True).select_option(kind)
+    page.get_by_label("Source", exact=True).select_option("synthetic-intake")
+    page.get_by_label("Reference", exact=True).fill("ADJ-MASTER-1")
+    if mode:
+        page.locator('select[data-field="service_mode"]').select_option(mode)
+    page.get_by_label("Name", exact=True).fill("Test Adjustment")
+    if kind == "discount":
+        page.get_by_label("Fixed discount amount", exact=True).fill("1.00")
+        page.get_by_label("Discount account", exact=True).select_option("master_discount")
+    else:
+        page.locator('input[data-field="sales_price"]').fill("2.00")
+        page.locator('select[data-field="income_account"]').select_option("master_income")
+        if mode == "sales-purchase":
+            page.locator('input[data-field="purchase_cost"]').fill("1.00")
+            page.locator('select[data-field="expense_account"]').select_option("master_expense")
+    page.get_by_role("button", name="Check master details", exact=True).click()
+    page.locator("body:not([aria-busy])").wait_for()
+    assert observed[-1]["kind"] == kind
+    if kind == "discount":
+        assert observed[-1]["fields"]["discount_amount"] == "1.00"
+        assert "service_mode" not in observed[-1] and "sales_price" not in observed[-1]["fields"]
+    else:
+        assert observed[-1]["service_mode"] == mode
+        assert ("expense_account" in observed[-1]["fields"]) == (mode == "sales-purchase")
+    assert page.get_by_role("button", name="Save master draft", exact=True).is_enabled()
+    page.get_by_label("Name", exact=True).fill("Changed Adjustment")
+    assert page.get_by_role("button", name="Save master draft", exact=True).is_disabled()

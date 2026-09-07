@@ -1,7 +1,8 @@
 # Reviewed customer, supplier and item changes
 
 The `master.change` operation prepares explicit creation or update proposals for
-customers, suppliers, sales services, purchased services and simple inventory items.
+customers, suppliers, sales services, purchased services, simple inventory items,
+fixed discount items and additional-charge items.
 The browser's **Customers, suppliers & items** view and narrow MCP preparation tools
 use the same immutable sources, review, permissions, approvals and job lifecycle.
 Company identity, account mappings and authorization remain private configuration.
@@ -14,10 +15,13 @@ Company identity, account mappings and authorization remain private configuratio
 | Sales service | Flat name, active flag, sales description/price, income account role | Name, active flag, sales description/price |
 | Purchased service | Sales fields plus purchase description/cost and expense account role | Name, active flag, descriptions, price/cost |
 | Simple inventory | Sales/purchase fields and income, cost-of-goods and asset account roles | Name, active flag, descriptions, price/cost |
+| Fixed discount | Flat name, active flag, description, fixed discount amount, income account role | Name, active flag, description, fixed amount |
+| Additional charge | Same sales-only or sales-and-purchase fields as service items | Preserve the original sales/purchase aggregate; update explicit fields |
 
 New records have no opening balances or stock. Account changes that could affect
 historical transactions, deletions, parent/child structures, unit-of-measure changes,
-tax fields and raw native commands are unavailable. Service updates preserve the
+tax fields and raw native commands are unavailable. Percentage discounts/prices and
+special charge items are also unavailable. Service and charge updates preserve the
 observed sales-only or sales-and-purchase aggregate. This implementation qualifies
 single-currency US QuickBooks Desktop with qbXML 17; broader currency and inventory
 variants remain separate acceptance work.
@@ -59,10 +63,10 @@ MCP adds `master_lookup_v1`, `check_master_change_v1` and
 `prepare_master_change_v1`. Browser actions use the same contracts, including
 `master-lookup`, `check`, `prepare`, approval, submission, sample posting and
 reconciliation. Private account-role mappings include `master_income`,
-`master_expense`, `master_cogs` and `master_asset`; each selected native account is
+`master_expense`, `master_cogs`, `master_asset` and `master_discount`; each selected native account is
 checked for the required type and active state.
 
-Automated tests cover four record kinds, explicit native shapes, preservation,
+Automated tests cover six record kinds, explicit native shapes, preservation,
 duplicate names, stale targets, source/approval lifecycle, late revocation,
 missing responses, request-intent tampering and independent recovery. Headless
 browser tests cover fresh checks and original-record selection. These synthetic
@@ -87,4 +91,14 @@ lookup passed over verified TLS. A signed isolated restore preserved all 42 jobs
 and 1,839 files, including ten immutable master attempts, evidence links and
 verified receipts. Integrity/audit passed, the restored company was paused, and
 no restored service started. The live sample company is paused and its ten-attempt
-master quota is exhausted. No existing business records were edited or deleted.
+master quota was exhausted. No existing business records were edited or deleted.
+
+A subsequent bounded qualification created and updated a fixed discount, a sales
+charge and a purchased charge. All six attempts independently verified, with the
+purchased aggregate preserved on update. Unsupported percentage/special items and
+account edits are rejected. The installed discount form read the exact updated record,
+invalidated its check after an edit, and passed desktop/mobile checks without writes.
+Fresh customer/vendor summaries remained USD25/USD15 after these master-only changes.
+A signed isolated restore preserved 51 jobs, 2,104 files and all 16 verified master
+attempts with valid integrity/audit, paused and without service activation. The final
+suite passed 1,184 tests. Using these items on transactions is separate M3-08 work.

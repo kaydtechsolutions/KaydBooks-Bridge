@@ -121,7 +121,7 @@ function options(select, values, empty = "Choose…", selected = "") {
   }
   select.value = selected;
 }
-function field(name, choices = null, value = "", optional = false) {
+function field(name, choices = null, value = "", optional = false, label = null) {
   const input = choices
     ? el("select", { "data-field": name })
     : el("input", {
@@ -136,6 +136,7 @@ function field(name, choices = null, value = "", optional = false) {
           "quantity",
           "unit_price",
           "cost",
+          "discount_amount",
         ].includes(name)
           ? "decimal"
           : "text",
@@ -143,7 +144,7 @@ function field(name, choices = null, value = "", optional = false) {
   if (choices) options(input, choices, optional ? "None" : "Choose…", value);
   else input.value = value;
   if (!optional) input.required = true;
-  return el("label", {}, names[name] || title(name), input);
+  return el("label", {}, label || names[name] || title(name), input);
 }
 function value(root, name) {
   return root.querySelector('[data-field="' + name + '"]').value;
@@ -1210,7 +1211,7 @@ function masterForm(parent = null) {
       { class: "grid" },
       field(
         "kind",
-        ["customer", "supplier", "service", "inventory"],
+        ["customer", "supplier", "service", "inventory", "discount", "other-charge"],
         parent?.payload.kind || "customer",
       ),
       field(
@@ -1295,6 +1296,8 @@ function masterForm(parent = null) {
         sales_price: item.Price || item.SalesPrice || "0.00",
         purchase_description: item.PurchaseDesc || "",
         purchase_cost: item.PurchaseCost || "0.00",
+        discount_description: item.ItemDesc || "",
+        discount_amount: item.DiscountRate || "0.00",
       },
       prefill || {},
     );
@@ -1314,6 +1317,14 @@ function masterForm(parent = null) {
     if (["customer", "supplier"].includes(kind))
       for (const n of ["company_name", "phone", "email"])
         fields.append(field(n, null, mapped[n], true));
+    else if (kind === "discount") {
+      fields.append(
+        field("discount_description", null, mapped.discount_description, true),
+        field("discount_amount", null, mapped.discount_amount, false, "Fixed discount amount"),
+      );
+      if (!update)
+        fields.append(field("discount_account", catalog.master_account_roles, mapped.discount_account || ""));
+    }
     else {
       fields.append(
         field("sales_description", null, mapped.sales_description, true),
@@ -1350,9 +1361,9 @@ function masterForm(parent = null) {
     form.querySelector('[data-field="list_id"]').closest("label").hidden =
       !update;
     form.querySelector('[data-field="service_mode"]').disabled =
-      kind !== "service" || (update && !!original);
+      !["service", "other-charge"].includes(kind) || (update && !!original);
     form.querySelector('[data-field="service_mode"]').closest("label").hidden =
-      kind !== "service";
+      !["service", "other-charge"].includes(kind);
     observed.replaceChildren(
       original
         ? el(
@@ -1386,7 +1397,7 @@ function masterForm(parent = null) {
       action,
       fields: values,
     };
-    if (kind === "service") result.service_mode = value(form, "service_mode");
+    if (["service", "other-charge"].includes(kind)) result.service_mode = value(form, "service_mode");
     if (action === "update") {
       if (!target || target.list_id !== value(form, "list_id"))
         throw Error("Read the selected master record first.");
@@ -1405,7 +1416,7 @@ function masterForm(parent = null) {
       });
       original = result.record;
       target = result.target;
-      if (value(form, "kind") === "service")
+      if (["service", "other-charge"].includes(value(form, "kind")))
         setValue(
           form,
           "service_mode",

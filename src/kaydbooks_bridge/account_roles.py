@@ -18,6 +18,7 @@ RULES = {
     ("master.change", "expense"): ("master_expense", "Expense"),
     ("master.change", "cogs"): ("master_cogs", "CostOfGoodsSold"),
     ("master.change", "asset"): ("master_asset", "OtherCurrentAsset"),
+    ("master.change", "discount"): ("master_discount", "Income"),
 }
 
 
