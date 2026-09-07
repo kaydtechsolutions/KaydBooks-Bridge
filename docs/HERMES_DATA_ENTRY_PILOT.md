@@ -182,6 +182,16 @@ and report verified status without inventing another reference or requesting a n
 posting confirmation. Actual remote lookup found the already verified attachment
 invoice. This verifies duplicate inspection, not a fresh autonomous preparation.
 
+Structured JSON uploads can now use `qbwc_entry_v1` action `prepare_upload` with
+only the captured document ID and selected connector. The Bridge parses the saved
+bytes, performs the QBWC master check, supplies exact-parse confidence internally,
+and creates one validated review without approving, dispatching or posting it.
+Retries reuse the same source job, and a finished incompatible read fails clearly
+instead of remaining in a pending loop. An actual KB-HM-003 WhatsApp attachment was
+captured and produced one validated, unposted review after its queued QBWC read.
+The final Hermes-generated review response in that same conversation remains the
+acceptance step for V01-1, so the score remains **12/15 (80%)**.
+
 `setup hermes` now generates the private Windows launchers and Linux connection
 inputs from an existing company configuration. The generated launchers passed
 actual Linux-to-Windows MCP discovery, existing-job lookup and signed channel

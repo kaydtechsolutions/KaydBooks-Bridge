@@ -19,6 +19,7 @@ OPERATIONS = frozenset(
 )
 
 CONTRACTS = {
+    "prepare_upload": ({"document_id", "connector_id"}, set()),
     "check": ({"operation", "connector_id", "payload"}, set()),
     "find": ({"operation", "ref_number"}, set()),
     "prepare": (
@@ -46,7 +47,7 @@ CONTRACTS = {
 
 def parameter_schema():
     variants = []
-    for action in ("check", "find", "prepare", "revise", "status"):
+    for action in ("prepare_upload", "check", "find", "prepare", "revise", "status"):
         required, optional = CONTRACTS[action]
         properties = {
             field: {
@@ -99,6 +100,10 @@ def call(bridge, token, company, arguments):
             f"missing {', '.join(sorted(missing)) or 'none'}; "
             f"unsupported {', '.join(sorted(extra)) or 'none'}"
         )
+    if action == "prepare_upload":
+        from .hermes_intake import prepare_upload
+
+        return prepare_upload(bridge, token, company, **params)
     if action == "find":
         return find(bridge, token, company, **params)
     if action == "revise":

@@ -310,6 +310,7 @@ def server(config_path, token):
     def qbwc_entry_v1(
         company: str,
         action: Literal[
+            "prepare_upload",
             "check",
             "find",
             "prepare",
@@ -343,6 +344,12 @@ def server(config_path, token):
         result is not proof that QuickBooks has no such transaction. Multiple matches
         require clarification. A verified match is already posted: do not prepare,
         confirm or dispatch it again, or invent a new reference to evade a conflict.
+        For a captured structured JSON transaction with company, operation and payload,
+        prefer prepare_upload with exactly document_id and connector_id. It parses the
+        original bytes, checks masters, prepares and validates without posting. Repeat
+        the same call while pending=true. Exact-parse confidence is generated internally;
+        never pass model-authored payload or confidence to prepare_upload. Other formats
+        still require extraction/table intake and explicit uncertainty handling.
         """
         try:
             return tools.call(

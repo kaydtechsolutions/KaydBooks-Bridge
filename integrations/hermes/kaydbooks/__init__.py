@@ -46,6 +46,12 @@ as the capture namespace; never substitute the company ID or filename for a sour
 Capture the original uploaded bytes using a stable lowercase upload reference matching
 [a-z][a-z0-9_-]{0,63}. This internal upload ID is separate from the unchanged invoice ref_number.
 Reuse that upload reference on retries. Inspect the content and clarify missing or ambiguous fields.
+For captured JSON containing company, operation and payload, prefer qbwc_entry_v1 prepare_upload
+with exactly document_id and connector_id from the catalog. It parses the saved source, checks
+QuickBooks, prepares and validates. Repeat the same call after pending=true until ready_for_review.
+Do not reconstruct the payload, invent confidence or call prepare separately for this path.
+It does not post or send messages. Inspect its review, then use batch_preview_v1 only for validated
+jobs when the operator requested review. For an existing verified result, report status only.
 Before preparing any retry, call qbwc_entry_v1 find with operation and ref_number.
 It returns owned matching job IDs, payloads and states. Compare the exact source payload,
 then call status with the existing id. A verified match is already posted: report it,
