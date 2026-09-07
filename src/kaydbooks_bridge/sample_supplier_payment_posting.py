@@ -25,19 +25,21 @@ from .supplier_payments import append_check, plan, validate_check
 from .validation import digest, validate_source
 
 
-def context_hash(policy, job, connector):
+def context_hash(policy, job, connector, *, recovering=False):
     return digest(
         {
-            "policy": plan(policy, job["payload"])["context_sha256"],
+            "policy": plan(policy, job["payload"], recovering=recovering)["context_sha256"],
             "gate": policy.sample_supplier_payment_posting,
             "connector": asdict(connector),
         }
     )
 
 
-def preflight(policy, payload, run):
+def preflight(policy, payload, run, *, recovering=False):
     base = append_check(
-        DurableQBWCDiscoveryService._discovery_request(run, "17.0"), run, plan(policy, payload)
+        DurableQBWCDiscoveryService._discovery_request(run, "17.0"),
+        run,
+        plan(policy, payload, recovering=recovering),
     )
     return append_query(base, run + "999", ref_number=payload["ref_number"])
 
@@ -51,7 +53,10 @@ def check_preflight(response, policy, payload, connector, run, *, recovering=Fal
         raise BridgeError("uncorrelated payment duplicate query")
     root[0].remove(collision)
     discovery, balances = validate_check(
-        ET.tostring(root), run, plan(policy, payload), recovering=recovering or len(collision) > 0
+        ET.tostring(root),
+        run,
+        plan(policy, payload, recovering=recovering),
+        recovering=recovering or len(collision) > 0,
     )
     DurableQBWCDiscoveryService._verify_discovery_response(
         discovery, {"correlation": run, "country": "US", "qbxml_version": "17.0"}, connector
@@ -276,20 +281,28 @@ def reconcile(bridge, token, company, job_id, *, exchange=windows_exchange, read
             connector = config.connectors[record["connector"]]
             if connector.company != company or not store.verify_audit(db):
                 raise BridgeError("native reconciliation binding or audit invalid")
-            if context_hash(policy, job, connector) != record["context_hash"]:
+            if context_hash(policy, job, connector, recovering=True) != record["context_hash"]:
                 raise BridgeError("native reconciliation requires original dispatch context")
         matched = None
+        absence_response = None
         run = str(int(time.time() * 1000))[-12:]
 
         def receive(response):
-            nonlocal matched
+            nonlocal matched, absence_response
             matched, balances = check_preflight(
                 response, policy, job["payload"], connector, run, recovering=True
             )
+            absence_response = response
             return False
 
         folder = store.path.parent / ("native-supplier-payment-reconcile-" + uuid.uuid4().hex)
-        exchange(preflight(policy, job["payload"], run), None, folder, receive)
+        exchange(preflight(policy, job["payload"], run, recovering=True), None, folder, receive)
+        if matched is None and job["state"] == "unknown" and job["txn_id"] is None:
+            from .supplier_payment_rejection import resolve
+
+            rejected = resolve(bridge, token, company, store, job, record, run, absence_response)
+            if rejected is not None:
+                return rejected
         if matched is None or (job["txn_id"] and matched["txn_id"] != job["txn_id"]):
             raise BridgeError("native reconciliation inconclusive; no retry authorized")
     kwargs = {} if read_exchange is None else {"exchange": read_exchange}

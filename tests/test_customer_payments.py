@@ -203,9 +203,18 @@ def test_revoked_validation_stops_payment_query(payment_case):
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows native compiler")
 @pytest.mark.parametrize("receipt", [False, True])
-def test_native_payment_query_gate(payment_case, tmp_path, receipt):
+@pytest.mark.parametrize("discount", [False, True])
+def test_native_payment_query_gate(payment_case, tmp_path, receipt, discount):
     path, _, payload = payment_case
-    check = plan(Config.load(path).companies["company-a"], payload)
+    from dataclasses import replace
+
+    policy = Config.load(path).companies["company-a"]
+    if discount:
+        policy = replace(policy, account_roles={"customer_discount": "discount-id"})
+        payload["allocations"][0].update(
+            discount_amount="1.00", discount_account="customer_discount"
+        )
+    check = plan(policy, payload)
     request = append_check(S._discovery_request("1234", "17.0"), "1234", check)
     if receipt:
         from kaydbooks_bridge.payment_receipt import append_lookup
@@ -213,7 +222,7 @@ def test_native_payment_query_gate(payment_case, tmp_path, receipt):
         request = append_lookup(
             S._discovery_request("1234", "17.0"),
             "1234",
-            Config.load(path).companies["company-a"],
+            policy,
             payload,
             "payment-id",
         )

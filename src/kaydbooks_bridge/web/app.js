@@ -32,6 +32,8 @@ const names = {
   amount: "Amount",
   txn_id: "Transaction",
   tax_amount: "Tax",
+  discount_amount: "Settlement discount",
+  discount_account: "Discount account",
   entity_list_id: "Customer or supplier filter",
   item_list_id: "Item filter",
 };
@@ -503,6 +505,25 @@ function entry(existing = null, onTemplate = null, observed = null) {
           field("txn_id", null, data.txn_id || ""),
           field("amount", null, data.amount || ""),
         );
+        if (
+          ["customer-payment.create", "supplier-payment.create"].includes(
+            operation,
+          )
+        ) {
+          const role =
+            operation === "customer-payment.create"
+              ? "customer_discount"
+              : "supplier_discount";
+          row.append(
+            field("discount_amount", null, data.discount_amount || "", true),
+            field(
+              "discount_account",
+              catalog.master_account_roles.filter((r) => r === role),
+              data.discount_account || "",
+              true,
+            ),
+          );
+        }
       } else if (isBill && type.value === "expense")
         row.append(
           field("expense_id", catalog.choices.expenses, data.expense_id || ""),
@@ -575,6 +596,8 @@ function entry(existing = null, onTemplate = null, observed = null) {
       field("ref_number"),
       field("currency", [catalog.currency], catalog.currency),
     );
+    if (operation === "supplier-payment.create")
+      basics.querySelector('[data-field="ref_number"]').maxLength = 11;
     if (!isCreditApply) basics.append(field("txn_date"));
     if (operation === "bill.create")
       basics.append(
@@ -647,9 +670,20 @@ function entry(existing = null, onTemplate = null, observed = null) {
     if (!op.value.endsWith(".apply"))
       payload[collection] = [...lines.children].map((row) => {
         const out = {};
-        for (const input of row.querySelectorAll("[data-field]"))
-          out[input.dataset.field] =
-            input.dataset.field === "amount" ? money(input.value) : input.value;
+        for (const input of row.querySelectorAll("[data-field]")) {
+          if (
+            ["discount_amount", "discount_account"].includes(
+              input.dataset.field,
+            ) &&
+            !input.value
+          )
+            continue;
+          out[input.dataset.field] = ["amount", "discount_amount"].includes(
+            input.dataset.field,
+          )
+            ? money(input.value)
+            : input.value;
+        }
         return out;
       });
     if (["invoice.create", "customer-credit.create"].includes(op.value))
@@ -877,6 +911,25 @@ async function openJob(id) {
         { class: "totals" },
         "Total",
         el("strong", {}, catalog.currency + " " + preview.total),
+      ),
+    );
+  if (preview?.discount_total)
+    p.append(
+      el(
+        "p",
+        {},
+        "Cash: " +
+          catalog.currency +
+          " " +
+          preview.cash_total +
+          " · Settlement discount: " +
+          catalog.currency +
+          " " +
+          preview.discount_total +
+          " · Total settled: " +
+          catalog.currency +
+          " " +
+          preview.settlement_total,
       ),
     );
   if (job.approval_by)

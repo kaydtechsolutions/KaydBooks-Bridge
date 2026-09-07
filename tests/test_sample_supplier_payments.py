@@ -33,6 +33,7 @@ class Session:
         self.writes = 0
         self.related = None
         self.unapplied = False
+        self.discount = "0.00"
 
     def xml(self, request):
         root = E.fromstring(response(request, self.rows))
@@ -52,7 +53,7 @@ class Session:
         if write is None or not allowed:
             return None
         self.writes += 1
-        remaining = Decimal("10.00") - Decimal(self.amount)
+        remaining = Decimal("10.00") - Decimal(self.amount) - Decimal(self.discount)
         self.rows["Bill"][0].update(IsPaid="true" if remaining == 0 else "false")
         self.rows["BillToPay"] = (
             []
@@ -90,6 +91,10 @@ class Session:
                 "RefNumber": "SYN-INV",
             },
         }
+        if Decimal(self.discount):
+            payment["AppliedToTxnRet"].update(
+                DiscountAmount=self.discount, DiscountAccountRef={"ListID": "discount-id"}
+            )
         self.rows["BillPaymentCheck"] = [payment]
         if self.related is not None:
             payment["AppliedToTxnRet"]["LinkedTxn"] = self.related
@@ -122,9 +127,23 @@ def queued_payment(payment_case):
     path.write_text(json.dumps(raw))
     bridge = Bridge(path)
 
-    def prepare(amount="5.00", unapplied=False):
+    def prepare(amount="5.00", unapplied=False, discount=None):
         payload["total_amount"] = payload["allocations"][0]["amount"] = amount
+        if discount is not None:
+            current = json.loads(path.read_text())
+            current["companies"]["company-a"].setdefault("account_roles", {})[
+                "supplier_discount"
+            ] = "discount-id"
+            path.write_text(json.dumps(current))
+            payload["allocations"][0].update(
+                discount_amount=discount, discount_account="supplier_discount"
+            )
         session = Session(amount)
+        if discount is not None:
+            session.discount = discount
+            session.rows["Account"].append(
+                {"ListID": "discount-id", "IsActive": "true", "AccountType": "Expense"}
+            )
         session.unapplied = unapplied
         run = "1234"
         discover(
@@ -158,7 +177,14 @@ def queued_payment(payment_case):
             operation="supplier-payment.create",
         )
         bridge.action(token, "company-a", job["id"], "validate")
-        assert bridge.preview(token, "company-a", job["id"])["total"] == amount
+        preview = bridge.preview(token, "company-a", job["id"])
+        assert preview["total"] == amount
+        if discount is not None:
+            assert preview["cash_total"] == amount
+            assert preview["discount_total"] == discount
+            assert preview["settlement_total"] == format(Decimal(amount) + Decimal(discount), ".2f")
+        else:
+            assert "discount_total" not in preview
         bridge.action(token, "company-a", job["id"], "submit")
         return bridge, token, job["id"], session
 
@@ -257,9 +283,17 @@ def test_payment_authority_change_during_native_preflight(queued_payment, change
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows native compiler")
-def test_native_payment_write_and_receipt_gates(payment_case, tmp_path):
+@pytest.mark.parametrize("discount", [False, True])
+def test_native_payment_write_and_receipt_gates(payment_case, tmp_path, discount):
     path, _, payload = payment_case
     policy = Config.load(path).companies["company-a"]
+    if discount:
+        from dataclasses import replace
+
+        policy = replace(policy, account_roles={"supplier_discount": "discount-id"})
+        payload["allocations"][0].update(
+            discount_amount="1.00", discount_account="supplier_discount"
+        )
     request = add_request(policy, payload, "1234998")
     source = Path("src/kaydbooks_bridge/native_supplier_payment.ps1").read_text()
     methods = source[
@@ -271,7 +305,7 @@ def test_native_payment_write_and_receipt_gates(payment_case, tmp_path):
     script.write_text(
         "$ErrorActionPreference='Stop'\nAdd-Type -ReferencedAssemblies System.Xml.dll -TypeDefinition @'\nusing System;using System.IO;using System.Xml;using System.Text;using System.Security.Cryptography;public static class Gate {\n"
         + methods
-        + "}\n'@\n$rq=Get-Content -Raw -LiteralPath $args[0]\n[Gate]::CheckWrite($rq,[Gate]::Hash($rq))\nforeach($bad in @($rq.Replace('<IsAutoApply>false</IsAutoApply>','<IsAutoApply>true</IsAutoApply>'),$rq.Replace('PaymentAmount','DiscountAmount'),$rq.Replace('BillPaymentCheckAdd','ReceivePaymentAdd'),$rq.Replace('<BankAccountRef>','<CreditCardTxnInfo>'),$rq.Replace('<TxnID>bill-id</TxnID>','<FullName>bill-id</FullName>'))){if($bad -eq $rq){continue};$rejected=$false;try{[Gate]::CheckWrite($bad,[Gate]::Hash($bad))}catch{$rejected=$true};if(-not $rejected){throw 'unsafe payment write accepted'}}\n"
+        + "}\n'@\n$rq=Get-Content -Raw -LiteralPath $args[0]\n[Gate]::CheckWrite($rq,[Gate]::Hash($rq))\nforeach($bad in @($rq.Replace('<IsAutoApply>false</IsAutoApply>','<IsAutoApply>true</IsAutoApply>'),$rq.Replace('SYN-PAY-1','ABCDEFGHIJKL'),$rq.Replace('PaymentAmount','DiscountAmount'),$rq.Replace('BillPaymentCheckAdd','ReceivePaymentAdd'),$rq.Replace('<BankAccountRef>','<CreditCardTxnInfo>'),$rq.Replace('<TxnID>bill-id</TxnID>','<FullName>bill-id</FullName>'))){if($bad -eq $rq){continue};$rejected=$false;try{[Gate]::CheckWrite($bad,[Gate]::Hash($bad))}catch{$rejected=$true};if(-not $rejected){throw 'unsafe payment write accepted'}}\n"
     )
     result = subprocess.run(
         [
@@ -287,3 +321,39 @@ def test_native_payment_write_and_receipt_gates(payment_case, tmp_path):
         creationflags=subprocess.CREATE_NO_WINDOW,
     )
     assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize("amount", ["5.00", "9.00"])
+@pytest.mark.parametrize("crash", [False, True])
+def test_explicit_discount_settlement_and_recovery(queued_payment, amount, crash):
+    bridge, token, job_id, session = queued_payment(amount, discount="1.00")
+    session.crash = crash
+    if crash:
+        with pytest.raises(RuntimeError, match="response lost"):
+            post(bridge, token, "company-a", job_id, exchange=session, read_exchange=session.read)
+        saved = reconcile(
+            Bridge(bridge.config_path),
+            token,
+            "company-a",
+            job_id,
+            exchange=session,
+            read_exchange=session.read,
+        )
+    else:
+        saved = post(
+            bridge, token, "company-a", job_id, exchange=session, read_exchange=session.read
+        )
+    proof = saved["transaction_receipt"]["receipt"]
+    assert saved["state"] == "verified" and session.writes == 1
+    assert proof["total_amount"] == amount
+    assert proof["settlement_discounts"]["bill-id"] == {
+        "amount": "1.00",
+        "account_list_id": "discount-id",
+    }
+    assert Decimal(proof["balance_effects"]["bill-id"]["after"]) == Decimal("9.00") - Decimal(
+        amount
+    )
+    assert proof["balance_effects"]["bill-id"]["discount"] == "1.00"
+    with pytest.raises(BridgeError):
+        post(bridge, token, "company-a", job_id, exchange=session)
+    assert session.writes == 1 and bridge.audit(token, "company-a")["valid"]

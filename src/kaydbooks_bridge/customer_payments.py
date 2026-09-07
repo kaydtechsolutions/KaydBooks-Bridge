@@ -9,6 +9,7 @@ from xml.etree import ElementTree as ET
 from qbwc_kit._xml import fromstring
 from qbwc_kit.qbxml import parse_response
 
+from . import settlement_discounts as discounts
 from .config import BridgeError, identifier, strict_keys
 from .invoice_commercial import decimal_evidence
 from .invoice_compatibility import required_id
@@ -145,7 +146,7 @@ def validate_payload(payload, policy):
         raise BridgeError("payment accepts at most 20 explicit allocations")
     seen, applied = set(), Decimal("0")
     for allocation in allocations:
-        strict_keys(allocation, {"txn_id", "amount"})
+        discounts.validate(allocation, policy, "customer")
         txn_id = required_id(allocation["txn_id"])
         if txn_id in seen:
             raise BridgeError("duplicate payment invoice allocation")
@@ -155,6 +156,8 @@ def validate_payload(payload, policy):
         raise BridgeError(
             "unapplied payment requires explicit company policy; allocations cannot exceed total"
         )
+    if total + sum(discounts.amount(a) for a in allocations) > money(policy.max_total):
+        raise BridgeError("cash plus settlement discounts exceed company limit")
     return json.loads(canonical(payload))
 
 
@@ -166,6 +169,7 @@ def plan(policy, payload):
         "receivable": masters["receivable"],
         "deposit": masters["deposits"][payment["deposit_id"]],
         "method": masters["methods"][payment["method_id"]],
+        **discounts.binding(policy, payment, "customer"),
     }
     queries = [
         ("Preferences", None),
@@ -175,6 +179,8 @@ def plan(policy, payload):
         ("PaymentMethod", binding["method"]),
     ]
     queries.extend(("Invoice", a["txn_id"]) for a in payment["allocations"])
+    if "discount_account" in binding:
+        queries.append(("Account", binding["discount_account"]))
     return {
         "payment": payment,
         "binding": binding,
@@ -186,6 +192,7 @@ def plan(policy, payload):
                 "masters": masters,
                 "currency": policy.currency,
                 "max_total": policy.max_total,
+                **discounts.binding(policy, payment, "customer"),
             }
         ),
     }
@@ -284,12 +291,13 @@ def validate_check(xml, run, check, *, recovering=False):
         raise BridgeError("payment deposit must be Bank or verified UndepositedFunds")
     if rows[6].get("PaymentMethodType") not in ("Cash", "Check"):
         raise BridgeError("payment qualification supports cash/check accounting methods only")
+    discounts.check_account(rows, check, "customer")
     balances = {}
     for row, allocation in zip(rows[7:], check["payment"]["allocations"], strict=True):
         balance = invoice_balance(row, check["binding"])
         if balance["txn_date"] > check["payment"]["txn_date"]:
             raise BridgeError("payment precedes allocated invoice")
-        if not recovering and money(allocation["amount"]) > Decimal(balance["balance"]):
+        if not recovering and discounts.settled(allocation) > Decimal(balance["balance"]):
             raise BridgeError("payment allocation exceeds current invoice balance")
         balances[allocation["txn_id"]] = balance
     root = fromstring(xml)

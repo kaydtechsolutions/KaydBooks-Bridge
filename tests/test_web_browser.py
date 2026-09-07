@@ -31,6 +31,7 @@ def page(setup, monkeypatch):
     raw = setup[2]
     raw["principals"]["operator-a"]["companies"]["company-a"] = sorted(PERMISSIONS)
     raw["companies"]["company-a"].update(
+        account_roles={"customer_discount": "DISC-INCOME", "supplier_discount": "DISC-EXPENSE"},
         bill_masters={
             "vendors": {"vendor-a": "V-A"},
             "payable": "AP-A",
@@ -381,3 +382,53 @@ def test_browser_all_operation_forms_use_exact_shared_payload_fields(page, opera
         assert payload["allocations"] == [{"txn_id": "TXN-1", "amount": "5.00"}]
     else:
         assert payload["lines"][0]["amount"] == "5.00"
+
+
+@pytest.mark.parametrize("kind", ["customer", "supplier"])
+def test_browser_explicit_payment_discount_fields(page, monkeypatch, kind):
+    observed = []
+
+    def check(*args, **kwargs):
+        observed.append(kwargs["payload"])
+        return {"evidence": None}
+
+    monkeypatch.setattr(web_ui, "check_masters", check)
+    page.get_by_role("button", name="New document", exact=True).first.click()
+    page.get_by_label("Document type", exact=True).select_option(kind + "-payment.create")
+    page.get_by_label("Source", exact=True).select_option("synthetic-intake")
+    form = page.locator("#document-form")
+    if kind == "supplier":
+        assert form.locator('input[data-field="ref_number"]').get_attribute("maxlength") == "11"
+    for name, value in {
+        "customer_id": "customer-a",
+        "vendor_id": "vendor-a",
+        "currency": "USD",
+        "deposit_id": "cash",
+        "bank_id": "cash",
+        "method_id": "cash",
+        "discount_account": kind + "_discount",
+    }.items():
+        for element in form.locator(f'select[data-field="{name}"]').all():
+            element.select_option(value)
+    for name, value in {
+        "ref_number": "DISC-1",
+        "txn_date": "2026-09-07",
+        "txn_id": "TXN-1",
+        "total_amount": "5",
+        "amount": "5",
+        "discount_amount": "1",
+    }.items():
+        form.locator(f'input[data-field="{name}"]').fill(value)
+    page.get_by_role("button", name="Check details", exact=True).click()
+    page.locator("body:not([aria-busy])").wait_for()
+    assert observed[-1]["total_amount"] == "5.00"
+    assert observed[-1]["allocations"] == [
+        {
+            "txn_id": "TXN-1",
+            "amount": "5.00",
+            "discount_amount": "1.00",
+            "discount_account": kind + "_discount",
+        }
+    ]
+    form.locator('input[data-field="discount_amount"]').fill("2")
+    assert page.get_by_role("button", name="Save and review", exact=True).is_disabled()

@@ -6,6 +6,7 @@ from xml.etree import ElementTree as ET
 from qbwc_kit._xml import fromstring
 from qbwc_kit.qbxml import parse_response
 
+from . import settlement_discounts as discounts
 from .config import BridgeError
 from .customer_payments import append_check, plan
 from .invoice_commercial import decimal_evidence
@@ -51,6 +52,7 @@ def add_request(policy, payload, run):
         node = ET.SubElement(add, "AppliedToTxnAdd")
         ET.SubElement(node, "TxnID").text = allocation["txn_id"]
         ET.SubElement(node, "PaymentAmount").text = allocation["amount"]
+        discounts.append(node, allocation, check)
     if not payload["allocations"]:
         ET.SubElement(add, "IsAutoApply").text = "false"
     return '<?xml version="1.0"?><?qbxml version="17.0"?>' + ET.tostring(root, encoding="unicode")
@@ -161,13 +163,12 @@ def validate_receipt(xml, policy, payload, run, *, operation="ReceivePaymentQuer
             or key in seen
             or allocation.get("TxnType") != "Invoice"
             or decimal_evidence(allocation.get("Amount")) != expected[key]
-            or decimal_evidence(allocation.get("DiscountAmount", "0")) != 0
-            or any(
-                k in allocation for k in ("DiscountAccountRef", "DiscountClassRef", "TxnLineDetail")
-            )
         ):
             raise BridgeError("saved payment application differs")
         seen.add(key)
+        discounts.verify(
+            allocation, next(a for a in payload["allocations"] if a["txn_id"] == key), check
+        )
         # LinkedTxn describes other transactions associated with the invoice;
         # only this AppliedToTxnRet.Amount is the current payment allocation.
         links = allocation.get("LinkedTxn", [])
@@ -206,6 +207,7 @@ def validate_receipt(xml, policy, payload, run, *, operation="ReceivePaymentQuer
         "allocations": {key: str(value) for key, value in expected.items()},
         "related_invoice_transactions_observed": related,
         "verification": "matched-saved-customer-payment",
+        **discounts.receipt(payload, check),
     }
 
 
@@ -232,7 +234,7 @@ def verify_balance_effect(payload, before, after):
         raise BridgeError("payment requires original invoice balance evidence")
     effects = {}
     for allocation in payload["allocations"]:
-        key, amount = allocation["txn_id"], Decimal(allocation["amount"])
+        key, amount = allocation["txn_id"], discounts.settled(allocation)
         prior, current = before[key], after[key]
         if (
             any(prior[k] != current[k] for k in ("txn_id", "txn_date", "ref_number", "total"))
@@ -242,7 +244,12 @@ def verify_balance_effect(payload, before, after):
             raise BridgeError("payment invoice balance effect differs; never resend")
         effects[key] = {
             "before": prior["balance"],
-            "payment": str(amount),
+            "payment": allocation["amount"],
+            **(
+                {"discount": allocation["discount_amount"]}
+                if "discount_amount" in allocation
+                else {}
+            ),
             "after": current["balance"],
         }
     return effects

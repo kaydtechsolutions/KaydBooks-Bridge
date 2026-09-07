@@ -9,6 +9,7 @@ from xml.etree import ElementTree as ET
 from qbwc_kit._xml import fromstring
 from qbwc_kit.qbxml import parse_response
 
+from . import settlement_discounts as discounts
 from .config import BridgeError, identifier, strict_keys
 from .invoice_commercial import decimal_evidence
 from .invoice_compatibility import required_id
@@ -51,7 +52,7 @@ def validate_masters(value):
     return json.loads(canonical(value))
 
 
-def validate_payload(payload, policy):
+def validate_payload(payload, policy, *, recovering=False):
     strict_keys(
         payload,
         {
@@ -82,9 +83,9 @@ def validate_payload(payload, policy):
     except ValueError as exc:
         raise BridgeError("supplier payment date must be YYYY-MM-DD") from exc
     if not isinstance(payload["ref_number"], str) or not re.fullmatch(
-        r"[A-Za-z0-9-]{1,20}", payload["ref_number"]
+        r"[A-Za-z0-9-]{1,20}" if recovering else r"[A-Za-z0-9-]{1,11}", payload["ref_number"]
     ):
-        raise BridgeError("supplier payment reference requires 1-20 letters, digits or hyphens")
+        raise BridgeError("supplier payment reference requires 1-11 letters, digits or hyphens")
     total = money(payload["total_amount"])
     if total > money(policy.max_total):
         raise BridgeError("company payment limit exceeded")
@@ -93,7 +94,7 @@ def validate_payload(payload, policy):
         raise BridgeError("supplier payment requires 1-20 explicit bill allocations")
     seen, applied = set(), Decimal(0)
     for allocation in allocations:
-        strict_keys(allocation, {"txn_id", "amount"})
+        discounts.validate(allocation, policy, "supplier")
         key = required_id(allocation["txn_id"])
         if key in seen:
             raise BridgeError("duplicate supplier bill allocation")
@@ -101,16 +102,20 @@ def validate_payload(payload, policy):
         applied += money(allocation["amount"])
     if applied != total:
         raise BridgeError("supplier payment allocations must equal total")
+    if total + sum(discounts.amount(a) for a in allocations) > money(policy.max_total):
+        raise BridgeError("cash plus settlement discounts exceed company limit")
     return json.loads(canonical(payload))
 
 
-def plan(policy, payload):
-    payment = validate_payload(payload, policy)
+def plan(policy, payload, *, recovering=False):
+    # The old 20-character bound is retained only for reading a dispatched legacy request.
+    payment = validate_payload(payload, policy, recovering=recovering)
     masters = policy.supplier_payment_masters
     binding = {
         "vendor": masters["vendors"][payment["vendor_id"]],
         "payable": masters["payable"],
         "bank": masters["banks"][payment["bank_id"]],
+        **discounts.binding(policy, payment, "supplier"),
     }
     queries = [
         ("Preferences", None),
@@ -119,6 +124,8 @@ def plan(policy, payload):
         ("Account", binding["bank"]),
     ]
     queries.extend(("Bill", a["txn_id"]) for a in payment["allocations"])
+    if "discount_account" in binding:
+        queries.append(("Account", binding["discount_account"]))
     return {
         "payment": payment,
         "binding": binding,
@@ -130,6 +137,7 @@ def plan(policy, payload):
                 "masters": masters,
                 "currency": policy.currency,
                 "max_total": policy.max_total,
+                **discounts.binding(policy, payment, "supplier"),
             }
         ),
     }
@@ -249,6 +257,7 @@ def validate_check(xml, run, check, *, recovering=False):
         raise BridgeError("supplier payments currently require single-currency QuickBooks")
     if rows[4].get("AccountType") != "AccountsPayable" or rows[5].get("AccountType") != "Bank":
         raise BridgeError("supplier payment requires payable and bank account types")
+    discounts.check_account(rows, check, "supplier")
     balances = {}
     for row, allocation in zip(rows[6:], check["payment"]["allocations"], strict=True):
         for field, key in (("VendorRef", "vendor"), ("APAccountRef", "payable")):
@@ -287,7 +296,7 @@ def validate_check(xml, run, check, *, recovering=False):
             or row.get("IsPaid") != ("true" if balance == 0 else "false")
         ):
             raise BridgeError("allocated bill paid state or amount differs")
-        if not recovering and money(allocation["amount"]) > balance:
+        if not recovering and discounts.settled(allocation) > balance:
             raise BridgeError("supplier payment exceeds bill balance")
         balances[allocation["txn_id"]] = {
             "txn_id": allocation["txn_id"],

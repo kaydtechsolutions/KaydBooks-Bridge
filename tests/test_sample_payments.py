@@ -33,6 +33,7 @@ class Session:
         self.writes = 0
         self.related = None
         self.unapplied = False
+        self.discount = "0.00"
         self.other_credits = "0.00"
 
     def xml(self, request):
@@ -53,10 +54,10 @@ class Session:
         if write is None or not allowed:
             return None
         self.writes += 1
-        remaining = Decimal("10.00") - Decimal(self.amount)
+        remaining = Decimal("10.00") - Decimal(self.amount) - Decimal(self.discount)
         self.rows["Invoice"][0].update(
             EditSequence="2345",
-            AppliedAmount=str(-Decimal(self.amount)),
+            AppliedAmount=str(-Decimal(self.amount) - Decimal(self.discount)),
             BalanceRemaining=str(remaining),
             IsPaid="true" if remaining == 0 else "false",
         )
@@ -85,6 +86,10 @@ class Session:
                 "RefNumber": "SYN-INV",
             },
         }
+        if Decimal(self.discount):
+            payment["AppliedToTxnRet"].update(
+                DiscountAmount=self.discount, DiscountAccountRef={"ListID": "discount-id"}
+            )
         self.rows["ReceivePayment"] = [payment]
         if self.unapplied:
             self.rows["Invoice"] = records()["Invoice"]
@@ -121,7 +126,7 @@ def queued_payment(payment_case):
     path.write_text(json.dumps(raw))
     bridge = Bridge(path)
 
-    def prepare(amount="5.00", unapplied=False):
+    def prepare(amount="5.00", unapplied=False, discount=None):
         if unapplied:
             raw = json.loads(path.read_text())
             raw["companies"]["company-a"]["payment_masters"]["allow_unapplied"] = True
@@ -129,7 +134,21 @@ def queued_payment(payment_case):
         payload["total_amount"] = payload["allocations"][0]["amount"] = amount
         if unapplied:
             payload["allocations"] = []
+        if discount is not None:
+            current = json.loads(path.read_text())
+            current["companies"]["company-a"].setdefault("account_roles", {})[
+                "customer_discount"
+            ] = "discount-id"
+            path.write_text(json.dumps(current))
+            payload["allocations"][0].update(
+                discount_amount=discount, discount_account="customer_discount"
+            )
         session = Session(amount)
+        if discount is not None:
+            session.discount = discount
+            session.rows["Account"].append(
+                {"ListID": "discount-id", "IsActive": "true", "AccountType": "Income"}
+            )
         session.unapplied = unapplied
         run = "1234"
         discover(
@@ -163,7 +182,14 @@ def queued_payment(payment_case):
             operation="customer-payment.create",
         )
         bridge.action(token, "company-a", job["id"], "validate")
-        assert bridge.preview(token, "company-a", job["id"])["total"] == amount
+        preview = bridge.preview(token, "company-a", job["id"])
+        assert preview["total"] == amount
+        if discount is not None:
+            assert preview["cash_total"] == amount
+            assert preview["discount_total"] == discount
+            assert preview["settlement_total"] == format(Decimal(amount) + Decimal(discount), ".2f")
+        else:
+            assert "discount_total" not in preview
         bridge.action(token, "company-a", job["id"], "submit")
         return bridge, token, job["id"], session
 
@@ -293,8 +319,8 @@ def test_payment_authority_change_during_native_preflight(queued_payment, change
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows native compiler")
-@pytest.mark.parametrize("unapplied", [False, True])
-def test_native_payment_write_and_receipt_gates(payment_case, tmp_path, unapplied):
+@pytest.mark.parametrize(("unapplied", "discount"), [(False, False), (True, False), (False, True)])
+def test_native_payment_write_and_receipt_gates(payment_case, tmp_path, unapplied, discount):
     path, _, payload = payment_case
     policy = Config.load(path).companies["company-a"]
     if unapplied:
@@ -304,6 +330,13 @@ def test_native_payment_write_and_receipt_gates(payment_case, tmp_path, unapplie
             policy, payment_masters={**policy.payment_masters, "allow_unapplied": True}
         )
         payload["allocations"] = []
+    if discount:
+        from dataclasses import replace
+
+        policy = replace(policy, account_roles={"customer_discount": "discount-id"})
+        payload["allocations"][0].update(
+            discount_amount="1.00", discount_account="customer_discount"
+        )
     request = add_request(policy, payload, "1234998")
     source = Path("src/kaydbooks_bridge/native_payment.ps1").read_text()
     methods = source[
@@ -340,3 +373,39 @@ def test_unapplied_customer_deposit_stays_unallocated(queued_payment):
     assert job["state"] == "verified" and session.writes == 1
     assert receipt["unused_payment"] == "5.00" and receipt["allocations"] == {}
     assert receipt["balance_effects"] == {} and receipt["invoice_balances"] == {}
+
+
+@pytest.mark.parametrize("amount", ["5.00", "9.00"])
+@pytest.mark.parametrize("crash", [False, True])
+def test_explicit_discount_settlement_and_recovery(queued_payment, amount, crash):
+    bridge, token, job_id, session = queued_payment(amount, discount="1.00")
+    session.crash = crash
+    if crash:
+        with pytest.raises(RuntimeError, match="response lost"):
+            post(bridge, token, "company-a", job_id, exchange=session, read_exchange=session.read)
+        saved = reconcile(
+            Bridge(bridge.config_path),
+            token,
+            "company-a",
+            job_id,
+            exchange=session,
+            read_exchange=session.read,
+        )
+    else:
+        saved = post(
+            bridge, token, "company-a", job_id, exchange=session, read_exchange=session.read
+        )
+    proof = saved["transaction_receipt"]["receipt"]
+    assert saved["state"] == "verified" and session.writes == 1
+    assert proof["total_amount"] == amount
+    assert proof["settlement_discounts"]["invoice-id"] == {
+        "amount": "1.00",
+        "account_list_id": "discount-id",
+    }
+    assert Decimal(proof["balance_effects"]["invoice-id"]["after"]) == Decimal("9.00") - Decimal(
+        amount
+    )
+    assert proof["balance_effects"]["invoice-id"]["discount"] == "1.00"
+    with pytest.raises(BridgeError):
+        post(bridge, token, "company-a", job_id, exchange=session)
+    assert session.writes == 1 and bridge.audit(token, "company-a")["valid"]

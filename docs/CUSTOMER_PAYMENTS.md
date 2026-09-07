@@ -14,8 +14,9 @@ Payload fields are `customer_id`, `deposit_id`, `method_id`, `txn_date`, `ref_nu
 use decimal strings. Allocation sums cannot exceed the receipt amount or the freshly
 queried invoice balance. Customer/AR identities and dates must match. Supported native
 tests currently cover single-currency Cash/Check accounting methods and Bank or the
-specific UndepositedFunds account type. Multicurrency, credit application, refunds,
-discounts and processing card charges are not implemented by this path.
+specific UndepositedFunds account type. Explicit [settlement discounts](SETTLEMENT_DISCOUNTS.md)
+are supported per allocation. Multicurrency, credit application, refunds and processing
+card charges are not implemented by this path.
 
 ## Workflow and evidence
 

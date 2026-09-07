@@ -1,5 +1,21 @@
 # KaydBooks Bridge project status
 
+Explicit customer/supplier settlement discounts are now installed-sample qualified.
+USD6 cash plus USD1 discount settled a USD7 invoice; USD7 cash plus USD1 discount
+settled a USD8 bill. Saved amounts/accounts and independent balances match; fresh
+customer/vendor balance summaries report USD25/USD15. A read-helper query gap and
+the supplier reference-length limit were fixed. The rejected supplier attempt is
+retained as failed with correlated response, closed-helper/hash proof and independent
+absence; a separately approved corrected job verified without resending the original.
+The company is paused, customer/supplier attempt quotas exhausted, production disabled.
+Signed isolated restore preserved 45 jobs and 1,968 evidence files with valid audit
+and integrity and no restored service activation. Document/line discounts and additional
+charges remain unfinished, so the 28-gate count below is unchanged.
+The final clean suite passed 1,168 tests with browser and offline OCR enabled; lint
+and package builds passed. Installed desktop/mobile review displayed both saved
+discounts, prevented reposting and enforced the supplier reference limit over verified TLS.
+See [settlement discounts](docs/SETTLEMENT_DISCOUNTS.md).
+
 Tax functionality and tax reports are excluded from this release by operator instruction
 on 2026-09-07. Non-tax checks remain enforced. 28 acceptance gates remain unfinished:
 M3—9, M4—2, M5—2, M6—11, M7—4. Master records M3-11, manual, scheduled and bounded automatic modes

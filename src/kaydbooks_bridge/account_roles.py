@@ -12,6 +12,8 @@ from .validation import digest
 
 RULES = {
     ("invoice.create", "receivable"): ("invoice_receivable", "AccountsReceivable"),
+    ("customer-payment.create", "discount"): ("customer_discount", "Income"),
+    ("supplier-payment.create", "discount"): ("supplier_discount", "Expense"),
     ("master.change", "income"): ("master_income", "Income"),
     ("master.change", "expense"): ("master_expense", "Expense"),
     ("master.change", "cogs"): ("master_cogs", "CostOfGoodsSold"),

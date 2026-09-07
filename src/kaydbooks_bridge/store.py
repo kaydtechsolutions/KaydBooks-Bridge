@@ -563,6 +563,21 @@ class Store:
                 BEFORE INSERT ON native_bill_rejections WHEN NOT EXISTS
                 (SELECT 1 FROM jobs WHERE id=NEW.job_id AND operation='bill.create' AND state='unknown' AND txn_id IS NULL)
                 BEGIN SELECT RAISE(ABORT,'rejection requires an uncertain native bill without receipt'); END""")
+            if not db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='native_supplier_payment_rejections'"
+            ).fetchone():
+                db.execute("DROP TRIGGER IF EXISTS jobs_state_transition_guard")
+            db.execute("""CREATE TABLE IF NOT EXISTS native_supplier_payment_rejections (
+                job_id TEXT PRIMARY KEY REFERENCES native_supplier_payment_attempts(job_id), evidence TEXT NOT NULL)""")
+            for action in ("UPDATE", "DELETE"):
+                db.execute(f"""CREATE TRIGGER IF NOT EXISTS supplier_payment_rejection_no_{action.lower()}
+                    BEFORE {action} ON native_supplier_payment_rejections
+                    BEGIN SELECT RAISE(ABORT,'supplier payment rejection evidence is immutable'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS supplier_payment_rejection_insert_guard
+                BEFORE INSERT ON native_supplier_payment_rejections WHEN NOT EXISTS
+                (SELECT 1 FROM jobs WHERE id=NEW.job_id AND operation='supplier-payment.create'
+                    AND state='unknown' AND txn_id IS NULL)
+                BEGIN SELECT RAISE(ABORT,'rejection requires an uncertain native supplier payment without receipt'); END""")
             db.execute("""CREATE TRIGGER IF NOT EXISTS jobs_state_transition_guard
                 BEFORE UPDATE OF state ON jobs
                 WHEN NOT (
@@ -582,6 +597,8 @@ class Store:
                         AND NEW.state = 'verified')
                     OR (OLD.state='unknown' AND NEW.state='failed' AND NEW.operation='bill.create'
                         AND EXISTS (SELECT 1 FROM native_bill_rejections WHERE job_id=OLD.id))
+                    OR (OLD.state='unknown' AND NEW.state='failed' AND NEW.operation='supplier-payment.create'
+                        AND EXISTS (SELECT 1 FROM native_supplier_payment_rejections WHERE job_id=OLD.id))
                 )
                 BEGIN SELECT RAISE(ABORT, 'invalid job state transition'); END""")
             db.execute("""CREATE TRIGGER IF NOT EXISTS jobs_approval_guard

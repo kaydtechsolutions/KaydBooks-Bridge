@@ -25,6 +25,21 @@ public static class ControlledSamplePayment {
  public static string Hash(string value) {
   using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(value))).Replace("-","").ToLowerInvariant();
  }
+ static void CheckAllocation(XmlNode n) {
+  if(n.Name!="AppliedToTxnAdd"||n.Attributes.Count!=0||(n.ChildNodes.Count!=2&&n.ChildNodes.Count!=4))throw new Exception("Explicit payment allocation required");
+  string[] fields={"TxnID","PaymentAmount","DiscountAmount"};
+  int scalars=n.ChildNodes.Count==4?3:2;
+  for(int i=0;i<scalars;i++) {
+   var child=n.ChildNodes[i];
+   if(child.Name!=fields[i]||child.Attributes.Count!=0||child.ChildNodes.Count!=1||child.FirstChild.NodeType!=XmlNodeType.Text)throw new Exception("Exact scalar allocation required");
+   string pattern=i==0?@"\A[A-Za-z0-9-]{1,31}\z":@"\A(?:0|[1-9][0-9]{0,11})\.[0-9]{2}\z";
+   if(!System.Text.RegularExpressions.Regex.IsMatch(child.InnerText,pattern))throw new Exception("Invalid allocation value");
+  }
+  if(scalars==3) {
+   var account=n.ChildNodes[3];
+   if(n.ChildNodes[2].InnerText=="0.00"||account.Name!="DiscountAccountRef"||account.Attributes.Count!=0||account.ChildNodes.Count!=1||account.FirstChild.Name!="ListID"||account.FirstChild.Attributes.Count!=0||account.FirstChild.ChildNodes.Count!=1||account.FirstChild.FirstChild.NodeType!=XmlNodeType.Text||!System.Text.RegularExpressions.Regex.IsMatch(account.InnerText,@"\A[A-Za-z0-9-]{1,31}\z"))throw new Exception("Exact settlement discount account required");
+  }
+ }
  public static void CheckWrite(string xml,string expected) {
   if(Hash(xml)!=expected)throw new Exception("Write snapshot changed");
   var doc=Parse(xml);var batch=doc.SelectSingleNode("/QBXML/QBXMLMsgsRq");
@@ -42,9 +57,7 @@ public static class ControlledSamplePayment {
   for(int i=7;i<payment.ChildNodes.Count;i++) {
    var n=payment.ChildNodes[i];
    if(n.Name=="IsAutoApply"&&n.Attributes.Count==0&&payment.ChildNodes.Count==8&&n.InnerXml=="false")continue;
-   if(n.Name!="AppliedToTxnAdd"||n.Attributes.Count!=0||n.ChildNodes.Count!=2||n.FirstChild.Name!="TxnID"||n.LastChild.Name!="PaymentAmount")throw new Exception("Explicit invoice allocation required");
-   foreach(XmlNode child in n.ChildNodes)if(child.Attributes.Count!=0||child.ChildNodes.Count!=1||child.FirstChild.NodeType!=XmlNodeType.Text)throw new Exception("Scalar allocation required");
-   if(!System.Text.RegularExpressions.Regex.IsMatch(n.FirstChild.InnerText,@"\A[A-Za-z0-9-]{1,31}\z")||!System.Text.RegularExpressions.Regex.IsMatch(n.LastChild.InnerText,@"\A(?:0|[1-9][0-9]{0,11})\.[0-9]{2}\z"))throw new Exception("Invalid invoice allocation");
+   CheckAllocation(n);
   }
  }
 
@@ -53,7 +66,7 @@ public static class ControlledSamplePayment {
   try {
    string request=File.ReadAllText(Path.Combine(root,"preflight.request.xml"));
    var batch=Parse(request).SelectSingleNode("/QBXML/QBXMLMsgsRq");
-   if(batch==null||(batch.ChildNodes.Count<8||batch.ChildNodes.Count>28))throw new Exception("Preflight required");
+   if(batch==null||(batch.ChildNodes.Count<8||batch.ChildNodes.Count>29))throw new Exception("Preflight required");
    foreach(XmlNode q in batch.ChildNodes)
     if(Array.IndexOf(new string[]{"HostQueryRq","CompanyQueryRq","PreferencesQueryRq","AccountQueryRq","CustomerQueryRq","PaymentMethodQueryRq","InvoiceQueryRq","ReceivePaymentQueryRq"},q.Name)<0)throw new Exception("Unsupported preflight request");
    string write=readOnly?null:File.ReadAllText(Path.Combine(root,"write.request.xml"));

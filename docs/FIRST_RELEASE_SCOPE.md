@@ -109,6 +109,11 @@ qualification are separate evidence; a passing mock does not establish native su
   This qualifies simple average-cost returns; broader currency/cost/settings remain unfinished.
 - [ ] **M3-08:** Discounts and additional charges: explicit line/document treatment,
   non-tax rounding rules, correct accounts and exact saved totals for each operation.
+  Customer/supplier settlement discounts now pass native exact-account/amount and
+  independent balance verification. USD6+1 and USD7+1 settled the original USD7/USD8
+  balances. A supplier reference-length rejection was independently confirmed absent
+  and retained without resend before a separately approved corrected job. Document/line
+  discounts and additional charges remain unfinished; see [settlement discounts](SETTLEMENT_DISCOUNTS.md).
 - **M3-09 — EXCLUDED:** Tax-enabled transaction qualification is outside this release.
   Non-tax validation remains enforced; taxable requests must not silently lose tax.
 - [ ] **M3-10:** Single- and multi-currency behavior: transaction/base amounts,

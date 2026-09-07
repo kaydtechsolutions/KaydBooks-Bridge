@@ -226,7 +226,7 @@ def status(bridge, token, company):
 
 def amount(job):
     payload = job["payload"]
-    return (
+    result = (
         money(payload["total_amount"])
         if "total_amount" in payload
         else sum(
@@ -234,6 +234,11 @@ def amount(job):
             Decimal(payload.get("tax_amount", "0.00")),
         )
     )
+    if job["operation"] in ("customer-payment.create", "supplier-payment.create"):
+        from .settlement_discounts import amount as discount_amount
+
+        result += sum(discount_amount(a) for a in payload["allocations"])
+    return result
 
 
 def require(config, actor, policy, store, db, job, now):

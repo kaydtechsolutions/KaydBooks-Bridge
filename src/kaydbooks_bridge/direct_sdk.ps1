@@ -258,8 +258,8 @@ public static class PrivateReadOnlyDiscovery {
     }
     while(batch.ChildNodes.Count>first)batch.RemoveChild(batch.LastChild);
    }
-   bool supplierPaymentCheck=batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=28 && batch.ChildNodes[3].Name=="VendorQueryRq" && batch.ChildNodes[6].Name=="BillQueryRq";
-   bool paymentCheck=batch.ChildNodes.Count>=7 && batch.ChildNodes.Count<=28 && batch.ChildNodes[6].Name=="PaymentMethodQueryRq";
+   bool supplierPaymentCheck=batch.ChildNodes.Count>=8 && batch.ChildNodes.Count<=29 && batch.ChildNodes[3].Name=="VendorQueryRq" && batch.ChildNodes[6].Name=="BillQueryRq";
+   bool paymentCheck=batch.ChildNodes.Count>=7 && batch.ChildNodes.Count<=29 && batch.ChildNodes[6].Name=="PaymentMethodQueryRq";
    bool billReceipt=!supplierPaymentCheck && batch.ChildNodes.Count>=4 && batch.ChildNodes.Count<=104 && batch.ChildNodes[2].Name=="BillQueryRq" && batch.ChildNodes[3].Name=="BillToPayQueryRq";
    bool invoiceReceipt=!supplierPaymentCheck && batch.ChildNodes.Count>=3 && batch.ChildNodes.Count<=23 && batch.ChildNodes[2].Name=="InvoiceQueryRq";
    bool billPreview=batch.ChildNodes.Count==5 && batch.ChildNodes[2].Name=="PreferencesQueryRq" && batch.ChildNodes[3].Name=="VendorQueryRq";
@@ -292,7 +292,13 @@ public static class PrivateReadOnlyDiscovery {
     if(payable.Name!="BillToPayQueryRq"||payable.Attributes.Count!=1||payable.Attributes["requestID"]==null)throw new Exception("Complete supplier payable query required");
     string scoped="<PayeeEntityRef><ListID>"+batch.ChildNodes[3].FirstChild.InnerText+"</ListID></PayeeEntityRef><APAccountRef><ListID>"+batch.ChildNodes[4].FirstChild.InnerText+"</ListID></APAccountRef>";
     if(payable.InnerXml!=scoped)throw new Exception("Supplier payable scope differs");
-    for(int i=6;i<end-1;i++) {
+    int billEnd=end-1;
+    if(billEnd>7 && batch.ChildNodes[billEnd-1].Name=="AccountQueryRq") {
+     FixedQuery(batch.ChildNodes[billEnd-1],"Account","ListID,FullName,IsActive,AccountType,CurrencyRef",true);
+     billEnd--;
+    }
+    if(billEnd>26)throw new Exception("Too many supplier payment allocations");
+    for(int i=6;i<billEnd;i++) {
      var q=batch.ChildNodes[i];var id=q.FirstChild;
      if(q.Name!="BillQueryRq"||q.Attributes.Count!=1||q.Attributes["requestID"]==null||id==null||id.Name!="TxnID"||!System.Text.RegularExpressions.Regex.IsMatch(id.InnerText,@"\A[A-Za-z0-9-]{1,31}\z"))throw new Exception("Exact supplier bill required");
      string expected="<TxnID>"+id.InnerText+"</TxnID>";
@@ -311,6 +317,10 @@ public static class PrivateReadOnlyDiscovery {
      string expected="<TxnID>"+selector.InnerText+"</TxnID><IncludeLineItems>true</IncludeLineItems>";
      foreach(string field in "TxnID,EditSequence,CustomerRef,ARAccountRef,TxnDate,RefNumber,TotalAmount,CurrencyRef,ExchangeRate,PaymentMethodRef,DepositToAccountRef,UnusedPayment,UnusedCredits,AppliedToTxnRet".Split(',')) expected+="<IncludeRetElement>"+field+"</IncludeRetElement>";
      if(query.InnerXml!=expected)throw new InvalidOperationException("Only fixed saved payment fields permitted");
+     paymentEnd--;
+    }
+    if(paymentEnd>8 && batch.ChildNodes[paymentEnd-1].Name=="AccountQueryRq") {
+     FixedQuery(batch.ChildNodes[paymentEnd-1],"Account","ListID,FullName,IsActive,AccountType,SpecialAccountType,CurrencyRef",true);
      paymentEnd--;
     }
     if(paymentEnd>27)throw new InvalidOperationException("Too many payment allocations");

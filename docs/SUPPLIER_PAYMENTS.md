@@ -8,8 +8,10 @@ Private `supplier_payment_masters` contains `vendors` and `banks` alias-to-ListI
 maps and an exact `payable` account ListID. The payload requires `vendor_id`,
 `bank_id`, `txn_date`, `ref_number`, `currency`, `total_amount` and one to twenty
 unique `allocations` (`txn_id`/`amount`). Decimal allocation amounts must sum to the
-payment total. Credit applications, discounts, unapplied payments, credit cards,
-multicurrency and printing are unavailable in this path.
+payment total. Explicit [settlement discounts](SETTLEMENT_DISCOUNTS.md) are supported
+per allocation. References allow at most 11 letters, digits or hyphens. Credit
+applications, unapplied payments, credit cards, multicurrency and printing are
+unavailable in this path.
 
 Fixed read-only checks verify active vendor, AP and Bank account identities, exact
 bill dates and vendor/AP bindings, single currency and a complete vendor/AP-scoped

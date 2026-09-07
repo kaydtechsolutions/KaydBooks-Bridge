@@ -585,6 +585,16 @@ class Bridge:
                     "live_posting": False,
                     "posting_authorized_by_preview": False,
                 }
+                if job["operation"] in ("customer-payment.create", "supplier-payment.create"):
+                    from .settlement_discounts import amount as discount_amount
+
+                    discount = sum(discount_amount(a) for a in job["payload"]["allocations"])
+                    if discount:
+                        result["discount_total"] = format(discount, ".2f")
+                        result["cash_total"] = result["total"]
+                        result["settlement_total"] = format(
+                            Decimal(result["total"]) + discount, ".2f"
+                        )
                 result["preview_sha256"] = digest(result)
                 store.event(
                     db,
