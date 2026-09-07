@@ -35,4 +35,4 @@ See [the primary connection decision](WEB_CONNECTOR_DIRECTION.md) and
 close Web Connector qualification. Remaining data-entry work must not be described
 as ready merely because the shared transport passes tests.
 
-Current selected-eight basic sample qualification is **8/8 (100%)**; the overall v0.1.0 workflow is **13/15 (87%)**. See [supported journal, check and transfer scope](QBWC_JOURNALS_CHECKS_TRANSFERS.md). Multi-location transfers do not qualify site-aware inventory sales/purchases.
+Current selected-eight basic sample qualification is **8/8 (100%)**; the overall v0.1.0 workflow is **14/15 (93%)**. See [supported journal, check and transfer scope](QBWC_JOURNALS_CHECKS_TRANSFERS.md). Multi-location transfers do not qualify site-aware inventory sales/purchases.

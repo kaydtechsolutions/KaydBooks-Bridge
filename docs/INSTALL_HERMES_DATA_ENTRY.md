@@ -1,8 +1,8 @@
 # Install the Hermes data-entry system for multiple companies
 
 Target: **KB v0.1.0**. The full upload, confirmation, posting and WhatsApp workflow
-has passed a controlled-source sample invoice test. Actual attachment intake and
-complete installation/recovery walkthroughs remain open. The commands below install
+has passed controlled sample tests, and the per-company deployment walkthrough has
+passed. Final clean-candidate installation and recovery qualification remains open. The commands below install
 the current development candidate; they do not turn on production posting.
 There is no published v0.1.0 installer yet.
 
@@ -98,10 +98,12 @@ For each company, in turn:
 2. Configure the private Bridge HTTPS service, certificate trust and connector
    credential using the [deployment guide](DEPLOYMENT_QUALIFICATION.md) and
    [QBWC protocol](QBWC_DISCOVERY.md). Keep the accounting endpoint private.
-3. Generate and register the reviewed company-specific `.qwc` profile. Use stable
-   registration identifiers and unique connector names; do not import the project's
-   sample repair files for another company. The current general QWC generator is
-   read-only qualification tooling, not finished write-enabled onboarding.
+3. Generate and register the reviewed company-specific `.qwc` profile. Use schema 2,
+   `access_mode: "bridge-gated"`, `is_read_only: false`, a unique connector name and
+   unique stable OwnerID/FileID values. Generate it with
+   `kaydbooks-bridge-qbwc-profile generate-qwc`. Never reuse another company's QWC.
+   Bridge policy, approval, company binding, pause and posting gates still control
+   every accounting write.
 4. In Web Connector, click **Add an Application**, choose that company's QWC file,
    review the QuickBooks access prompt, and enter the privately generated connector
    password. Run **Update Selected** for a read-only identity check.
@@ -177,7 +179,7 @@ and use the same Windows company configuration and durable state as Web Connecto
 Validate discovery with `hermes mcp test kaydbooks` after the entry is configured.
 This is a connection check, not evidence of successful accounting or WhatsApp delivery.
 The actual pilot SSH/MCP connection is now qualified against the same Windows state;
-overall v0.1.0 acceptance is **13/15 (87%)**. The full operator walkthrough remains open.
+overall v0.1.0 acceptance is **14/15 (93%)**. The final candidate/recovery check remains open.
 See the [official Hermes MCP reference](https://hermes-agent.nousresearch.com/docs/reference/mcp-config-reference/)
 and the [current Bridge tool inventory](HERMES_TOOLS.md).
 
@@ -199,3 +201,19 @@ and a failed notification separately. Notification retries must never repost ent
 Record this walkthrough for each enabled entry type and company deployment. A
 successful sample walkthrough does not authorize production data entry. The active
 [release checklist](HERMES_DATA_ENTRY_PILOT.md) identifies unfinished integration.
+
+## 6. Verify one isolated deployment
+
+Create one private JSON request containing the paths to that company's config,
+target, credentials, QWC and generated Hermes bundle, plus its company, connector,
+operator and reviewer identifiers. Run:
+
+```powershell
+& C:\KaydBooks-Runtime\Scripts\kaydbooks-bridge-setup.exe qualify --request C:\BridgePrivate\company-a-walkthrough.json
+```
+
+The check is offline and prints booleans only. It validates company-file presence,
+identity binding, distinct credentials and roles, the eight selected entry mappings
+and gates, company-specific QWC identity, exact Hermes tool exposure, state/database
+binding, audit continuity, retained QBWC connection evidence and paused posting.
+It does not print private names, paths or secrets and performs no accounting write.

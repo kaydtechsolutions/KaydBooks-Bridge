@@ -222,6 +222,10 @@ def main(argv=None):
     )
     channel.add_argument("--request", required=True, type=Path)
     channel.add_argument("--destination", required=True, type=Path)
+    qualify = commands.add_parser(
+        "qualify", help="verify one private company/QWC/Hermes deployment"
+    )
+    qualify.add_argument("--request", required=True, type=Path)
     args = parser.parse_args(argv)
     try:
         if args.command == "init":
@@ -232,6 +236,11 @@ def main(argv=None):
 
             result = generate(args.request, args.destination)
             code = 0
+        elif args.command == "qualify":
+            from .deployment_walkthrough import inspect_deployment
+
+            result = inspect_deployment(args.request)
+            code = 0 if result["deployment_complete"] else 1
         else:
             result = inspect_setup(
                 args.config,

@@ -68,6 +68,7 @@ class QWCProfile:
     is_read_only: bool
     unattended_mode_pref: str
     app_unique_name: str
+    access_mode: str = "qualification"
 
     @classmethod
     def load(cls, path: str | Path) -> QWCProfile:
@@ -89,9 +90,15 @@ class QWCProfile:
                 "unattended_mode_pref",
                 "app_unique_name",
             },
+            {"access_mode"},
         )
-        if data["schema_version"] != 1:
+        if data["schema_version"] not in (1, 2):
             raise BridgeError("unsupported QWC profile version")
+        access_mode = data.get("access_mode", "qualification")
+        if data["schema_version"] == 1 and access_mode != "qualification":
+            raise BridgeError("legacy QWC profiles are qualification-only")
+        if access_mode not in ("qualification", "bridge-gated"):
+            raise BridgeError("invalid QWC access mode")
         if not isinstance(data["app_name"], str) or not 1 <= len(data["app_name"]) <= 80:
             raise BridgeError("invalid QWC application name")
         if not isinstance(data["username"], str) or not re.fullmatch(
@@ -104,8 +111,9 @@ class QWCProfile:
         flags = data["auth_flags"]
         if type(flags) is not int or not 0 <= flags <= 0xF:
             raise BridgeError("invalid QWC edition flags")
-        if data["is_read_only"] is not True:
-            raise BridgeError("qualification QWC must require QuickBooks read-only access")
+        expected_read_only = access_mode == "qualification"
+        if data["is_read_only"] is not expected_read_only:
+            raise BridgeError("QWC access flag does not match its explicit access mode")
         unattended = data["unattended_mode_pref"]
         if unattended != "umpOptional":
             raise BridgeError("qualification QWC must make unattended access optional")
@@ -123,9 +131,10 @@ class QWCProfile:
             file_id=_guid(data["file_id"], "FileID"),
             run_every_seconds=interval,
             auth_flags=flags,
-            is_read_only=True,
+            is_read_only=expected_read_only,
             unattended_mode_pref=unattended,
             app_unique_name=unique_name,
+            access_mode=access_mode,
         )
 
     def render(self) -> str:
@@ -135,7 +144,12 @@ class QWCProfile:
             app_name=self.app_name,
             app_id="",
             app_url=self.endpoint_url,
-            app_description="Read-only QuickBooks company qualification; posting disabled",
+            app_description=(
+                "Read-only QuickBooks company qualification; posting disabled"
+                if self.access_mode == "qualification"
+                else "KaydBooks Bridge access; every accounting write remains policy, "
+                "approval and company-gate controlled"
+            ),
             username=self.username,
             owner_id=self.owner_id,
             file_id=self.file_id,

@@ -95,9 +95,9 @@ estimate of time or effort.
 | V01-4 Hermes-driven QBWC dispatch | One confirmed sample invoice dispatched and matched to saved QBWC readback | 1/1 | 100% |
 | V01-5 Eight selected entry types | All eight basic sample checks passed; supported variants remain bounded | 8/8 | 100% |
 | V01-6 Mini report in operator WhatsApp | Verified batch result has durable provider acknowledgment | 1/1 | 100% |
-| V01-7 Per-company onboarding/isolation walkthrough | Private setup exists; complete deployment walkthrough pending | 0/1 | 0% |
+| V01-7 Per-company onboarding/isolation walkthrough | Secret-safe 22-check sample walkthrough and automated cross-company isolation passed | 1/1 | 100% |
 | V01-8 Installable candidate and end-to-end recovery | Clean bundle installation and signed batch restore passed; end-to-end recovery remains open | 0/1 | 0% |
-| **Total** | **In development; not ready for production** | **13/15** | **87%** |
+| **Total** | **In development; not ready for production** | **14/15** | **93%** |
 
 Include this scorecard in major progress updates. Name the milestone changed and
 the evidence closing its check. Do not increase completion for a commit, documentation
@@ -129,7 +129,7 @@ The one-unit site transfer passed source -1, destination +1 and unchanged total
 stock/average cost. Each new transaction retained one Add, exact saved fields,
 valid audit and duplicate refusal. General posting is paused with no unresolved
 sample write. Their [supported scope and recovery details](QBWC_JOURNALS_CHECKS_TRANSFERS.md)
-remain explicit. These complete V01-5; two other scorecard checks remain.
+remain explicit. These complete V01-5; the final candidate/recovery check remains.
 
 ## Hermes connection and reviewed-batch implementation
 
@@ -162,7 +162,7 @@ retain the job, transaction, native event and provider IDs outside Git.
 
 This test used a controlled source captured through remote MCP, not an actual
 operator attachment conversation or a paid model run. It closes V01-2, V01-4 and
-V01-6. V01-7 and V01-8 remain open. The invoice receipt verifies the
+V01-6. V01-8 remains open. The invoice receipt verifies the
 saved transaction, not a fresh full customer-balance report.
 See [channel integration](HERMES_CHANNEL.md) for installation and trust boundaries.
 
@@ -193,11 +193,15 @@ Hermes then found the same job through the Osman profile, created review batch
 `9ce2403809f365e264c81050`, checked its status and returned the exact review in the
 native WhatsApp conversation. The batch remained unconfirmed, the job remained
 validated, posting attempts stayed at zero, posting remained paused and the audit
-remained valid. This closes V01-1; the score is **13/15 (87%)**.
+remained valid. This closes V01-1; the score is **14/15 (93%)**.
 
 `setup hermes` now generates the private Windows launchers and Linux connection
 inputs from an existing company configuration. The generated launchers passed
 actual Linux-to-Windows MCP discovery, existing-job lookup and signed channel
 status/clock checks against the same Windows state. Outbound stayed disabled in
-these generated files. This is additional V01-7 installation evidence; complete
-new-company QWC binding, mappings and the walkthrough remain open.
+these generated files. A secret-safe 22-check walkthrough subsequently matched the
+authorized sample's target, identity binding, distinct roles and credentials, all
+selected mappings/gates, company-specific QWC, exact Hermes tool set, database and
+audit, retained QBWC connection evidence and paused state. Existing cross-company
+tests prove separate credentials/state and reject copied state. This closes V01-7
+without an accounting write.

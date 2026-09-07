@@ -67,7 +67,27 @@ def test_qwc_profile_cannot_enable_quickbooks_writes(tmp_path):
     data = json.loads(path.read_text(encoding="utf-8"))
     data["is_read_only"] = False
     path.write_text(json.dumps(data), encoding="utf-8")
-    with pytest.raises(BridgeError, match="must require QuickBooks read-only"):
+    with pytest.raises(BridgeError, match="access flag"):
+        QWCProfile.load(path)
+
+
+def test_explicit_bridge_gated_qwc_can_request_operational_access(tmp_path):
+    path = profile_file(tmp_path)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data.update({"schema_version": 2, "access_mode": "bridge-gated", "is_read_only": False})
+    path.write_text(json.dumps(data), encoding="utf-8")
+    profile = QWCProfile.load(path)
+    root = ET.fromstring(profile.render())
+    assert root.findtext("IsReadOnly") == "false"
+    assert "policy, approval and company-gate controlled" in root.findtext("AppDescription")
+
+
+def test_legacy_qwc_cannot_claim_bridge_gated_access(tmp_path):
+    path = profile_file(tmp_path)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["access_mode"] = "bridge-gated"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(BridgeError, match="legacy"):
         QWCProfile.load(path)
 
 
