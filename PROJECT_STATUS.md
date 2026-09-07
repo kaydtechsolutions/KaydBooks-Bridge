@@ -1,5 +1,13 @@
 # KaydBooks Bridge project status
 
+The installed Web Connector also verified a USD5 supplier payment: the selected
+bill's outstanding balance decreased from USD20 to USD15. Exact payment and
+BillToPay evidence matched; the operator's Vendor Balance Detail corroborated
+the payment and the separate USD54 aggregate vendor balance. One attempt and one
+write were retained, response hashes/audit passed, repeat posting/recovery were
+refused, and posting was paused again. Broader cases and actual supplier-payment
+interruption qualification remain. Credit transport migration is next.
+
 The installed Web Connector verified a USD5 partial customer payment and the
 allocated invoice's balance reduction from USD15 to USD10. One attempt and one
 write were retained; response hashes and audit passed, repeat dispatch/recovery
@@ -16,7 +24,7 @@ revocation, missing outcomes and owned fresh evidence. The affected suite passed
 package build passed. A separate database-copy upgrade
 preserved all 56 tables and 3,454 rows with identical contents, valid audit,
 integrity and foreign keys. The live database was not modified by that check.
-Installed supplier-payment qualification remains pending. See
+Basic installed supplier-payment qualification passed as described above. See
 [supplier payments](docs/QBWC_SUPPLIER_PAYMENTS.md).
 The 28 broader acceptance gates remain unchanged.
 

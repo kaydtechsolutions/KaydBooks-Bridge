@@ -26,5 +26,12 @@ never-started attempts, fresh owned evidence and cross-operation rejection.
 Browser checks keep draft saving disabled while QBWC evidence is pending.
 Schema-upgrade tests cover older two-operation and three-operation databases,
 transaction rollback, immutable history and pending-read exclusivity.
-Installed sample-company qualification must be recorded separately; these tests
-do not establish production readiness or close broader acceptance gates.
+
+Installed sample qualification verified a USD5 payment applied to one USD20 bill.
+Exact saved-payment and BillToPay readback proved that bill's outstanding balance
+became USD15. The vendor aggregate became USD54 because other bills and credits
+remain; the operator's Vendor Balance Detail independently displayed the USD5
+payment and USD54 total. One attempt and one write, response hashes and audit
+passed; repeat dispatch/recovery were refused and posting was paused again.
+Broader cases and actual supplier-payment interruption qualification remain.
+This does not establish production readiness or close broader acceptance gates.
