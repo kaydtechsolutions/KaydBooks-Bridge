@@ -69,12 +69,12 @@ recipient is the operator's configured chat, not customers or numbers in uploads
 | Review and exact human confirmation | Bridge reviews/approvals exist; trusted WhatsApp confirmation binding and batch approval are unfinished |
 | Hermes-to-Windows connection | Local stdio MCP tools exist; this Linux-to-Windows deployment is not qualified |
 | Web Connector master checks and dispatch from Hermes | Browser paths exist for all eight selected types; Hermes tools still contain native reads and expose no approval/posting tool |
-| All eight selected types | Five have basic sample QBWC qualification: sales receipt, invoice, bill, customer payment, credit memo; journal, inventory transfer and check are implemented/tested but installed acceptance remains pending |
+| All eight selected types | All eight have basic sample QBWC qualification within documented limits: sales receipt, invoice, bill, customer payment, credit memo, journal, expense check and site transfer |
 | Result generation and WhatsApp delivery | Job states/receipts exist; batch summary, delivery tracking and actual channel test remain |
 | Multiple company files | Company isolation/private onboarding exist; each actual file needs its own binding, mappings and qualification; automatic file switching is not claimed |
 | Installable pilot and recovery | Development package exists; final candidate install, walkthrough and end-to-end recovery qualification remain |
 
-Five of eight entry types (62.5%) have basic installed sample qualification. This
+All eight entry types (100%) have basic installed sample qualification. This
 is not the percentage of the complete Hermes workflow. The older 13/41 broad
 roadmap count is historical context, not this release's completion score. No
 complete upload-confirm-post-WhatsApp run has been verified yet.
@@ -92,11 +92,11 @@ estimate of time or effort.
 | V01-2 Exact operator confirmation | Bridge approval exists; trusted channel binding pending | 0/1 | 0% |
 | V01-3 Linux Hermes to Windows Bridge | Remote connection qualification pending | 0/1 | 0% |
 | V01-4 Hermes-driven QBWC dispatch | Browser foundation exists; Hermes migration pending | 0/1 | 0% |
-| V01-5 Eight selected entry types | Sales receipt, invoice, bill, customer payment, credit memo basic sample checks passed | 5/8 | 62.5% |
+| V01-5 Eight selected entry types | All eight basic sample checks passed; supported variants remain bounded | 8/8 | 100% |
 | V01-6 Mini report in operator WhatsApp | Summary/delivery workflow pending | 0/1 | 0% |
 | V01-7 Per-company onboarding/isolation walkthrough | Private setup exists; complete deployment walkthrough pending | 0/1 | 0% |
 | V01-8 Installable candidate and end-to-end recovery | Final candidate/walkthrough pending | 0/1 | 0% |
-| **Total** | **In development; not ready for production** | **5/15** | **33.3% (33% rounded)** |
+| **Total** | **In development; not ready for production** | **8/15** | **53.3% (53% rounded)** |
 
 Include this scorecard in major progress updates. Name the milestone changed and
 the evidence closing its check. Do not increase completion for a commit, documentation
@@ -118,12 +118,14 @@ Publishing/merging and production accounting still require separate authorizatio
 This request selects operator WhatsApp result delivery as a feature; the exact
 destination must be supplied before an actual message test can be performed.
 
-## Current three-path qualification hold
+## Journal, check and transfer qualification completed
 
-Journals, expense checks and site transfers have shared QBWC implementations and
-browser forms. Their [supported scope and recovery details](QBWC_JOURNALS_CHECKS_TRANSFERS.md)
-are explicit. The installed sample journal is held after QuickBooks discarded an
-unsupported header memo; the corrected implementation uses line memos. The original
-journal needs its approved memo restored on the lines and read-only reconciliation.
-Further sample writes remain paused. Inventory sites are now confirmed enabled and the source/destination master check passed; the controlled transfer itself remains pending. These paths earn no live acceptance credit
-until those checks pass. Tax and production posting remain outside the scope.
+The existing journal's approved line memos were restored through one bounded,
+separately approved sample-only Mod; no replacement journal was created. Saved
+memos, original transaction/line IDs and the original USD5 accounting effect match.
+The USD5 expense check passed bank -5, expense +5 and unchanged vendor payables.
+The one-unit site transfer passed source -1, destination +1 and unchanged total
+stock/average cost. Each new transaction retained one Add, exact saved fields,
+valid audit and duplicate refusal. General posting is paused with no unresolved
+sample write. Their [supported scope and recovery details](QBWC_JOURNALS_CHECKS_TRANSFERS.md)
+remain explicit. These complete V01-5; the other seven scorecard checks remain.

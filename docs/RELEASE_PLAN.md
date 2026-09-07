@@ -5,7 +5,7 @@ without waiting for the entire roadmap. The active KB v0.1.0 target is now
 **upload to Hermes -> exact operator confirmation -> Bridge/Web Connector entry
 -> mini result report in the operator's Hermes WhatsApp chat**, using the eight
 selected entry types. The [workflow specification and milestone scorecard](HERMES_DATA_ENTRY_PILOT.md)
-take priority over broader roadmap work. Current verified acceptance: **5/15 (33%)**.
+take priority over broader roadmap work. Current verified acceptance: **8/15 (53.3%)**.
 No release has been published by creating this plan.
 
 | Version | Proposed scope |
@@ -71,12 +71,12 @@ local candidate builds and authorized sample qualification may continue.
 | Customer payment | Basic installed Web Connector sample qualification passed |
 | Bill | Basic installed Web Connector sample qualification passed |
 | Sales receipt | Basic installed Web Connector sample qualification passed |
-| Journal | Implemented/tested; saved sample memo repair and reconciliation pending |
-| Inventory transfer | Implemented/tested; live source/destination verification pending |
-| Check | Implemented/tested; installed master check passed, write pending |
+| Journal | Basic sample qualified; original memo-only repair and accounting readback verified |
+| Inventory transfer | Basic sample qualified; source -1/destination +1, total stock/cost unchanged |
+| Check | Basic sample qualified; bank -5, expense +5, vendor payable unchanged |
 
-Five of eight selected entry types (62.5%) have a basic installed sample qualification.
+All eight selected entry types (100%) have a basic installed sample qualification.
 This measures entry types only, not feature variants, remaining pilot operational
 checks or total release readiness. Supplier payments and bill credits remain
-implemented and sample-qualified additional features. Prioritize live qualification of the three remaining
-selected types before broader roadmap expansion.
+implemented and sample-qualified additional features. Next complete the seven
+remaining Hermes/workflow/setup checks before broader roadmap expansion.

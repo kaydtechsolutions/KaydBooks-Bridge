@@ -290,8 +290,20 @@ class DurableQBWCPostingService(DurableQBWCDiscoveryService):
                     return ""
                 try:
                     phase = run["phase"]
+                    from . import journal_memo_repair as memo_repair
+
+                    repairing = db.execute(
+                        "SELECT 1 FROM qbwc_journal_memo_repairs WHERE run_id=?", (run["id"],)
+                    ).fetchone()
                     a, job, policy, connector = self._context(
-                        db, store, run, writing=phase in ("preflight", "write")
+                        db, store, run, writing=not repairing and phase in ("preflight", "write")
+                    )
+                    grant = (
+                        memo_repair.authorization(
+                            self, db, store, run, job, writing=phase == "write"
+                        )
+                        if repairing
+                        else None
                     )
                     adapter = contract(job["operation"])
                     version = self._callback_version(
@@ -332,7 +344,20 @@ class DurableQBWCPostingService(DurableQBWCDiscoveryService):
                         if digest(old["request"]) != old["request_hash"]:
                             raise BridgeError("QBWC request hash differs")
                         return old["request"]
-                    if phase in ("preflight", "find"):
+                    if grant is not None and phase in ("find", "write"):
+                        request = memo_repair.request(
+                            self, db, store, run, job, policy, connector, grant
+                        )
+                        if phase == "write":
+                            store.event(
+                                db,
+                                self.clock(),
+                                a["actor"],
+                                job["id"],
+                                "qbwc_journal_memo_mod_handed_out",
+                                {"run": run["id"], "request_hash": digest(request)},
+                            )
+                    elif phase in ("preflight", "find"):
                         request = adapter.module("posting").preflight(
                             policy, job["payload"], run["id"]
                         )
@@ -436,7 +461,14 @@ class DurableQBWCPostingService(DurableQBWCDiscoveryService):
                         raise BridgeError("QBWC request evidence differs")
                     if call.get("hresult"):
                         raise BridgeError("QuickBooks processor error; reconciliation required")
-                    if phase in ("preflight", "find"):
+                    from . import journal_memo_repair as memo_repair
+
+                    grant = memo_repair.authorization(self, db, store, run, job)
+                    if grant is not None and phase in ("find", "write"):
+                        result = memo_repair.receive(
+                            self, db, store, run, job, policy, connector, grant, response
+                        )
+                    elif phase in ("preflight", "find"):
                         matched = adapter.check_preflight(
                             response,
                             policy,

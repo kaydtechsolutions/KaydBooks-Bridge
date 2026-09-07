@@ -5,43 +5,52 @@
 The operator narrowed active work to Hermes upload -> exact operator confirmation
 -> Web Connector data entry -> mini result in the operator's Hermes WhatsApp chat.
 Keep the eight selected entry types. Daily reports, customer statement delivery
-and broader roadmap expansion are deferred. The current score is **5/15 verified
-acceptance checks (33.3%, rounded 33%)**; five of eight entry types passed basic
+and broader roadmap expansion are deferred. The current score is **8/15 verified
+acceptance checks (53.3%, rounded 53%)**; all eight entry types passed basic
 sample qualification, while seven workflow/setup checks remain open. Partial
 implementation is not counted as a passed end-to-end check. See the
 [milestone scorecard](docs/HERMES_DATA_ENTRY_PILOT.md) and
 [multi-company installation guide](docs/INSTALL_HERMES_DATA_ENTRY.md).
 Every major progress update must include this version, milestone status and score.
 Linux Hermes host details and the operator's WhatsApp destination are needed for
-actual connection/delivery qualification. No new accounting writes or messages
-were sent for this scope update. Production posting remains disabled.
+actual connection/delivery qualification. Only bounded, separately approved sample accounting tests were performed.
+No external messages were sent. Production posting remains disabled.
 
-## Current remaining entry paths
+## Eight-entry milestone completed
 
-All eight selected transaction paths now have implementations and browser forms.
-Journals, expense checks and inventory transfers are not yet installed-qualified.
-Full regression passed **1,419 tests**, with 50 optional tests skipped. All 13
-transaction browser-form tests passed separately. Subsequent focused checks cover
-24 transfer/catalog cases and journal input hardening: the final combined run passed
-59 tests (17 journals, 18 checks, 24 transfers/catalog). Lint, format, JavaScript syntax
-and package build passed; 12 installed implementation/interface hashes match the source.
+All eight selected transaction paths have implementations, browser forms and basic
+installed Web Connector sample qualification. **V01-5: 8/8 (100%)**. The complete
+v0.1.0 workflow remains **8/15 checks (53.3%)**; seven Hermes/workflow/setup checks
+remain open. Supported transaction variants are bounded; this is not production
+or complete conversational-workflow qualification.
 
-The first installed journal saved USD5, but returned warning 530 for an unsupported
-US header Memo. The Bridge held it; it was not resubmitted. The correction uses
-line memos and is installed. Repair of the original sample journal's line memos
-and read-only reconciliation are pending. That unresolved write blocks the live
-expense-check test; its installed read-only master check has passed. Inventory-site
-tracking is now confirmed enabled. The test stock unit is at Atlanta Warehouse;
-Distribution Center has not held that item and is correctly treated as zero after
-verifying both identities. The empty-destination correction is installed and the live transfer master check passed (source 1, destination 0).
-Posting remains paused.
+The original sample journal's warning-530 memo problem is resolved. A separately
+approved, paused, sample-only repair used one JournalEntryMod request containing
+only the original transaction/edit sequence and existing line IDs with approved
+memos. Exact readback verified both memos, unchanged transaction/line identities
+and the original USD5 accounting effect. One original Add remains; no journal was
+recreated. Ordinary recovery is still read-only.
 
-Latest isolated upgrade preserved 59 tables and 4,663 rows with intact audit,
-integrity and foreign keys. The package adds transfer evidence and a fixed read-only
-inventory-site catalog. See [supported fields and limitations](docs/QBWC_JOURNALS_CHECKS_TRANSFERS.md).
-V01-5 remains **5/8 (62.5%)**; v0.1.0 remains **5/15 (33.3%)** until live acceptance.
+The USD5 vendor expense check passed: bank 512 to 507, expense +5, vendor payable
+34 unchanged. The one-unit inventory transfer passed: source 1 to 0, destination
+0 to 1, company quantity 1 and average cost 5 unchanged. Both retained one Add,
+exact saved lines, valid audit and duplicate-action refusal. Posting is paused;
+there are no unresolved sample writes.
 
-## Latest data-entry qualification
+Validation: **1,433 regression tests passed**, 50 optional tests skipped, one
+upstream dependency deprecation warning. The final focused posting/journal/check/
+transfer/repair suite passed **99 tests**, including 14 memo-repair cases. Previous
+browser qualification passed all 13 transaction form checks. Lint, format and
+package build passed. An isolated upgrade preserved all 60 prior tables and 4,951
+rows with valid audit, integrity and foreign keys. The final installed package
+matches the source. Raw company evidence and configuration remain private.
+
+See [supported fields and limitations](docs/QBWC_JOURNALS_CHECKS_TRANSFERS.md).
+Multi-location transfers do not qualify site-aware sales/purchase lines: the
+previous simple-inventory sales/purchase variants require multi-location off.
+Service-only entries do not require site fields. Tax remains excluded.
+
+## Previous sales-receipt qualification
 
 Sales receipt KB-SR-001 passed installed QBWC qualification in the authorized
 sample: USD10 mixed service/inventory sale, deposit 507 to 517, customer balance

@@ -16,8 +16,8 @@ as Bridge endpoints: they do not enforce Bridge company permissions or durable j
 **Client connection decision:** QuickBooks Web Connector (`.qwc`) is the required
 primary connection. All eight selected data-entry types have browser workflows on
 the durable Web Connector lifecycle, alongside supplier payments and bill credits.
-Five selected types have installed sample qualification; journals, expense checks
-and inventory transfers still need their final live checks.
+All eight selected types have basic installed sample qualification within their
+documented limits, including journals, vendor expense checks and site transfers.
 Installed sample evidence and remaining qualification are recorded in the
 [data-entry readiness checklist](docs/DATA_ENTRY_READINESS.md). Broader transaction,
 report and scheduling migration from the direct-SDK adapters remains unfinished. See the
@@ -32,7 +32,7 @@ invoice path is only part of that release.
 The active **KB v0.1.0** target is **upload to Hermes -> confirm with the operator ->
 data entry through Web Connector -> mini result report in Hermes WhatsApp**.
 The [workflow and milestone scorecard](docs/HERMES_DATA_ENTRY_PILOT.md) records
-**5/15 verified acceptance checks (33%)**, including five of eight selected entry
+**8/15 verified acceptance checks (53.3%)**, including all eight selected entry
 types. The complete conversational workflow is not ready yet. Follow the
 [multi-company development installation guide](docs/INSTALL_HERMES_DATA_ENTRY.md)
 and [incremental release plan](docs/RELEASE_PLAN.md); each company requires private

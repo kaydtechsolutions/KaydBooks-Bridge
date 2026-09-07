@@ -768,6 +768,9 @@ class Store:
             from .qbwc_posting_schema import schema as qbwc_posting_schema
 
             qbwc_posting_schema(db)
+            from .journal_memo_repair import install_schema as memo_repair_schema
+
+            memo_repair_schema(db)
 
     @contextmanager
     def transaction(self):

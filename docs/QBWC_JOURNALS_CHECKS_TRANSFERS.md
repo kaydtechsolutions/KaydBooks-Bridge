@@ -2,9 +2,9 @@
 
 These paths use the same reviewed draft, separate approval, durable Web Connector
 handoff, exact saved-record lookup and audit as the existing entry types. They
-have no native SDK fallback. They are implemented and tested synthetically; their
-installed sample acceptance is **still pending**. Do not count them as qualified
-just because Web Connector finishes an update.
+have no native SDK fallback. All three passed basic installed sample acceptance
+with exact saved records and accounting/site-stock effects. This qualifies the
+bounded scope below; a successful Web Connector update alone is insufficient.
 
 ## Supported scope
 
@@ -53,15 +53,31 @@ The original approved payload, attempt, baseline, request/response hashes and
 audit stay intact. Changed balances or saved fields leave the transaction held.
 Recovery uses a separate query correlation for the find and verification phases.
 
+The former unsupported-header-memo bug has a separate, one-shot repair path:
+`journal_memo_repair.enqueue(bridge, token, company, job_id, approver_token=reviewer)`.
+Ordinary `recover()` remains read-only. The repair requires paused posting, a
+separate reviewer, the original approved payload and immutable warning-530 Add
+response, and fresh confirmation that this is a QuickBooks sample company. It
+checks the original transaction/line IDs, every saved accounting field and the
+original balance effects before dispatch. Its ten-minute grant permits one
+`JournalEntryModRq`, containing only the current TxnID/EditSequence and existing
+line IDs with their approved memos. It sends no amounts, accounts, new lines or
+second Add. QuickBooks optimistic concurrency protects against intervening edits.
+Saved fields and balances are read back afterward. An uncertain Mod is held for
+ordinary read-only recovery; the grant cannot be reused to resend it.
+
 Focused tests cover balanced journals, invalid payloads, exact lines/payees/sites,
 bank and expense effects, source shortages, changed totals/costs, revoked grants,
 stale evidence, lost responses and duplicate refusal. Real browser tests exercise
 the forms against the shared service contract. Isolated schema-upgrade rehearsals
 preserve historical records and audit integrity before installed upgrades.
 
-The first installed sample journal was saved with warning 530 because QuickBooks
-ignored the earlier header memo. The implementation has been corrected. That
-existing transaction remains held until its line memos match the approved intent
-and read-only reconciliation verifies the original amounts. It must not be
-recreated. The held journal prevents further sample writes, including the check
-test. Inventory sites are enabled and the installed source/destination read passed (one unit at source, zero at destination); the controlled transfer and readback remain pending. See [the pilot scorecard](HERMES_DATA_ENTRY_PILOT.md).
+The original installed sample journal's warning-530 memo problem is now repaired
+and verified: both approved memos match, original transaction/line IDs are retained,
+and the original USD5 accounting effect is unchanged. There is one original Add
+and one memo-only Mod, not a second journal. The USD5 expense check passed bank -5,
+expense +5 and unchanged vendor payable balance. The one-unit inventory transfer
+passed source -1, destination +1, unchanged total quantity and average cost. Both
+new transactions retained one Add with exact readback, valid audit and duplicate
+refusal. Posting is paused, with no unresolved sample write. See [the pilot
+scorecard](HERMES_DATA_ENTRY_PILOT.md) for remaining Hermes workflow checks.
