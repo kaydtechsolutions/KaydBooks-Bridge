@@ -115,7 +115,7 @@ def check_masters(bridge, token, company, operation, connector_id, payload):
     if connector is None or connector.company != company:
         raise BridgeError("select the company's exact connector")
     payload = validate_payload(operation, payload, policy)
-    if operation in ("invoice.create", "bill.create"):
+    if operation in ("invoice.create", "bill.create", "customer-payment.create"):
         from .qbwc_invoices import invoice_job, make_plan
         from .validation import canonical
 
@@ -383,7 +383,7 @@ def action(bridge, token, company, action, parameters):
             parameters["confirmed_values"],
         )
     job = bridge.status(token, company, parameters["job_id"])
-    if job["operation"] in ("invoice.create", "bill.create") and (
+    if job["operation"] in ("invoice.create", "bill.create", "customer-payment.create") and (
         action == "post-sample" or job.get("posting_transport") == "qbwc"
     ):
         from .qbwc_posting import enqueue, recover

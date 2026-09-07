@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from .config import BridgeError, identifier, outside_repository
+from .qbwc_contracts import OPERATIONS_SQL
 from .validation import canonical, digest
 
 STATES = (
@@ -96,6 +97,9 @@ class Store:
                 )
                 db.execute("DROP TRIGGER IF EXISTS jobs_state_transition_guard")
                 db.execute("DROP TRIGGER IF EXISTS qbwc_not_dispatched_insert_guard")
+            from .qbwc_schema_upgrade import expand_read_operations
+
+            expand_read_operations(db)
             db.execute("""CREATE TRIGGER IF NOT EXISTS qbwc_read_operation_immutable
                 BEFORE UPDATE OF operation ON qbwc_invoice_jobs WHEN NEW.operation IS NOT OLD.operation
                 BEGIN SELECT RAISE(ABORT,'immutable read operation'); END""")
@@ -600,11 +604,11 @@ class Store:
                 db.execute(f"""CREATE TRIGGER IF NOT EXISTS qbwc_not_dispatched_no_{action.lower()}
                     BEFORE {action} ON qbwc_not_dispatched
                     BEGIN SELECT RAISE(ABORT,'immutable undispatched evidence'); END""")
-            db.execute("""CREATE TRIGGER IF NOT EXISTS qbwc_not_dispatched_insert_guard
+            db.execute(f"""CREATE TRIGGER IF NOT EXISTS qbwc_not_dispatched_insert_guard
                 BEFORE INSERT ON qbwc_not_dispatched WHEN
                 NOT EXISTS (SELECT 1 FROM jobs j JOIN qbwc_invoice_attempts a ON a.job_id=j.id
                     WHERE j.id=NEW.job_id AND j.state='unknown' AND j.txn_id IS NULL
-                    AND j.operation IN ('invoice.create','bill.create') AND a.actor=NEW.actor)
+                    AND j.operation IN ({OPERATIONS_SQL}) AND a.actor=NEW.actor)
                 OR NOT EXISTS (SELECT 1 FROM qbwc_invoice_runs WHERE job_id=NEW.job_id AND phase='held')
                 OR EXISTS (SELECT 1 FROM qbwc_invoice_steps s JOIN qbwc_invoice_runs r ON r.id=s.run_id
                     WHERE r.job_id=NEW.job_id)
@@ -612,7 +616,7 @@ class Store:
                     WHERE r.job_id=NEW.job_id AND (r.context IS NOT NULL OR r.txn_id IS NOT NULL
                     OR r.phase!='held' OR s.state IN ('authenticated','request-sent','verified','blocked')))
                 BEGIN SELECT RAISE(ABORT,'closed never-started QBWC attempt required'); END""")
-            db.execute("""CREATE TRIGGER IF NOT EXISTS jobs_state_transition_guard
+            db.execute(f"""CREATE TRIGGER IF NOT EXISTS jobs_state_transition_guard
                 BEFORE UPDATE OF state ON jobs
                 WHEN NOT (
                     OLD.state = NEW.state
@@ -633,7 +637,7 @@ class Store:
                         AND EXISTS (SELECT 1 FROM native_bill_rejections WHERE job_id=OLD.id))
                     OR (OLD.state='unknown' AND NEW.state='failed' AND NEW.operation='supplier-payment.create'
                         AND EXISTS (SELECT 1 FROM native_supplier_payment_rejections WHERE job_id=OLD.id))
-                    OR (OLD.state='unknown' AND NEW.state='failed' AND NEW.operation IN ('invoice.create','bill.create')
+                    OR (OLD.state='unknown' AND NEW.state='failed' AND NEW.operation IN ({OPERATIONS_SQL})
                         AND EXISTS (SELECT 1 FROM qbwc_not_dispatched WHERE job_id=OLD.id))
                 )
                 BEGIN SELECT RAISE(ABORT, 'invalid job state transition'); END""")

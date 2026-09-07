@@ -15,6 +15,12 @@ def make_plan(company, payload, txn_id=None, operation="invoice.create"):
     from .qbwc_contracts import contract
 
     contract(operation)
+    if operation == "customer-payment.create":
+        if txn_id is not None:
+            raise BridgeError("standalone QBWC payment receipt checks are unavailable")
+        from .customer_payments import plan as payment_plan
+
+        return {**payment_plan(company, payload), "operation": operation}
     if operation == "bill.create":
         if txn_id is not None:
             raise BridgeError("standalone QBWC bill receipt checks are unavailable")
@@ -35,6 +41,10 @@ def make_plan(company, payload, txn_id=None, operation="invoice.create"):
 
 
 def append_request(request, correlation, check):
+    if check.get("operation") == "customer-payment.create":
+        from .customer_payments import append_check
+
+        return append_check(request, correlation, check)
     if check.get("operation") == "bill.create":
         from .bill_lookup import append_check
 
@@ -52,6 +62,11 @@ def append_request(request, correlation, check):
 
 
 def check_response(response, correlation, check):
+    if check.get("operation") == "customer-payment.create":
+        from .customer_payments import validate_check
+
+        discovery, _ = validate_check(response, correlation, check)
+        return discovery, None
     if check.get("operation") == "bill.create":
         from .bill_lookup import validate_check
 
@@ -169,15 +184,22 @@ def invoice_job(
                     db, time.time(), actor, None, "qbwc_invoice_receipt_read", {"job": job_id}
                 )
                 return result
-            if operation == "bill.create":
+            if operation in ("bill.create", "customer-payment.create"):
                 result.update(
-                    operation="bill-master-compatibility",
+                    operation=operation.removesuffix(".create") + "-master-compatibility",
                     transport="qbwc",
                     compatibility="matched",
                     scope="master-evidence-only",
                     context_sha256=check["context_sha256"],
                 )
-                store.event(db, time.time(), actor, None, "qbwc_bill_check_read", {"job": job_id})
+                store.event(
+                    db,
+                    time.time(),
+                    actor,
+                    None,
+                    "qbwc_contract_check_read",
+                    {"job": job_id, "operation": operation},
+                )
                 return result
             result.update(
                 operation="invoice-master-compatibility",

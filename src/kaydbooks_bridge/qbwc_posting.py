@@ -374,7 +374,7 @@ class DurableQBWCPostingService(DurableQBWCDiscoveryService):
                             {"run": run["id"], "request_hash": digest(request)},
                         )
                     elif phase == "lookup":
-                        request = adapter.module("receipt").append_lookup(
+                        request = adapter.append_lookup(
                             self._discovery_request(run["id"], "17.0"),
                             run["id"],
                             run["txn_id"],
@@ -492,6 +492,30 @@ class DurableQBWCPostingService(DurableQBWCDiscoveryService):
                             {"correlation": run["id"], "country": "US", "qbxml_version": "17.0"},
                             connector,
                         )
+                        if adapter.name == "payment":
+                            baseline = db.execute(
+                                "SELECT p.response,r.id FROM qbwc_invoice_responses p "
+                                "JOIN qbwc_invoice_runs r ON r.id=p.run_id "
+                                "JOIN qbwc_invoice_steps s ON s.run_id=r.id AND s.phase='write' "
+                                "WHERE r.job_id=? AND p.phase='preflight' AND p.result=25",
+                                (job["id"],),
+                            ).fetchall()
+                            if len(baseline) != 1:
+                                raise BridgeError("original payment balance baseline required")
+                            collision, balances = adapter.module("posting").check_preflight(
+                                baseline[0]["response"],
+                                policy,
+                                job["payload"],
+                                connector,
+                                baseline[0]["id"],
+                            )
+                            if collision is not None:
+                                raise BridgeError("payment baseline must precede its write")
+                            receipt["balance_effects"] = adapter.module(
+                                "receipt"
+                            ).verify_balance_effect(
+                                job["payload"], balances, receipt["invoice_balances"]
+                            )
                         if adapter.inventory(policy, job["payload"]):
                             baseline = db.execute(
                                 "SELECT p.response FROM qbwc_invoice_responses p JOIN qbwc_invoice_runs r ON r.id=p.run_id JOIN qbwc_invoice_steps s ON s.run_id=r.id AND s.phase='write' WHERE r.job_id=? AND p.phase='preflight'",

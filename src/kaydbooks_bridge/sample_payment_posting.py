@@ -128,8 +128,10 @@ def post(bridge, token, company, job_id, *, exchange=windows_exchange, read_exch
                 or db.execute("SELECT 1 FROM master_checks WHERE state='dispatched'").fetchone()
             ):
                 raise BridgeError("company read session active")
+            from .qbwc_contracts import attempt_count
+
             if (
-                db.execute("SELECT COUNT(*) FROM native_payment_attempts").fetchone()[0]
+                attempt_count(db, "customer-payment.create")
                 >= policy.sample_payment_posting["max_payments"]
             ):
                 raise BridgeError("sample dispatch quota reached")

@@ -1,5 +1,7 @@
 """Durable invoice dispatch envelopes and append-only QBWC exchange evidence."""
 
+from .qbwc_contracts import OPERATIONS_SQL
+
 
 def schema(db):
     db.execute("""CREATE TABLE IF NOT EXISTS qbwc_invoice_attempts (
@@ -10,9 +12,9 @@ def schema(db):
         "SELECT 1 FROM sqlite_master WHERE type='trigger' AND name='qbwc_contract_attempt_guard'"
     ).fetchone():
         db.execute("DROP TRIGGER IF EXISTS qbwc_invoice_attempt_guard")
-    db.execute("""CREATE TRIGGER IF NOT EXISTS qbwc_contract_attempt_guard
+    db.execute(f"""CREATE TRIGGER IF NOT EXISTS qbwc_contract_attempt_guard
         BEFORE INSERT ON qbwc_invoice_attempts WHEN NOT EXISTS
-        (SELECT 1 FROM jobs WHERE id=NEW.job_id AND operation IN ('invoice.create','bill.create')
+        (SELECT 1 FROM jobs WHERE id=NEW.job_id AND operation IN ({OPERATIONS_SQL})
          AND state='queued' AND submitter=NEW.actor AND attempt IS NULL)
         BEGIN SELECT RAISE(ABORT,'QBWC dispatch requires owned queued invoice'); END""")
     db.execute("""CREATE TABLE IF NOT EXISTS qbwc_invoice_runs (

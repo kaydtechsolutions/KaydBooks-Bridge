@@ -153,6 +153,36 @@ def test_bill_waits_for_web_connector_before_enabling_save(page, monkeypatch):
     assert page.get_by_role("button", name="Save and review", exact=True).is_disabled()
 
 
+def test_payment_waits_for_web_connector_before_enabling_save(page, monkeypatch):
+    monkeypatch.setattr(
+        web_ui, "check_masters", lambda *a, **kw: {"evidence": None, "pending": True}
+    )
+    page.get_by_role("button", name="New document", exact=True).first.click()
+    page.get_by_label("Document type", exact=True).select_option("customer-payment.create")
+    page.get_by_label("Source", exact=True).select_option("synthetic-intake")
+    form = page.locator("#document-form")
+    for name, value in {
+        "customer_id": "customer-a",
+        "deposit_id": "cash",
+        "method_id": "cash",
+    }.items():
+        form.locator(f'select[data-field="{name}"]').select_option(value)
+    for name, value in {
+        "ref_number": "WEB-PAY-1",
+        "txn_date": "2026-09-07",
+        "total_amount": "5.00",
+        "txn_id": "INV-1",
+        "amount": "5.00",
+    }.items():
+        form.locator(f'input[data-field="{name}"]').fill(value)
+    page.get_by_role("button", name="Check details", exact=True).click()
+    page.get_by_text(
+        "Customer payment check queued. Run Update Selected in QuickBooks Web Connector, then click Check details again.",
+        exact=True,
+    ).wait_for()
+    assert page.get_by_role("button", name="Save and review", exact=True).is_disabled()
+
+
 def fill_invoice(page, reference="WEB-1"):
     page.get_by_role("button", name="New document", exact=True).first.click()
     page.get_by_label("Source", exact=True).select_option("synthetic-intake")

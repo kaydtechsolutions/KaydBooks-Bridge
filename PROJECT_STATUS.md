@@ -1,5 +1,20 @@
 # KaydBooks Bridge project status
 
+Customer-payment browser checks, sample posting and query-only recovery now use
+Web Connector. Partial/full payments, explicit discounts and unapplied funds have
+automated coverage. Exact saved-payment readback must also prove invoice balance
+effects from the retained original preflight; lost responses never authorize a
+second write. Invoice, bill and customer-payment quotas remain separate, with each
+operation counting both native and QBWC attempts. Existing native reconciliation
+is retained. See [customer payments](docs/QBWC_CUSTOMER_PAYMENTS.md).
+Validation passed: 1,299 full-suite tests (43 optional checks skipped), 49 focused
+callback/schema checks, three browser waiting-state checks, lint, formatting,
+JavaScript syntax and package build. An isolated copy of the installed database
+preserved all 56 tables and 3,236 rows with identical contents, valid audit,
+integrity and foreign keys, and paused posting. The live database was not changed
+by this check. Installed customer-payment qualification is next; it is not claimed
+complete. The 28 broader acceptance gates remain unchanged.
+
 The blocked bill-interruption command was investigated. Read-only checks confirmed
 the normal installed service is running, company posting is paused, audit is valid,
 and the prepared candidate has zero attempts. The tool returned only "blocked by

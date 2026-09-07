@@ -14,7 +14,7 @@ evidence remain private. No production readiness is implied.
 | Credit memo | Native implementation exists; QBWC migration required |
 | Bill credit | Native implementation exists; QBWC migration required |
 | Account transfer | Not implemented |
-| Customer payment | Native implementation exists; QBWC migration required |
+| Customer payment | Browser master checks, posting and query-only recovery implemented through QBWC; automated partial/full, discount and unapplied-payment checks pass; installed QuickBooks qualification remains |
 | Supplier payment | Native implementation exists; QBWC migration required |
 | Check | Standalone checks not implemented |
 | Journal | Not implemented |
