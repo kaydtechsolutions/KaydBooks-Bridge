@@ -1,9 +1,19 @@
 # Install the Hermes data-entry system for multiple companies
 
 Target: **KB v0.1.0**. The full upload, confirmation, posting and WhatsApp workflow
-is still being implemented. The commands below install the current development
-foundation; they do not turn on production posting or complete channel integration.
+has passed a controlled-source sample invoice test. Actual attachment intake and
+complete installation/recovery walkthroughs remain open. The commands below install
+the current development candidate; they do not turn on production posting.
 There is no published v0.1.0 installer yet.
+
+A local bundle can be built with `tools/build_pilot_bundle.py`; it includes the
+Windows wheel, separate Hermes plugin, setup guides and a SHA-256 manifest.
+See [bundle instructions](../integrations/hermes/PILOT_BUNDLE.md). Its clean Windows
+environment installation, module imports, capabilities command and dependency
+consistency check passed. A signed snapshot/isolated restore retained 71 jobs,
+the completed batch confirmation and both provider receipts, with valid audit,
+database integrity and paused state. The restored copy never started a service.
+These checks do not close the outstanding end-to-end interruption qualification.
 
 ## Where each component runs
 

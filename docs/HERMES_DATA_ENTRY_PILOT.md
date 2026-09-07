@@ -96,7 +96,7 @@ estimate of time or effort.
 | V01-5 Eight selected entry types | All eight basic sample checks passed; supported variants remain bounded | 8/8 | 100% |
 | V01-6 Mini report in operator WhatsApp | Verified batch result has durable provider acknowledgment | 1/1 | 100% |
 | V01-7 Per-company onboarding/isolation walkthrough | Private setup exists; complete deployment walkthrough pending | 0/1 | 0% |
-| V01-8 Installable candidate and end-to-end recovery | Final candidate/walkthrough pending | 0/1 | 0% |
+| V01-8 Installable candidate and end-to-end recovery | Clean bundle installation and signed batch restore passed; end-to-end recovery remains open | 0/1 | 0% |
 | **Total** | **In development; not ready for production** | **12/15** | **80%** |
 
 Include this scorecard in major progress updates. Name the milestone changed and
