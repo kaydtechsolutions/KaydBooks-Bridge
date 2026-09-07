@@ -12,8 +12,10 @@ from .validation import digest
 
 def resolve(config, policy, store, db, actor, payload, reference, now):
     strict_keys(reference, {"transport", "connector", "id"})
+    if reference["transport"] == "qbwc":
+        return resolve_qbwc(config, policy, store, db, actor, payload, reference, now)
     if reference["transport"] != "direct-sdk":
-        raise BridgeError("bill evidence currently requires direct-sdk")
+        raise BridgeError("unsupported bill evidence transport")
     connector = config.connectors.get(identifier(reference["connector"]))
     if connector is None or connector.company != policy.id:
         raise BridgeError("bill evidence company or connector mismatch")
@@ -62,5 +64,61 @@ def resolve(config, policy, store, db, actor, payload, reference, now):
         "observed_at": observed,
         "context_sha256": check["context_sha256"],
         "response_sha256": digest(row["response"]),
+        "identity_sha256": identity,
+    }
+
+
+def resolve_qbwc(config, policy, store, db, actor, payload, reference, now):
+    from .validation import canonical
+
+    connector = config.connectors.get(identifier(reference["connector"]))
+    if connector is None or connector.company != policy.id:
+        raise BridgeError("bill evidence company or connector mismatch")
+    config.authorize(actor, policy.id, "read")
+    config.authorize(actor, policy.id, "validate")
+    identifier(reference["id"])
+    job = db.execute("SELECT * FROM qbwc_invoice_jobs WHERE id=?", (reference["id"],)).fetchone()
+    if (
+        job is None
+        or job["operation"] != "bill.create"
+        or job["txn_id"] is not None
+        or job["actor"] != actor
+        or job["connector"] != connector.id
+        or job["payload"] != canonical(payload)
+        or not store.verify_audit(db)
+    ):
+        raise BridgeError("verified owned exact bill master evidence required")
+    row = db.execute("SELECT * FROM qbwc_sessions WHERE ticket=?", (job["ticket"],)).fetchone()
+    check = plan(policy, payload)
+    if (
+        row is None
+        or row["state"] not in ("verified", "closed")
+        or row["response_result"] != 100
+        or row["last_error"]
+        or row["connector"] != connector.id
+        or job["context_hash"] != check["context_sha256"]
+    ):
+        raise BridgeError("verified QBWC bill evidence required")
+    observed = row["created_at"]
+    if (
+        not math.isfinite(now)
+        or not math.isfinite(observed)
+        or not 0 <= now - observed < policy.invoice_evidence_max_age_seconds
+    ):
+        raise BridgeError("bill evidence is stale; run a fresh exact check")
+    expected = append_check(
+        DurableQBWCDiscoveryService._discovery_request(row["correlation"], "17.0"),
+        row["correlation"],
+        check,
+    )
+    if row["request_xml"] != expected:
+        raise BridgeError("bill evidence request differs")
+    discovery = validate_check(row["response_xml"], row["correlation"], check)
+    identity, _ = DurableQBWCDiscoveryService._verify_discovery_response(discovery, row, connector)
+    return {
+        "reference": reference,
+        "observed_at": observed,
+        "context_sha256": check["context_sha256"],
+        "response_sha256": digest(row["response_xml"]),
         "identity_sha256": identity,
     }

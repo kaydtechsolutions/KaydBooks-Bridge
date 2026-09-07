@@ -1,5 +1,27 @@
 # KaydBooks Bridge project status
 
+Supplier bills now use Web Connector for browser master checks, controlled posting
+and query-only recovery. The installed sample verified one USD20 bill containing
+expense, purchased-service and inventory lines. Exact saved-record and BillToPay
+queries verified all three lines and USD20 outstanding, and inventory readback
+proved stock 0 -> 2 with average cost USD5. One attempt and one write handoff were
+retained; repeat posting/recovery were refused and response hashes/audit passed.
+Posting is paused. Native and QBWC bills share their own cumulative quota (nine
+attempts), separately from invoices (eleven). The shared schema retains prior
+histories and binds each read to an immutable operation. See
+[bill transport](docs/QBWC_BILL_POSTING.md) and the explicit
+[14-entry readiness checklist](docs/DATA_ENTRY_READINESS.md).
+The affected suite passed 174 tests; three additional bill stock/permission checks
+also passed. The default full suite passed 1,282 tests with 41 optional browser/OCR
+checks skipped. Actual bill interruption qualification remains blocked: automatic
+approval review rejected the command to stop the normal Bridge and start a private
+one-job fault harness, reporting only "blocked by policy". The command did not run.
+The normal service remains running, posting is paused, and the prepared recovery
+candidate has zero write attempts. The browser suite separately passed 27 checks
+(one OCR-dependent check skipped), and the added bill waiting-state check passed
+alongside the existing invoice waiting-state check. Lint, formatting, JavaScript
+syntax and package build passed. The other data-entry migrations remain unfinished.
+
 An actual QBWC mixed inventory/service invoice is now sample-qualified. The USD15
 invoice sold two stock units at USD5 and one USD5 service. Independent exact-TxnID
 readback matched both lines and the amount, and inventory evidence verified stock

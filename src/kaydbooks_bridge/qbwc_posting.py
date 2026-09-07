@@ -11,16 +11,8 @@ from xml.etree.ElementTree import ParseError
 from qbwc_kit.qbxml import parse_response
 
 from .config import BridgeError, Config
-from .invoice_evidence import require
-from .invoice_receipt import (
-    add_request,
-    append_lookup,
-    inventory_specs,
-    validate_lookup,
-    validate_receipt,
-)
 from .qbwc import ACTIVE_STATES, DurableQBWCDiscoveryService
-from .sample_posting import check_preflight, context_hash, gate, preflight, verify_stock_effect
+from .qbwc_contracts import attempt_count, contract
 from .service import audited
 from .validation import canonical, digest
 
@@ -30,13 +22,14 @@ def _run_id():
 
 
 def _authority(config, policy, store, db, job, actor, now):
-    connector = gate(config, actor, policy, job, now)
+    adapter = contract(job["operation"])
+    connector = adapter.module("posting").gate(config, actor, policy, job, now)
     from .dispatch import require as dispatch
     from .source_review import require as review
 
     review(config, policy, store, db, job)
     dispatch(config, actor, policy, store, db, job, now)
-    require(config, policy, store, db, job, now)
+    adapter.require(config, policy, store, db, job, now)
     if db.execute("SELECT paused FROM control").fetchone()[0]:
         raise BridgeError("company paused")
     if not store.verify_audit(db):
@@ -73,13 +66,12 @@ def enqueue(bridge, token, company, job_id):
             "SELECT 1 FROM jobs WHERE state IN ('in-flight','posted-unverified','unknown')"
         ).fetchone():
             raise BridgeError("unresolved company write")
-        count = db.execute(
-            "SELECT (SELECT COUNT(*) FROM native_invoice_attempts) + (SELECT COUNT(*) FROM qbwc_invoice_attempts)"
-        ).fetchone()[0]
-        if count >= policy.sample_posting["max_invoices"]:
+        adapter = contract(job["operation"])
+        settings = getattr(policy, adapter.settings)
+        if attempt_count(db, job["operation"]) >= settings[adapter.limit]:
             raise BridgeError("sample dispatch quota reached")
         run, attempt = _run_id(), uuid.uuid4().hex
-        request = add_request(policy, job["payload"], run + "998")
+        request = adapter.module("receipt").add_request(policy, job["payload"], run + "998")
         db.execute(
             "INSERT INTO qbwc_invoice_attempts VALUES (?,?,?,?,?,?,?,?)",
             (
@@ -89,8 +81,8 @@ def enqueue(bridge, token, company, job_id):
                 actor,
                 now,
                 request,
-                context_hash(policy, job, connector),
-                policy.sample_posting["authorization"],
+                contract(job["operation"]).module("posting").context_hash(policy, job, connector),
+                settings["authorization"],
             ),
         )
         db.execute(
@@ -131,7 +123,8 @@ def recover(bridge, token, company, job_id):
         connector = config.connectors[attempt["connector"]]
         if (
             connector.company != company
-            or context_hash(policy, job, connector) != attempt["context_hash"]
+            or contract(job["operation"]).module("posting").context_hash(policy, job, connector)
+            != attempt["context_hash"]
             or not store.verify_audit(db)
         ):
             raise BridgeError("original QBWC context and intact audit required")
@@ -274,7 +267,8 @@ class DurableQBWCPostingService(DurableQBWCDiscoveryService):
         connector = self.config.connectors[a["connector"]]
         if (
             connector.company != store.company
-            or context_hash(policy, job, connector) != a["context_hash"]
+            or contract(job["operation"]).module("posting").context_hash(policy, job, connector)
+            != a["context_hash"]
             or job["attempt"] != a["attempt"]
             or not store.verify_audit(db)
         ):
@@ -299,6 +293,7 @@ class DurableQBWCPostingService(DurableQBWCDiscoveryService):
                     a, job, policy, connector = self._context(
                         db, store, run, writing=phase in ("preflight", "write")
                     )
+                    adapter = contract(job["operation"])
                     version = self._callback_version(
                         call.get("qbXMLMajorVers"),
                         call.get("qbXMLMinorVers"),
@@ -338,7 +333,9 @@ class DurableQBWCPostingService(DurableQBWCDiscoveryService):
                             raise BridgeError("QBWC request hash differs")
                         return old["request"]
                     if phase in ("preflight", "find"):
-                        request = preflight(policy, job["payload"], run["id"])
+                        request = adapter.module("posting").preflight(
+                            policy, job["payload"], run["id"]
+                        )
                     elif phase == "write":
                         previous = db.execute(
                             "SELECT response FROM qbwc_invoice_responses WHERE run_id=? AND phase='preflight'",
@@ -346,7 +343,7 @@ class DurableQBWCPostingService(DurableQBWCDiscoveryService):
                         ).fetchone()
                         if (
                             previous is None
-                            or check_preflight(
+                            or adapter.check_preflight(
                                 previous[0], policy, job["payload"], connector, run["id"]
                             )
                             is not None
@@ -358,7 +355,9 @@ class DurableQBWCPostingService(DurableQBWCDiscoveryService):
                         ).fetchone()
                         if self.clock() - first[0] > 120:
                             raise BridgeError("QBWC preflight expired")
-                        request = add_request(policy, job["payload"], run["id"] + "998")
+                        request = adapter.module("receipt").add_request(
+                            policy, job["payload"], run["id"] + "998"
+                        )
                         if request != a["request"]:
                             raise BridgeError("QBWC approved request differs")
                         if db.execute(
@@ -375,7 +374,7 @@ class DurableQBWCPostingService(DurableQBWCDiscoveryService):
                             {"run": run["id"], "request_hash": digest(request)},
                         )
                     elif phase == "lookup":
-                        request = append_lookup(
+                        request = adapter.module("receipt").append_lookup(
                             self._discovery_request(run["id"], "17.0"),
                             run["id"],
                             run["txn_id"],
@@ -432,12 +431,13 @@ class DurableQBWCPostingService(DurableQBWCDiscoveryService):
                 result = -1
                 try:
                     a, job, policy, connector = self._context(db, store, run)
+                    adapter = contract(job["operation"])
                     if digest(step["request"]) != step["request_hash"]:
                         raise BridgeError("QBWC request evidence differs")
                     if call.get("hresult"):
                         raise BridgeError("QuickBooks processor error; reconciliation required")
                     if phase in ("preflight", "find"):
-                        matched = check_preflight(
+                        matched = adapter.check_preflight(
                             response,
                             policy,
                             job["payload"],
@@ -467,12 +467,12 @@ class DurableQBWCPostingService(DurableQBWCDiscoveryService):
                             )
                             result = 25
                     elif phase == "write":
-                        receipt = validate_receipt(
+                        receipt = adapter.module("receipt").validate_receipt(
                             response,
                             policy,
                             job["payload"],
                             run["id"] + "998",
-                            operation="InvoiceAdd",
+                            operation=adapter.add_operation,
                         )
                         db.execute(
                             "UPDATE jobs SET state='posted-unverified',txn_id=?,detail='qbwc_readback_pending' WHERE id=?",
@@ -484,7 +484,7 @@ class DurableQBWCPostingService(DurableQBWCDiscoveryService):
                         )
                         result = 75
                     elif phase == "lookup":
-                        discovery, receipt = validate_lookup(
+                        discovery, receipt = adapter.module("receipt").validate_lookup(
                             response, run["id"], policy, job["payload"], run["txn_id"]
                         )
                         identity, _ = self._verify_discovery_response(
@@ -492,7 +492,7 @@ class DurableQBWCPostingService(DurableQBWCDiscoveryService):
                             {"correlation": run["id"], "country": "US", "qbxml_version": "17.0"},
                             connector,
                         )
-                        if inventory_specs(policy, job["payload"]):
+                        if adapter.inventory(policy, job["payload"]):
                             baseline = db.execute(
                                 "SELECT p.response FROM qbwc_invoice_responses p JOIN qbwc_invoice_runs r ON r.id=p.run_id JOIN qbwc_invoice_steps s ON s.run_id=r.id AND s.phase='write' WHERE r.job_id=? AND p.phase='preflight'",
                                 (job["id"],),
@@ -505,7 +505,9 @@ class DurableQBWCPostingService(DurableQBWCDiscoveryService):
                                 if rs.entity == "ItemInventory"
                                 for record in rs.records
                             }
-                            receipt["stock_effects"] = verify_stock_effect(
+                            receipt["stock_effects"] = adapter.module(
+                                "posting"
+                            ).verify_stock_effect(
                                 policy, job["payload"], before, receipt["stock_observations"]
                             )
                         proof = {
@@ -518,7 +520,7 @@ class DurableQBWCPostingService(DurableQBWCDiscoveryService):
                             "response_sha256": digest(response),
                             "identity_sha256": identity,
                             "receipt": receipt,
-                            "origin": "qbwc-invoice-readback",
+                            "origin": "qbwc-" + adapter.name + "-readback",
                             "bridge_dispatched": bool(
                                 db.execute(
                                     "SELECT 1 FROM qbwc_invoice_steps s JOIN qbwc_invoice_runs r ON r.id=s.run_id WHERE r.job_id=? AND s.phase='write'",
@@ -527,11 +529,16 @@ class DurableQBWCPostingService(DurableQBWCDiscoveryService):
                             ),
                         }
                         db.execute(
-                            "UPDATE jobs SET state='verified',txn_id=?,detail='qbwc_invoice_verified' WHERE id=?",
-                            (receipt["txn_id"], job["id"]),
+                            "UPDATE jobs SET state='verified',txn_id=?,detail=? WHERE id=?",
+                            (receipt["txn_id"], "qbwc_" + adapter.name + "_verified", job["id"]),
                         )
                         store.event(
-                            db, self.clock(), a["actor"], job["id"], "qbwc_invoice_verified", proof
+                            db,
+                            self.clock(),
+                            a["actor"],
+                            job["id"],
+                            "qbwc_" + adapter.name + "_verified",
+                            proof,
                         )
                         db.execute(
                             "UPDATE qbwc_invoice_runs SET phase='done' WHERE id=?", (run["id"],)

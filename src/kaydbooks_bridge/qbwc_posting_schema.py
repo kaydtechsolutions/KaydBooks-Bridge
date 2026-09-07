@@ -6,9 +6,13 @@ def schema(db):
         job_id TEXT PRIMARY KEY REFERENCES jobs(id), attempt TEXT NOT NULL UNIQUE,
         connector TEXT NOT NULL, actor TEXT NOT NULL, created_at REAL NOT NULL,
         request TEXT NOT NULL, context_hash TEXT NOT NULL, authorization TEXT NOT NULL)""")
-    db.execute("""CREATE TRIGGER IF NOT EXISTS qbwc_invoice_attempt_guard
+    if not db.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='trigger' AND name='qbwc_contract_attempt_guard'"
+    ).fetchone():
+        db.execute("DROP TRIGGER IF EXISTS qbwc_invoice_attempt_guard")
+    db.execute("""CREATE TRIGGER IF NOT EXISTS qbwc_contract_attempt_guard
         BEFORE INSERT ON qbwc_invoice_attempts WHEN NOT EXISTS
-        (SELECT 1 FROM jobs WHERE id=NEW.job_id AND operation='invoice.create'
+        (SELECT 1 FROM jobs WHERE id=NEW.job_id AND operation IN ('invoice.create','bill.create')
          AND state='queued' AND submitter=NEW.actor AND attempt IS NULL)
         BEGIN SELECT RAISE(ABORT,'QBWC dispatch requires owned queued invoice'); END""")
     db.execute("""CREATE TABLE IF NOT EXISTS qbwc_invoice_runs (

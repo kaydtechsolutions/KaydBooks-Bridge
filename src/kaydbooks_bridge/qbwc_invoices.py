@@ -11,7 +11,17 @@ from .invoice_compatibility import plan, validate_response
 from .validation import canonical
 
 
-def make_plan(company, payload, txn_id=None):
+def make_plan(company, payload, txn_id=None, operation="invoice.create"):
+    from .qbwc_contracts import contract
+
+    contract(operation)
+    if operation == "bill.create":
+        if txn_id is not None:
+            raise BridgeError("standalone QBWC bill receipt checks are unavailable")
+        from .bill_lookup import plan as bill_plan
+
+        return {**bill_plan(company, payload), "operation": operation}
+
     if txn_id is None:
         return plan(company, payload)
     from .invoice_receipt import lookup_context
@@ -25,6 +35,11 @@ def make_plan(company, payload, txn_id=None):
 
 
 def append_request(request, correlation, check):
+    if check.get("operation") == "bill.create":
+        from .bill_lookup import append_check
+
+        return append_check(request, correlation, check)
+
     if "txn_id" in check:
         from .invoice_receipt import append_lookup
 
@@ -37,6 +52,11 @@ def append_request(request, correlation, check):
 
 
 def check_response(response, correlation, check):
+    if check.get("operation") == "bill.create":
+        from .bill_lookup import validate_check
+
+        return validate_check(response, correlation, check), None
+
     if "txn_id" in check:
         from .invoice_receipt import validate_lookup
 
@@ -51,13 +71,23 @@ def current_plan(service, job, connector):
     service.config.authorize(job["actor"], connector.company, "read")
     if job["connector"] != connector.id:
         raise BridgeError("invoice lookup connector mismatch")
-    check = make_plan(company, json.loads(job["payload"]), job["txn_id"])
+    check = make_plan(company, json.loads(job["payload"]), job["txn_id"], job["operation"])
     if check["context_sha256"] != job["context_hash"]:
         raise BridgeError("invoice lookup policy changed; use a new job")
     return check
 
 
-def invoice_job(service, token, connector_id, job_id, *, payload=None, enqueue=False, txn_id=None):
+def invoice_job(
+    service,
+    token,
+    connector_id,
+    job_id,
+    *,
+    payload=None,
+    enqueue=False,
+    txn_id=None,
+    operation="invoice.create",
+):
     from .qbwc import UNCONFIRMED_IDENTITY
 
     actor = service.config.authenticate(token)
@@ -75,7 +105,7 @@ def invoice_job(service, token, connector_id, job_id, *, payload=None, enqueue=F
         if job is None:
             if not enqueue or payload is None:
                 raise BridgeError("new invoice check requires payload and enqueue")
-            check = make_plan(company, payload, txn_id)
+            check = make_plan(company, payload, txn_id, operation)
             if any(
                 db.execute(
                     f"SELECT 1 FROM {table} WHERE connector=? AND ticket IS NULL", (connector_id,)
@@ -84,8 +114,16 @@ def invoice_job(service, token, connector_id, job_id, *, payload=None, enqueue=F
             ):
                 raise BridgeError("connector already has a queued read job")
             db.execute(
-                "INSERT INTO qbwc_invoice_jobs(id,actor,connector,payload,context_hash,txn_id) VALUES(?,?,?,?,?,?)",
-                (job_id, actor, connector_id, canonical(payload), check["context_sha256"], txn_id),
+                "INSERT INTO qbwc_invoice_jobs(id,actor,connector,payload,context_hash,txn_id,operation) VALUES(?,?,?,?,?,?,?)",
+                (
+                    job_id,
+                    actor,
+                    connector_id,
+                    canonical(payload),
+                    check["context_sha256"],
+                    txn_id,
+                    operation,
+                ),
             )
             store.event(
                 db,
@@ -96,7 +134,11 @@ def invoice_job(service, token, connector_id, job_id, *, payload=None, enqueue=F
                 {"job": job_id, "context_hash": check["context_sha256"]},
             )
             return {"job": job_id, "state": "queued", "live_posting": False}
-        if job["actor"] != actor or job["connector"] != connector_id:
+        if (
+            job["actor"] != actor
+            or job["connector"] != connector_id
+            or job["operation"] != operation
+        ):
             raise BridgeError("invoice check ownership mismatch")
         if payload is not None and canonical(payload) != job["payload"]:
             raise BridgeError("invoice check payload is immutable")
@@ -126,6 +168,16 @@ def invoice_job(service, token, connector_id, job_id, *, payload=None, enqueue=F
                 store.event(
                     db, time.time(), actor, None, "qbwc_invoice_receipt_read", {"job": job_id}
                 )
+                return result
+            if operation == "bill.create":
+                result.update(
+                    operation="bill-master-compatibility",
+                    transport="qbwc",
+                    compatibility="matched",
+                    scope="master-evidence-only",
+                    context_sha256=check["context_sha256"],
+                )
+                store.event(db, time.time(), actor, None, "qbwc_bill_check_read", {"job": job_id})
                 return result
             result.update(
                 operation="invoice-master-compatibility",

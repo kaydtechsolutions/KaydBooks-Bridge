@@ -88,6 +88,17 @@ class Store:
                 ON qbwc_invoice_jobs(connector) WHERE ticket IS NULL""")
             if "txn_id" not in {r[1] for r in db.execute("PRAGMA table_info(qbwc_invoice_jobs)")}:
                 db.execute("ALTER TABLE qbwc_invoice_jobs ADD COLUMN txn_id TEXT")
+            if "operation" not in {
+                r[1] for r in db.execute("PRAGMA table_info(qbwc_invoice_jobs)")
+            }:
+                db.execute(
+                    "ALTER TABLE qbwc_invoice_jobs ADD COLUMN operation TEXT NOT NULL DEFAULT 'invoice.create' CHECK(operation IN ('invoice.create','bill.create'))"
+                )
+                db.execute("DROP TRIGGER IF EXISTS jobs_state_transition_guard")
+                db.execute("DROP TRIGGER IF EXISTS qbwc_not_dispatched_insert_guard")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS qbwc_read_operation_immutable
+                BEFORE UPDATE OF operation ON qbwc_invoice_jobs WHEN NEW.operation IS NOT OLD.operation
+                BEGIN SELECT RAISE(ABORT,'immutable read operation'); END""")
             db.execute("""CREATE TRIGGER IF NOT EXISTS invoice_selector_immutable
                 BEFORE UPDATE OF txn_id ON qbwc_invoice_jobs WHEN NEW.txn_id IS NOT OLD.txn_id
                 BEGIN SELECT RAISE(ABORT,'immutable invoice selector'); END""")
@@ -593,7 +604,7 @@ class Store:
                 BEFORE INSERT ON qbwc_not_dispatched WHEN
                 NOT EXISTS (SELECT 1 FROM jobs j JOIN qbwc_invoice_attempts a ON a.job_id=j.id
                     WHERE j.id=NEW.job_id AND j.state='unknown' AND j.txn_id IS NULL
-                    AND j.operation='invoice.create' AND a.actor=NEW.actor)
+                    AND j.operation IN ('invoice.create','bill.create') AND a.actor=NEW.actor)
                 OR NOT EXISTS (SELECT 1 FROM qbwc_invoice_runs WHERE job_id=NEW.job_id AND phase='held')
                 OR EXISTS (SELECT 1 FROM qbwc_invoice_steps s JOIN qbwc_invoice_runs r ON r.id=s.run_id
                     WHERE r.job_id=NEW.job_id)
@@ -622,7 +633,7 @@ class Store:
                         AND EXISTS (SELECT 1 FROM native_bill_rejections WHERE job_id=OLD.id))
                     OR (OLD.state='unknown' AND NEW.state='failed' AND NEW.operation='supplier-payment.create'
                         AND EXISTS (SELECT 1 FROM native_supplier_payment_rejections WHERE job_id=OLD.id))
-                    OR (OLD.state='unknown' AND NEW.state='failed' AND NEW.operation='invoice.create'
+                    OR (OLD.state='unknown' AND NEW.state='failed' AND NEW.operation IN ('invoice.create','bill.create')
                         AND EXISTS (SELECT 1 FROM qbwc_not_dispatched WHERE job_id=OLD.id))
                 )
                 BEGIN SELECT RAISE(ABORT, 'invalid job state transition'); END""")
@@ -820,6 +831,12 @@ class Store:
                 ).fetchone()
                 else "native_invoice_verified"
             )
+            if db.execute(
+                "SELECT 1 FROM qbwc_invoice_attempts WHERE job_id=?", (job_id,)
+            ).fetchone():
+                from .qbwc_contracts import contract
+
+                event = "qbwc_" + contract(result["operation"]).name + "_verified"
             native = db.execute(
                 "SELECT data FROM audit WHERE job_id=? AND event=? ORDER BY sequence DESC LIMIT 1",
                 (job_id, event),

@@ -48,7 +48,9 @@ def resolve(config, policy, store, db, actor, payload, reference, now):
             ).fetchone()
         )
         if (
-            session is None
+            row is None
+            or row["operation"] != "invoice.create"
+            or session is None
             or session["state"] not in ("verified", "closed")
             or session["response_result"] != 100
             or session["last_error"]

@@ -131,6 +131,28 @@ def test_invoice_waits_for_web_connector_before_enabling_save(page, monkeypatch)
     assert page.get_by_role("button", name="Save and review", exact=True).is_enabled()
 
 
+def test_bill_waits_for_web_connector_before_enabling_save(page, monkeypatch):
+    monkeypatch.setattr(
+        web_ui, "check_masters", lambda *a, **kw: {"evidence": None, "pending": True}
+    )
+    page.get_by_role("button", name="New document", exact=True).first.click()
+    page.get_by_label("Document type", exact=True).select_option("bill.create")
+    page.get_by_label("Source", exact=True).select_option("synthetic-intake")
+    form = page.locator("#document-form")
+    form.locator('select[data-field="vendor_id"]').select_option("vendor-a")
+    form.locator('input[data-field="txn_date"]').fill("2026-09-07")
+    form.locator('input[data-field="due_date"]').fill("2026-10-07")
+    form.locator('input[data-field="ref_number"]').fill("WEB-BILL-1")
+    form.locator('#lines select[data-field="expense_id"]').select_option("office")
+    form.locator('#lines input[data-field="amount"]').fill("5.00")
+    page.get_by_role("button", name="Check details", exact=True).click()
+    page.get_by_text(
+        "Bill check queued. Run Update Selected in QuickBooks Web Connector, then click Check details again.",
+        exact=True,
+    ).wait_for()
+    assert page.get_by_role("button", name="Save and review", exact=True).is_disabled()
+
+
 def fill_invoice(page, reference="WEB-1"):
     page.get_by_role("button", name="New document", exact=True).first.click()
     page.get_by_label("Source", exact=True).select_option("synthetic-intake")
