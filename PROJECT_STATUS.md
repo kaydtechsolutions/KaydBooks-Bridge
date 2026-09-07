@@ -5,23 +5,26 @@
 The operator narrowed active work to Hermes upload -> exact operator confirmation
 -> Web Connector data entry -> mini result in the operator's Hermes WhatsApp chat.
 Keep the eight selected entry types. Daily reports, customer statement delivery
-and broader roadmap expansion are deferred. The current score is **8/15 verified
-acceptance checks (53.3%, rounded 53%)**; all eight entry types passed basic
-sample qualification, while seven workflow/setup checks remain open. Partial
+and broader roadmap expansion are deferred. The current score is **12/15 verified
+acceptance checks (80%)**; all eight entry types passed basic sample qualification,
+and native confirmation, remote connection, dispatch/readback and result delivery
+passed. Three workflow/setup checks remain open. Partial
 implementation is not counted as a passed end-to-end check. See the
 [milestone scorecard](docs/HERMES_DATA_ENTRY_PILOT.md) and
 [multi-company installation guide](docs/INSTALL_HERMES_DATA_ENTRY.md).
 Every major progress update must include this version, milestone status and score.
-Linux Hermes host details and the operator's WhatsApp destination are needed for
-actual connection/delivery qualification. Only bounded, separately approved sample accounting tests were performed.
-No external messages were sent. Production posting remains disabled.
+Linux Hermes connection and the approved operator's WhatsApp destination have been
+verified. Only bounded, separately approved sample accounting tests and operator
+preview/result messages were performed. Posting is paused after verification.
+Production posting remains disabled.
 
 ## Eight-entry milestone completed
 
 All eight selected transaction paths have implementations, browser forms and basic
 installed Web Connector sample qualification. **V01-5: 8/8 (100%)**. The complete
-v0.1.0 workflow remains **8/15 checks (53.3%)**; seven Hermes/workflow/setup checks
-remain open. Supported transaction variants are bounded; this is not production
+v0.1.0 workflow is **12/15 checks (80%)**; autonomous upload/preparation, per-company
+onboarding and final installation/recovery qualification remain open.
+Supported transaction variants are bounded; this is not production
 or complete conversational-workflow qualification.
 
 The original sample journal's warning-530 memo problem is resolved. A separately

@@ -165,3 +165,13 @@ operator attachment conversation or a paid model run. It closes V01-2, V01-4 and
 V01-6, while V01-1, V01-7 and V01-8 remain open. The invoice receipt verifies the
 saved transaction, not a fresh full customer-balance report.
 See [channel integration](HERMES_CHANNEL.md) for installation and trust boundaries.
+
+A second approved USD5 service invoice used the actual operator-uploaded attachment.
+Its source was captured through Hermes, but preparation required assisted MCP calls
+after the namespace, required-parameter and field-confidence fixes. An expired
+confirmation was rejected without posting. Fresh evidence revalidated the same job;
+the operator confirmed the replacement preview through native WhatsApp. One QBWC
+posting attempt reached verified readback, and preview/result provider receipts
+were retained. Posting was paused afterward and the audit verified successfully.
+This strengthens the existing confirmation/posting/delivery evidence, but does not
+close autonomous upload/preparation V01-1. The score remains **12/15 (80%)**.
