@@ -1,5 +1,14 @@
 # KaydBooks Bridge project status
 
+The operator now requires QuickBooks Web Connector (`.qwc`) as the primary client
+connection. See [the connection decision](docs/WEB_CONNECTOR_DIRECTION.md).
+Existing Web Connector reads and native sample transactions remain as tested;
+transaction/report migration through Web Connector is not yet completed. Next:
+durable QBWC invoice execution and interruption/recovery, then the remaining required
+entry/report contracts. Native-only evidence must not close QBWC qualification gates.
+This is a deployment-direction change; it does not enable accounting posting or
+complete any of the 28 unfinished gates recorded below. Tax remains excluded.
+
 Customer inventory returns and stock reconciliation are installed-sample qualified.
 A separately approved USD15 mixed credit returned two stock units plus one service
 line against the verified original invoice. Stock increased 0 -> 2, average cost

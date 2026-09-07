@@ -1,5 +1,11 @@
 # Configure your own company
 
+The required client connection is now QuickBooks Web Connector (`.qwc`). The normal
+client setup targets QuickBooks Desktop plus Web Connector, without a separate
+developer SDK installation. Existing direct-SDK sample tests are not a completed
+Web Connector posting setup; follow the
+[connection direction and migration status](WEB_CONNECTOR_DIRECTION.md).
+
 KaydBooks Bridge code is reusable. Company names, file locations, identity claims,
 master mappings, credentials and test authorizations belong in private configuration
 outside every Git checkout. The project's sample-company qualification does not

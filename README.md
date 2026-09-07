@@ -13,6 +13,11 @@ as Bridge endpoints: they do not enforce Bridge company permissions or durable j
 
 ## What works now
 
+**Client connection decision:** QuickBooks Web Connector (`.qwc`) is the required
+primary connection. Existing Web Connector reads work; transaction/report migration
+from the direct-SDK adapters remains unfinished. See the
+[connection decision and migration requirements](docs/WEB_CONNECTOR_DIRECTION.md).
+
 The agreed [first-release scope and acceptance checklist](docs/FIRST_RELEASE_SCOPE.md)
 covers the remaining transactions, inputs, posting modes and reports. M3–M6 must meet
 their required gates before final M7 deployment qualification; tax functionality and

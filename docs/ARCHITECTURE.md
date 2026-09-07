@@ -1,5 +1,12 @@
 # Architecture and durable implementation plan
 
+## Current connection decision
+
+QuickBooks Web Connector (`.qwc`) is the operator-selected primary client transport.
+The [Web Connector direction](WEB_CONNECTOR_DIRECTION.md) supersedes any earlier
+direct-SDK-first deployment guidance. Native sample evidence below remains valid
+for its tested transport; it does not establish Web Connector transaction support.
+
 ## Decision record: application layer around qbwc-kit
 
 The inherited library provides SOAP dispatch, qbXML builders/parsers, in-memory
