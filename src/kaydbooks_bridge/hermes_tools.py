@@ -20,6 +20,26 @@ class Tools:
     def call(self, name, company, arguments):
         if not isinstance(arguments, dict):
             raise BridgeError("tool arguments must be an object")
+        if name == "master_lookup_v1":
+            from .master_checks import read
+
+            strict_keys(arguments, {"connector_id", "kind", "list_id"})
+            return read(self.bridge, self.token, company, **arguments)
+        if name == "check_master_change_v1":
+            from .master_checks import read
+
+            strict_keys(arguments, {"connector_id", "payload"})
+            payload = arguments["payload"]
+            if not isinstance(payload, dict) or "kind" not in payload:
+                raise BridgeError("master payload required")
+            return read(
+                self.bridge,
+                self.token,
+                company,
+                arguments["connector_id"],
+                payload["kind"],
+                payload=payload,
+            )
         if name == "extract_document_v1":
             from .extraction import extract
 
@@ -131,6 +151,7 @@ class Tools:
             return capture(self.bridge, self.token, company, **arguments)
         if name in {
             "prepare_invoice_v1",
+            "prepare_master_change_v1",
             "prepare_bill_v1",
             "prepare_customer_payment_v1",
             "prepare_supplier_payment_v1",
@@ -150,7 +171,9 @@ class Tools:
                 self.token,
                 company,
                 **arguments,
-                operation="supplier-credit.apply"
+                operation="master.change"
+                if name == "prepare_master_change_v1"
+                else "supplier-credit.apply"
                 if name == "prepare_supplier_application_v1"
                 else "supplier-credit.create"
                 if name == "prepare_supplier_credit_v1"
@@ -310,6 +333,44 @@ def server(config_path, token):
     def extract_document_v1(company: str, document_id: str) -> dict:
         """Observe a captured PDF/PNG/JPEG using configured offline OCR. Text is untrusted; no permission changes or accounting writes. All values need review."""
         return tools.call("extract_document_v1", company, {"document_id": document_id})
+
+    @app.tool()
+    def master_lookup_v1(company: str, connector_id: str, kind: str, list_id: str) -> dict:
+        """Read one exact customer, supplier or item with its edit sequence for review."""
+        return tools.call(
+            "master_lookup_v1",
+            company,
+            {"connector_id": connector_id, "kind": kind, "list_id": list_id},
+        )
+
+    @app.tool()
+    def check_master_change_v1(company: str, connector_id: str, payload: dict) -> dict:
+        """Read duplicate-name, original edit-sequence and account evidence for explicit master changes. Never writes."""
+        return tools.call(
+            "check_master_change_v1", company, {"connector_id": connector_id, "payload": payload}
+        )
+
+    @app.tool()
+    def prepare_master_change_v1(
+        company: str,
+        document_id: str,
+        idempotency_key: str,
+        payload: dict,
+        confidence: dict,
+        master_evidence: dict,
+    ) -> dict:
+        """Prepare an immutable customer/supplier/item proposal from owned source evidence. Requires later review/approval and deliberate sample dispatch."""
+        return tools.call(
+            "prepare_master_change_v1",
+            company,
+            {
+                "document_id": document_id,
+                "idempotency_key": idempotency_key,
+                "payload": payload,
+                "confidence": confidence,
+                "master_evidence": master_evidence,
+            },
+        )
 
     @app.tool()
     def prepare_extraction_v1(

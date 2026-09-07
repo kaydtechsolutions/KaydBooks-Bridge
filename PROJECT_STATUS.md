@@ -1,10 +1,24 @@
 # KaydBooks Bridge project status
 
 Tax functionality and tax reports are excluded from this release by operator instruction
-on 2026-09-07. Non-tax checks remain enforced. 29 acceptance gates remain unfinished:
-M3—10, M4—2, M5—2, M6—11, M7—4. Manual, scheduled and bounded automatic modes
+on 2026-09-07. Non-tax checks remain enforced. 28 acceptance gates remain unfinished:
+M3—9, M4—2, M5—2, M6—11, M7—4. Master records M3-11, manual, scheduled and bounded automatic modes
 M5-02/03/04, company access M4-07, draft revisions M4-06, spreadsheet intake M4-04,
 and offline document extraction M4-03 pass.
+
+Master creation/update now uses shared sources, review, approvals and durable native
+attempts. Five isolated sample masters (customer, supplier, sales service, purchased
+service and inventory) were created and then updated, with ten independently verified
+receipts. Two native response quirks were fixed and the original attempts recovered
+without repeat writes. No existing business record was changed or deleted. Customer
+and vendor balance summaries remain USD32 and USD23; new stock and balances are zero.
+The company is paused and the ten-attempt master quota is exhausted.
+Installed browser master review passes on desktop/mobile over verified TLS. Signed
+isolated restore preserved all 42 jobs and 1,839 files, including every master attempt
+and evidence link, with valid integrity/audit and no restored service activation.
+The clean full run passed 1,119 tests; subsequent native-response regression work
+passed all 31 master tests. The adapter now exposes 38 narrow MCP tools.
+See [master records](docs/MASTER_RECORDS.md).
 
 Updated: 2026-09-07. Production posting: DISABLED. Four sample invoices (USD45 total)
 and five USD10 sample bills have verified receipts. Three customer receipts totaling USD20

@@ -99,6 +99,7 @@ def windows_exchange(request, write, folder, approve, *, helper="native_invoice.
         "native_supplier_credit.ps1",
         "native_supplier_application.ps1",
         "native_application.ps1",
+        "native_master.ps1",
     ):
         raise BridgeError("unsupported native posting helper")
     folder.mkdir(exist_ok=False)
@@ -213,6 +214,7 @@ def post(bridge, token, company, job_id, *, exchange=windows_exchange, read_exch
                 or db.execute(
                     "SELECT 1 FROM sdk_discovery WHERE state IN ('prepared','dispatched')"
                 ).fetchone()
+                or db.execute("SELECT 1 FROM master_checks WHERE state='dispatched'").fetchone()
             ):
                 raise BridgeError("company read session active")
             if (

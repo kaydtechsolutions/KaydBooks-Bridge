@@ -278,6 +278,8 @@ async function show(next) {
     imports: "Import spreadsheet",
     access: "User access",
     upload: "Upload document",
+    dispatch: "Posting schedules",
+    masters: "Customers, suppliers & items",
   }[view];
   if (!catalog) {
     empty("Choose your company");
@@ -291,6 +293,7 @@ async function show(next) {
   if (view === "upload") uploadDocument();
   if (view === "access") await access();
   if (view === "dispatch") await postingSchedules();
+  if (view === "masters") masterForm();
   window.scrollTo(0, 0);
 }
 async function overview() {
@@ -379,7 +382,9 @@ function entry(existing = null, onTemplate = null, observed = null) {
   const op = el("select", { id: "operation" });
   options(
     op,
-    Object.entries(catalog.operations).map(([id, label]) => ({ id, label })),
+    Object.entries(catalog.operations)
+      .filter(([id]) => id !== "master.change")
+      .map(([id, label]) => ({ id, label })),
     "Choose a document",
     existing?.operation || "invoice.create",
   );
@@ -757,6 +762,7 @@ async function openJob(id) {
   const detail = el("dl", { class: "detail" });
   for (const [k, v] of Object.entries(job.payload)) {
     if (Array.isArray(v)) continue;
+    if (job.operation === "master.change" && typeof v === "object") continue;
     detail.append(
       el("div", {}, el("dt", {}, names[k] || title(k)), el("dd", {}, v)),
     );
@@ -772,7 +778,11 @@ async function openJob(id) {
     permissions("prepare") &&
     job.submitter === catalog.principal
   )
-    actions.append(button("Correct draft", () => entry(job)));
+    actions.append(
+      button("Correct draft", () =>
+        job.operation === "master.change" ? masterForm(job) : entry(job),
+      ),
+    );
   if (job.state === "draft" && permissions("validate"))
     actions.append(
       button(
@@ -831,6 +841,26 @@ async function openJob(id) {
     detail,
   );
   const rows = job.payload.lines || job.payload.allocations || [];
+  if (job.operation === "master.change") {
+    p.append(
+      table(
+        ["Changed field", "New value"],
+        Object.entries(job.payload.fields).map(([k, v]) => [
+          title(k),
+          String(v),
+        ]),
+      ),
+    );
+    if (job.master_evidence?.original)
+      p.append(
+        el(
+          "details",
+          {},
+          el("summary", {}, "Reviewed original record"),
+          el("pre", {}, JSON.stringify(job.master_evidence.original, null, 2)),
+        ),
+      );
+  }
   if (rows.length) {
     const cols = [...new Set(rows.flatMap((r) => Object.keys(r)))];
     p.append(
@@ -853,7 +883,13 @@ async function openJob(id) {
     p.append(el("p", { class: "small" }, "Approved by " + job.approval_by));
   if (job.txn_id)
     p.append(
-      el("p", { class: "small" }, "QuickBooks transaction: " + job.txn_id),
+      el(
+        "p",
+        { class: "small" },
+        (job.operation === "master.change"
+          ? "QuickBooks record: "
+          : "QuickBooks transaction: ") + job.txn_id,
+      ),
     );
   if (job.source_observations) {
     const observed = el(
@@ -1108,6 +1144,264 @@ function drawReport(report) {
   notice("Report received. Native totals and source evidence are retained.");
 }
 
+function masterForm(parent = null) {
+  let original = parent?.master_evidence?.original || null,
+    target = parent?.payload?.target || null,
+    proof = null;
+  const request = "master-" + crypto.randomUUID();
+  const form = el(
+    "form",
+    {},
+    el(
+      "div",
+      { class: "grid" },
+      field(
+        "kind",
+        ["customer", "supplier", "service", "inventory"],
+        parent?.payload.kind || "customer",
+      ),
+      field(
+        "change_action",
+        ["create", "update"],
+        parent?.payload.action || "create",
+      ),
+      field("ref_number", null, parent?.payload.ref_number || ""),
+      field(
+        "source",
+        catalog.sources,
+        catalog.sources.length === 1 ? catalog.sources[0] : "",
+      ),
+      field(
+        "connector",
+        catalog.connectors,
+        catalog.connectors.length === 1 ? catalog.connectors[0] : "",
+      ),
+      field(
+        "service_mode",
+        ["sales", "sales-purchase"],
+        parent?.payload.service_mode || "sales",
+      ),
+      field("list_id", null, target?.list_id || "", true),
+    ),
+  );
+  const fields = el("div", { class: "grid form-section" }),
+    observed = el("div"),
+    toolbar = el("div", { class: "toolbar" });
+  const reason = field("reason_for_correction", null, "", !parent);
+  const save = button(
+    "Save master draft",
+    async () => {
+      if (!proof) throw Error("Check the current master details first.");
+      const parameters = {
+        request_key: request,
+        namespace: value(form, "source"),
+        operation: "master.change",
+        payload: payload(),
+        master_evidence: proof,
+      };
+      if (parent)
+        parameters.revision = {
+          parent_id: parent.id,
+          parent_fingerprint: parent.fingerprint,
+          reason: value(form, "reason_for_correction"),
+        };
+      const job = await api("prepare", parameters);
+      await api("validate", { job_id: job.id });
+      await openJob(job.id);
+      notice(
+        "Master draft validated. Approval and sample posting remain separate actions.",
+      );
+    },
+    "primary",
+  );
+  save.disabled = true;
+  function changed() {
+    if (proof)
+      notice("Details changed. Check the master details again before saving.");
+    proof = null;
+    save.disabled = true;
+  }
+  function renderValues(prefill = null) {
+    fields.replaceChildren();
+    const kind = value(form, "kind"),
+      update = value(form, "change_action") === "update",
+      purchased = value(form, "service_mode") === "sales-purchase";
+    const mapped = {
+      name: original?.Name || "",
+      active: original?.IsActive !== "false",
+      company_name: original?.CompanyName || "",
+      phone: original?.Phone || "",
+      email: original?.Email || "",
+    };
+    const item =
+      original?.SalesOrPurchase || original?.SalesAndPurchase || original || {};
+    Object.assign(
+      mapped,
+      {
+        sales_description: item.Desc || item.SalesDesc || "",
+        sales_price: item.Price || item.SalesPrice || "0.00",
+        purchase_description: item.PurchaseDesc || "",
+        purchase_cost: item.PurchaseCost || "0.00",
+      },
+      prefill || {},
+    );
+    fields.append(
+      field("name", null, mapped.name),
+      el(
+        "label",
+        {},
+        "Active",
+        el("input", {
+          type: "checkbox",
+          "data-field": "active",
+          checked: mapped.active,
+        }),
+      ),
+    );
+    if (["customer", "supplier"].includes(kind))
+      for (const n of ["company_name", "phone", "email"])
+        fields.append(field(n, null, mapped[n], true));
+    else {
+      fields.append(
+        field("sales_description", null, mapped.sales_description, true),
+        field("sales_price", null, mapped.sales_price),
+      );
+      if (!update)
+        fields.append(
+          field(
+            "income_account",
+            catalog.master_account_roles,
+            mapped.income_account || "",
+          ),
+        );
+      if (kind === "inventory" || purchased) {
+        fields.append(
+          field(
+            "purchase_description",
+            null,
+            mapped.purchase_description,
+            true,
+          ),
+          field("purchase_cost", null, mapped.purchase_cost),
+        );
+        if (!update)
+          for (const n of kind === "inventory"
+            ? ["cogs_account", "asset_account"]
+            : ["expense_account"])
+            fields.append(
+              field(n, catalog.master_account_roles, mapped[n] || ""),
+            );
+      }
+    }
+    form.querySelector('[data-field="list_id"]').disabled = !update;
+    form.querySelector('[data-field="list_id"]').closest("label").hidden =
+      !update;
+    form.querySelector('[data-field="service_mode"]').disabled =
+      kind !== "service" || (update && !!original);
+    form.querySelector('[data-field="service_mode"]').closest("label").hidden =
+      kind !== "service";
+    observed.replaceChildren(
+      original
+        ? el(
+            "details",
+            {},
+            el("summary", {}, "Original record and edit sequence"),
+            el("pre", {}, JSON.stringify(original, null, 2)),
+          )
+        : el(
+            "p",
+            { class: "small" },
+            update
+              ? "Read the exact record before editing it."
+              : "New records start without balances or stock.",
+          ),
+    );
+    changed();
+  }
+  function payload() {
+    if (!form.reportValidity())
+      throw Error("Complete the required master fields.");
+    const kind = value(form, "kind"),
+      action = value(form, "change_action"),
+      values = {};
+    for (const input of fields.querySelectorAll("[data-field]"))
+      values[input.dataset.field] =
+        input.type === "checkbox" ? input.checked : input.value;
+    const result = {
+      ref_number: value(form, "ref_number"),
+      kind,
+      action,
+      fields: values,
+    };
+    if (kind === "service") result.service_mode = value(form, "service_mode");
+    if (action === "update") {
+      if (!target || target.list_id !== value(form, "list_id"))
+        throw Error("Read the selected master record first.");
+      result.target = target;
+    }
+    return result;
+  }
+  toolbar.append(
+    button("Read existing record", async () => {
+      if (value(form, "change_action") !== "update")
+        throw Error("Choose update to read an existing record.");
+      const result = await api("master-lookup", {
+        connector_id: value(form, "connector"),
+        kind: value(form, "kind"),
+        list_id: value(form, "list_id"),
+      });
+      original = result.record;
+      target = result.target;
+      if (value(form, "kind") === "service")
+        setValue(
+          form,
+          "service_mode",
+          original.SalesAndPurchase ? "sales-purchase" : "sales",
+        );
+      renderValues();
+      notice("Original record read. Review and edit the intended fields.");
+    }),
+    button("Check master details", async () => {
+      const result = await api("check", {
+        operation: "master.change",
+        connector_id: value(form, "connector"),
+        payload: payload(),
+      });
+      proof = result.evidence;
+      save.disabled = false;
+      notice(
+        "Names, original edit sequence and accounts checked. Review the fields before saving.",
+      );
+    }),
+    save,
+  );
+  form.append(toolbar, observed, fields);
+  if (parent) form.append(reason);
+  form.addEventListener("submit", (e) => e.preventDefault());
+  form.addEventListener("input", changed);
+  for (const name of ["kind", "change_action", "service_mode"])
+    form
+      .querySelector('[data-field="' + name + '"]')
+      .addEventListener("change", () => {
+        original = null;
+        target = null;
+        renderValues();
+      });
+  form.querySelector('[data-field="list_id"]').addEventListener("input", () => {
+    original = null;
+    target = null;
+  });
+  renderValues(parent?.payload.fields);
+  $("content").replaceChildren(
+    panel(
+      parent ? "Correct master draft" : "Customers, suppliers & items",
+      "Changes retain the original source and require current company permissions and review. Sample updates are limited to Bridge-created test records.",
+      form,
+    ),
+  );
+  window.scrollTo(0, 0);
+}
+
 async function postingSchedules() {
   const data = await api("dispatch-status");
   const body = panel(
@@ -1166,7 +1460,9 @@ async function postingSchedules() {
     field("mode", ["scheduled", "automatic"], "scheduled"),
     field(
       "operation",
-      Object.entries(catalog.operations).map(([id, label]) => ({ id, label })),
+      Object.entries(catalog.operations)
+        .filter(([id]) => id !== "master.change")
+        .map(([id, label]) => ({ id, label })),
       "invoice.create",
     ),
     field("source", catalog.sources),

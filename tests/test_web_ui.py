@@ -59,7 +59,8 @@ def test_catalog_auth_company_isolation_and_no_secrets(client):
     initial = call(client, "catalog", company=None).json()
     assert initial["companies"] == ["company-a"]
     response = call(client, "catalog").json()
-    assert response["currency"] == "USD" and len(response["operations"]) == 9
+    assert response["currency"] == "USD" and len(response["operations"]) == 10
+    assert "master.change" in response["operations"]
     assert call(client, "catalog", company="company-b").status_code == 400
     assert all(token not in json.dumps(response) for token in TOKENS.values())
     assert "token_env" not in json.dumps(response) and "company_file_env" not in json.dumps(

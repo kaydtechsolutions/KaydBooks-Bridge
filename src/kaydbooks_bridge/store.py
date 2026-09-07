@@ -665,6 +665,9 @@ class Store:
                 BEGIN SELECT RAISE(ABORT, 'metadata is immutable'); END""")
             db.execute("""CREATE TRIGGER IF NOT EXISTS metadata_no_delete BEFORE DELETE ON metadata
                 BEGIN SELECT RAISE(ABORT, 'metadata is immutable'); END""")
+            from .master_checks import schema as master_schema
+
+            master_schema(db)
 
     @contextmanager
     def transaction(self):
@@ -715,7 +718,9 @@ class Store:
         if binding:
             result["bill_context"] = json.loads(binding[0])
         evidence_table = (
-            "supplier_application_evidence_links"
+            "master_evidence_links"
+            if result["operation"] == "master.change"
+            else "supplier_application_evidence_links"
             if result["operation"] == "supplier-credit.apply"
             else "supplier_credit_evidence_links"
             if result["operation"] == "supplier-credit.create"
@@ -746,7 +751,9 @@ class Store:
             result["transaction_receipt"] = json.loads(receipt[0])
         elif result["state"] == "verified":
             event = (
-                "native_supplier_application_verified"
+                "native_master_verified"
+                if result["operation"] == "master.change"
+                else "native_supplier_application_verified"
                 if result["operation"] == "supplier-credit.apply"
                 else "native_supplier_credit_verified"
                 if result["operation"] == "supplier-credit.create"

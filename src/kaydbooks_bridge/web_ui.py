@@ -15,6 +15,7 @@ from .service import Bridge, validate_payload
 from .validation import canonical, digest
 
 OPERATIONS = {
+    "master.change": ("Customer, supplier or item change", None),
     "invoice.create": ("Sales invoice", "invoice_check"),
     "bill.create": ("Supplier bill", "bill_check"),
     "customer-payment.create": ("Customer payment", "payment_check"),
@@ -78,6 +79,7 @@ def catalog(config_path, token, company=None):
                 **policy.bill_masters.get("items", {}),
             }.items()
         ],
+        master_account_roles=list(policy.account_roles),
     )
     from .native_reports import FIXED_ACCRUAL, FIXED_COLUMNS, REPORTS
 
@@ -100,6 +102,15 @@ def check_masters(bridge, token, company, operation, connector_id, payload):
     if connector is None or connector.company != company:
         raise BridgeError("select the company's exact connector")
     payload = validate_payload(operation, payload, policy)
+    if operation == "master.change":
+        from .master_checks import read
+
+        result = read(bridge, token, company, connector_id, payload["kind"], payload=payload)
+        return {
+            "evidence": result["reference"],
+            "payload_sha256": digest(payload),
+            "result": result,
+        }
     run = str(time.time_ns())[-15:]
     result = discover(
         DurableQBWCDiscoveryService.from_path(bridge.config_path),
@@ -196,6 +207,7 @@ def action(bridge, token, company, action, parameters):
         "pause": {"paused"},
         "table-columns": {"document_id", "format"},
         "source": {"job_id"},
+        "master-lookup": {"connector_id", "kind", "list_id"},
     }
     if action not in contracts:
         raise BridgeError("browser action unavailable")
@@ -277,6 +289,10 @@ def action(bridge, token, company, action, parameters):
         return {"headers": headers, "sample_rows": [r[1] for r in rows[:5]], "row_count": len(rows)}
     if action == "check":
         return check_masters(bridge, token, company, **parameters)
+    if action == "master-lookup":
+        from .master_checks import read
+
+        return read(bridge, token, company, **parameters)
     if action == "prepare":
         return manual(bridge, token, company, **parameters)
     if action in {"validate", "approve", "submit"}:
@@ -296,6 +312,7 @@ def action(bridge, token, company, action, parameters):
         )
     job = bridge.status(token, company, parameters["job_id"])
     modules = {
+        "master.change": "master_posting",
         "invoice.create": "sample_posting",
         "bill.create": "sample_bill_posting",
         "customer-payment.create": "sample_payment_posting",

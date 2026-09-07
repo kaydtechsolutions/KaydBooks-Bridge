@@ -10,8 +10,13 @@ from .account_lookup import append_query, validate_list_id, validate_response
 from .config import BridgeError
 from .validation import digest
 
-# Only the existing invoice workflow has a reviewed account-role rule.
-RULES = {("invoice.create", "receivable"): ("invoice_receivable", "AccountsReceivable")}
+RULES = {
+    ("invoice.create", "receivable"): ("invoice_receivable", "AccountsReceivable"),
+    ("master.change", "income"): ("master_income", "Income"),
+    ("master.change", "expense"): ("master_expense", "Expense"),
+    ("master.change", "cogs"): ("master_cogs", "CostOfGoodsSold"),
+    ("master.change", "asset"): ("master_asset", "OtherCurrentAsset"),
+}
 
 
 def validate_roles(value):

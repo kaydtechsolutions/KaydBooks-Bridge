@@ -22,6 +22,10 @@ SURFACES = frozenset(
 
 
 def validate_payload(operation, payload, policy):
+    if operation == "master.change":
+        from .master_records import validate
+
+        return validate(payload, policy)
     if operation == "supplier-credit.apply":
         from .supplier_application import validate_payload as validate_credit
 
@@ -60,6 +64,10 @@ def validate_payload(operation, payload, policy):
 
 
 def require_evidence(config, policy, store, db, job, now):
+    if job["operation"] == "master.change":
+        from .master_checks import require
+
+        return require(config, policy, store, db, job, now)
     if job["operation"] == "supplier-credit.apply":
         from .supplier_application_evidence import require
 
@@ -145,6 +153,7 @@ class Bridge:
             {"master_evidence", "revision_of"},
         )
         if envelope["operation"] not in (
+            "master.change",
             "invoice.create",
             "bill.create",
             "customer-payment.create",
@@ -166,6 +175,17 @@ class Bridge:
         )
         source_key = canonical([source["namespace"], source["reference"]])
         business_key = canonical([envelope["operation"], payload["ref_number"].casefold()])
+        if envelope["operation"] == "master.change":
+            business_key = canonical(
+                [
+                    "master.change",
+                    payload["kind"],
+                    payload["action"],
+                    payload["fields"]["name"].casefold()
+                    if payload["action"] == "create"
+                    else payload["target"],
+                ]
+            )
         bill_context = None
         if envelope["operation"] == "bill.create":
             from .bills import context
@@ -209,6 +229,8 @@ class Bridge:
             evidence = None
             if "master_evidence" in envelope:
                 resolver = resolve_evidence
+                if envelope["operation"] == "master.change":
+                    from .master_checks import resolve as resolver
                 if bill_context is not None:
                     from .bill_evidence import resolve as resolver
                 if envelope["operation"] == "customer-payment.create":
@@ -236,6 +258,7 @@ class Bridge:
                     self.clock(),
                 )
             elif envelope["operation"] in (
+                "master.change",
                 "customer-payment.create",
                 "supplier-payment.create",
                 "customer-credit.create",
@@ -346,6 +369,9 @@ class Bridge:
         application = store.job(db, job_id)["operation"] == "customer-credit.apply"
         if application:
             table = "application_evidence_links"
+        master = store.job(db, job_id)["operation"] == "master.change"
+        if master:
+            table = "master_evidence_links"
         db.execute(
             f"INSERT INTO {table}(job_id,evidence) VALUES (?,?)",
             (job_id, canonical(evidence)),
@@ -355,7 +381,9 @@ class Bridge:
             self.clock(),
             actor,
             job_id,
-            "supplier_application_evidence_linked"
+            "master_evidence_linked"
+            if master
+            else "supplier_application_evidence_linked"
             if supplier_application
             else "supplier_credit_evidence_linked"
             if supplier_credit
@@ -493,6 +521,29 @@ class Bridge:
             if job["submitter"] != actor or job["state"] != "validated":
                 raise BridgeError("invoice preview requires an owned validated job")
             require_evidence(config, policy, store, db, job, self.clock())
+            if job["operation"] == "master.change":
+                from .source_review import require as require_review
+
+                require_review(config, policy, store, db, job)
+                result = {
+                    "schema": "master-review-v1",
+                    "job": job_id,
+                    "company": company,
+                    "payload": job["payload"],
+                    "original": job["master_evidence"]["original"],
+                    "live_posting": False,
+                    "posting_authorized_by_preview": False,
+                }
+                result["preview_sha256"] = digest(result)
+                store.event(
+                    db,
+                    self.clock(),
+                    actor,
+                    job_id,
+                    "master_previewed",
+                    {"preview_sha256": result["preview_sha256"]},
+                )
+                return result
             if job["operation"] == "bill.create":
                 from .bills import preview
                 from .source_review import require as require_review
@@ -650,6 +701,7 @@ class Bridge:
                 return None
             job = store.job(db, row["id"])
             if job["operation"] in (
+                "master.change",
                 "customer-payment.create",
                 "supplier-payment.create",
                 "customer-credit.create",

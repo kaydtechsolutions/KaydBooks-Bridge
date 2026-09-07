@@ -132,6 +132,7 @@ def post(bridge, token, company, job_id, *, exchange=windows_exchange, read_exch
                 or db.execute(
                     "SELECT 1 FROM sdk_discovery WHERE state IN ('prepared','dispatched')"
                 ).fetchone()
+                or db.execute("SELECT 1 FROM master_checks WHERE state='dispatched'").fetchone()
             ):
                 raise BridgeError("company read session active")
             if (

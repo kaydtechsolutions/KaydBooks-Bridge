@@ -59,6 +59,7 @@ class Company:
     sample_application_posting: dict = field(default_factory=dict)
     sample_supplier_application_posting: dict = field(default_factory=dict)
     sample_refund_posting: dict = field(default_factory=dict)
+    sample_master_posting: dict = field(default_factory=dict)
     sample_supplier_credit_posting: dict = field(default_factory=dict)
 
 
@@ -92,6 +93,7 @@ def company_policy_context(policy):
         "sample_supplier_credit_posting",
         "sample_application_posting",
         "sample_supplier_application_posting",
+        "sample_master_posting",
     ):
         if not value.get(name):
             value.pop(name, None)
@@ -155,6 +157,7 @@ class Config:
                     "sample_supplier_credit_posting",
                     "sample_application_posting",
                     "sample_supplier_application_posting",
+                    "sample_master_posting",
                 },
             )
             identifier(raw["simulation_identity"])
@@ -198,6 +201,9 @@ class Config:
             if type(age) is not int or not 60 <= age <= 86400:
                 raise BridgeError("invoice evidence age must be 60-86400 seconds")
             companies[name] = Company(id=name, **raw)
+            from .master_posting import validate_gate as validate_master_gate
+
+            validate_master_gate(companies[name].sample_master_posting)
             gate = companies[name].sample_posting
             if not isinstance(gate, dict):
                 raise BridgeError("sample posting gate must be an object")

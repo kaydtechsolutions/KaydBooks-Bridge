@@ -113,8 +113,13 @@ qualification are separate evidence; a passing mock does not establish native su
   Non-tax validation remains enforced; taxable requests must not silently lose tax.
 - [ ] **M3-10:** Single- and multi-currency behavior: transaction/base amounts,
   exchange rate/date, master currency compatibility and payment allocations verified.
-- [ ] **M3-11:** Customer/vendor/item creation and updates: explicit fields and review,
+- [x] **M3-11:** Customer/vendor/item creation and updates: explicit fields and review,
   duplicate detection, stale-edit rejection, independent read-back and no record deletion.
+  Installed qualification created five isolated customer/supplier/service/inventory
+  masters, including both service aggregates, and updated only those five records.
+  All ten attempts independently verified; two response exceptions recovered without
+  resending. Balance summaries were unchanged and signed restore preserved all evidence.
+  Supported fields and single-currency boundaries are documented in [master records](MASTER_RECORDS.md).
 - [ ] **M3-12:** Every enabled write family passes wrong-company, stale-master,
   revoked-permission, duplicate, missing-response, crash/restart and reconciliation tests
   plus a controlled real sample test. Preserve already verified invoice evidence.
@@ -127,8 +132,9 @@ qualification are separate evidence; a passing mock does not establish native su
   explicit company, preview, errors and review are visible without technical commands.
   Browser forms now cover the nine current contracts, corrections, source review,
   spreadsheet mapping, reports and access controls. Synthetic browser tests and an
-  installed native invoice draft/report run pass. Complete release variants, master
-  forms and convenient original-transaction selection remain unfinished.
+  installed native invoice draft/report run pass. Complete release variants and
+  convenient original-transaction selection remain unfinished. Master
+  create/update forms now pass native read/check and desktop/mobile qualification.
 - [x] **M4-03:** PDF/photo/scan extraction is qualified against a retained test corpus;
   uncertain identities, numbers, dates and totals are held for review. Embedded
   instructions cannot change permissions or execution policy. Printed English PDF, PNG
@@ -265,5 +271,5 @@ edition/version support and saved-record projections. Do not infer support from 
 request names in the inherited library. Current supported operation families are listed in the project status; each new
 family requires policy, evidence, durable dispatch and independent native readback.
 
-Current step: **posting schedules and remaining input workflows**, then broader adjustment variants and the
+Current step: **remaining input workflows and broader adjustment variants**, then the
 remaining non-tax acceptance gates. No real company details belong here.

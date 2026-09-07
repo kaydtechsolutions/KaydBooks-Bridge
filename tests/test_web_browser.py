@@ -113,6 +113,68 @@ def fill_invoice(page, reference="WEB-1"):
     page.get_by_label("Unit price", exact=True).fill("5.00")
 
 
+def test_browser_master_check_is_invalidated_by_field_edits(page, monkeypatch):
+    observed = []
+
+    def check(*args, **kwargs):
+        observed.append(kwargs["payload"])
+        return {"evidence": {"run": "123"}}
+
+    monkeypatch.setattr(web_ui, "check_masters", check)
+    page.get_by_role("button", name="Customers, suppliers & items", exact=True).click()
+    page.get_by_label("Source", exact=True).select_option("synthetic-intake")
+    page.get_by_label("Reference", exact=True).fill("MASTER-1")
+    page.get_by_label("Name", exact=True).fill("Synthetic Customer")
+    page.get_by_label("Phone", exact=True).fill("555-0100")
+    page.get_by_role("button", name="Check master details", exact=True).click()
+    page.locator("body:not([aria-busy])").wait_for()
+    assert observed[-1]["kind"] == "customer" and observed[-1]["fields"]["phone"] == "555-0100"
+    assert page.get_by_role("button", name="Save master draft", exact=True).is_enabled()
+    page.get_by_label("Phone", exact=True).fill("555-0101")
+    assert page.get_by_role("button", name="Save master draft", exact=True).is_disabled()
+    assert page.get_by_label("List Id", exact=True).is_disabled()
+
+
+def test_browser_master_update_requires_exact_original_and_preserves_it(page, monkeypatch):
+    from kaydbooks_bridge import master_checks
+
+    original = {
+        "ListID": "80000001-1234567890",
+        "EditSequence": "123",
+        "Name": "Synthetic Vendor",
+        "IsActive": "true",
+        "Phone": "555-0100",
+        "Balance": "30.00",
+    }
+    target = {"list_id": original["ListID"], "edit_sequence": "123", "record_sha256": "a" * 64}
+    monkeypatch.setattr(
+        master_checks, "read", lambda *a, **kw: {"record": original, "target": target}
+    )
+    observed = []
+
+    def check(*args, **kwargs):
+        observed.append(kwargs["payload"])
+        return {"evidence": {"run": "456"}}
+
+    monkeypatch.setattr(web_ui, "check_masters", check)
+    page.get_by_role("button", name="Customers, suppliers & items", exact=True).click()
+    page.get_by_label("Kind", exact=True).select_option("supplier")
+    page.get_by_label("Change Action", exact=True).select_option("update")
+    page.get_by_label("Source", exact=True).select_option("synthetic-intake")
+    page.get_by_label("Reference", exact=True).fill("MASTER-2")
+    page.get_by_label("List Id", exact=True).fill(original["ListID"])
+    page.get_by_role("button", name="Read existing record", exact=True).click()
+    page.locator("body:not([aria-busy])").wait_for()
+    assert page.get_by_label("Phone", exact=True).input_value() == "555-0100"
+    page.get_by_label("Phone", exact=True).fill("555-0101")
+    page.get_by_role("button", name="Check master details", exact=True).click()
+    page.locator("body:not([aria-busy])").wait_for()
+    assert observed[-1]["target"] == target
+    assert "balance" not in observed[-1]["fields"]
+    page.get_by_label("List Id", exact=True).fill("80000002-1234567890")
+    assert page.get_by_role("button", name="Save master draft", exact=True).is_disabled()
+
+
 def test_browser_manual_review_correction_and_company_switch(page, setup):
     fill_invoice(page)
     page.get_by_role("button", name="Check details", exact=True).click()
@@ -271,7 +333,7 @@ def test_browser_spreadsheet_mapping_errors_and_retry(page, setup):
     assert len(setup[0].status(TOKENS["operator-a"], "company-a")["jobs"]) == 1
 
 
-@pytest.mark.parametrize("operation", list(web_ui.OPERATIONS))
+@pytest.mark.parametrize("operation", [op for op in web_ui.OPERATIONS if op != "master.change"])
 def test_browser_all_operation_forms_use_exact_shared_payload_fields(page, operation):
     page.get_by_role("button", name="New document", exact=True).first.click()
     page.get_by_label("Document type", exact=True).select_option(operation)

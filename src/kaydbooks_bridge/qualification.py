@@ -78,6 +78,7 @@ def backup(bridge, token, company, destination):
             or db.execute(
                 "SELECT 1 FROM sdk_discovery WHERE state IN ('prepared','dispatched')"
             ).fetchone()
+            or db.execute("SELECT 1 FROM master_checks WHERE state='dispatched'").fetchone()
             or db.execute(
                 "SELECT 1 FROM qbwc_sessions WHERE state IN ('authenticated','request-sent','verified','blocked')"
             ).fetchone()
