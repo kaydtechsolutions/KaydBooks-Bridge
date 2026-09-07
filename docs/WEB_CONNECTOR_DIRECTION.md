@@ -59,6 +59,8 @@ and qualification. Tax remains excluded.
 
 The initial [durable invoice posting and recovery implementation](QBWC_INVOICE_POSTING.md)
 now includes browser master checks, bounded queueing, single write handoff and
-independent readback. Automated callback tests pass; installed sample qualification
-is pending. Other contracts, report queries and scheduled posting still need migration.
+independent readback. Automated callback tests pass; one installed USD5 service
+invoice passed preflight, single write handoff and exact saved-invoice readback.
+Duplicate dispatch was refused and posting was paused again. Actual interruption/
+recovery remains pending. Other contracts, reports and scheduling need migration.
 No native-only gate is relabeled Web Connector-qualified. Production remains disabled.

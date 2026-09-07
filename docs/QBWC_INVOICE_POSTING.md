@@ -78,11 +78,35 @@ Automated SOAP tests cover successful posting/readback, exact repeats, restarts,
 lost write responses, read-only recovery, missing results, wrong saved records,
 inventory effects, stale/revoked authority, changed company/version, malformed
 responses and immutable database evidence. Browser invoice checks and dispatch route
-through QBWC. These tests use synthetic QuickBooks responses; installed sample
-posting/recovery qualification remains pending until actual Web Connector updates
-have completed and their saved accounting results are verified.
+through QBWC. These tests use synthetic QuickBooks responses. Actual interruption/
+recovery remains pending; the successful installed invoice below does not qualify
+that gate or other invoice variants.
 
 Validation passed 1,300 full-suite tests with browser/offline OCR enabled, followed
 by 27 focused posting/recovery tests and the browser waiting-state check for final
-changes. Lint, formatting, JavaScript syntax and the package build passed. A private
-read-only sample invoice check is queued; no new accounting write was sent.
+changes. Lint, formatting, JavaScript syntax and the package build passed.
+Invoice-transport CI76 passed all 11 jobs.
+
+### Installed sample invoice result
+
+The actual Web Connector master check matched the confirmed sample company and
+service invoice configuration. A separately approved USD5 non-tax service invoice
+completed preflight (25%), one write handoff (75%) and independent exact-TxnID
+readback (100%). The saved customer, date, line, subtotal, zero tax and USD5 remaining
+balance matched. The operator also displayed the saved invoice and Audit Trail.
+
+One durable attempt and one write handoff were retained. Re-enqueueing the verified
+job and requesting recovery of that verified job were both refused. The company was
+paused again, the cumulative invoice quota is exhausted and audit integrity passed.
+Raw XML, receipt identifiers, company paths and authorization remain private.
+
+Registration initially failed with a duplicate OwnerID/FileID message and a null
+registry-name error. An explicit AppUniqueName alone did not resolve it. Intuit CP3
+reported no FileID; a read-only query against the confirmed sample independently
+found only an unlocked AppLock. After fully exiting/reopening Web Connector, the
+same stable repair profile imported successfully and created its FileID. No new IDs
+were generated. This records the observed sequence, not proof of one underlying
+root cause. Windows Server required .NET 3.5 for CP3; installation was verified.
+
+Next: qualify an actual interrupted QBWC exchange and read-only recovery without
+resending the write. Production posting and broader client release remain disabled.

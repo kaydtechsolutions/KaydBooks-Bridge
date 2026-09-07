@@ -6,21 +6,24 @@ an explicitly bounded invoice for a single write handoff and independent readbac
 Interrupted outcomes recover only through queries; missing results never authorize
 a resend. Native/QBWC invoice attempts share the sample quota. Inventory stock effects
 and verified-original selection use retained QBWC evidence. Focused callback tests
-pass, including immutable recovery/write guards. An installed read-only check is
-queued; actual QBWC posting qualification is not yet claimed. See
+pass, including immutable recovery/write guards. Installed QBWC qualification now
+verified one separately approved USD5 service invoice with one write handoff and
+independent saved-invoice readback. Duplicate dispatch was refused. Actual
+interruption/recovery remains unqualified. See
 [the workflow and remaining qualification](docs/QBWC_INVOICE_POSTING.md).
 No acceptance gate is closed by automated transport tests alone. Production posting
 remains disabled. Other accounting contracts/reports and scheduling need migration.
 Validation: 1,300 full-suite tests passed with browser and offline OCR enabled;
 27 focused posting/recovery tests and the new browser waiting-state test passed after
 the final guards/UI changes. Lint, formatting, JavaScript syntax and package build
-passed. No accounting write has been queued or sent for this QBWC qualification.
+passed. Invoice-transport CI76 passed all 11 jobs. One sample write was verified;
+the audit is intact, the invoice quota is exhausted and posting is paused again.
 
 The operator now requires QuickBooks Web Connector (`.qwc`) as the primary client
 connection. See [the connection decision](docs/WEB_CONNECTOR_DIRECTION.md).
 Existing Web Connector reads and native sample transactions remain as tested;
 transaction/report migration through Web Connector is not yet completed. Next:
-durable QBWC invoice execution and interruption/recovery, then the remaining required
+actual QBWC interruption/recovery qualification, then the remaining required
 entry/report contracts. Native-only evidence must not close QBWC qualification gates.
 This is a deployment-direction change; it does not enable accounting posting or
 complete any of the 28 unfinished gates recorded below. Tax remains excluded.
