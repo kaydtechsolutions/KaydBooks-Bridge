@@ -11,6 +11,7 @@ from .validation import canonical
 
 MAX_SOURCE_BYTES = 4 * 1024 * 1024
 MEDIA_TYPES = {
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "application/pdf",
     "image/png",
     "image/jpeg",

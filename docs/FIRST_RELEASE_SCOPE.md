@@ -128,8 +128,13 @@ qualification are separate evidence; a passing mock does not establish native su
 - [ ] **M4-03:** PDF/photo/scan extraction is qualified against a retained test corpus;
   uncertain identities, numbers, dates and totals are held for review. Embedded
   instructions cannot change permissions or execution policy.
-- [ ] **M4-04:** Excel/CSV intake: explicit column mapping, row errors, preview, source
-  hashes and stable duplicate identity across re-imports and partial batches.
+- [x] **M4-04:** Excel/CSV intake: explicit column mapping, row errors, preview, source
+  hashes and stable duplicate identity across re-imports and partial batches. Installed
+  CSV/XLSX qualification held an invalid amount, accepted a corrected file, preserved
+  row identity after reordering and returned identical drafts after restart/retry. No
+  accounting writes occurred. The supported table layout is one transaction per row,
+  with explicitly mapped indexed lines; ambiguous long-form grouping is rejected.
+  Browser mapping forms remain M4-02 work.
 - [ ] **M4-05:** Hermes chat: operation/company clarification, retained intent and
   review, actual conversational test, no arbitrary shell/SQL/qbXML write interface.
 - [x] **M4-06:** Draft correction/revision: preserve original evidence, create a new
@@ -232,5 +237,5 @@ edition/version support and saved-record projections. Do not infer support from 
 request names in the inherited library. Current supported operation families are listed in the project status; each new
 family requires policy, evidence, durable dispatch and independent native readback.
 
-Current step: **M4-04, spreadsheet intake**, then broader adjustment variants and the
+Current step: **native financial reports**, then broader adjustment variants and the
 remaining non-tax acceptance gates. No real company details belong here.

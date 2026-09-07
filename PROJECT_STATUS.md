@@ -1,7 +1,7 @@
 # KaydBooks Bridge project status
 
 Tax functionality and tax reports are excluded from this release by operator instruction
-on 2026-09-07. Non-tax checks remain enforced. 33 acceptance gates remain unfinished; manual workflow M5-02, company access M4-07 and draft revisions M4-06 pass.
+on 2026-09-07. Non-tax checks remain enforced. 32 acceptance gates remain unfinished; manual workflow M5-02, company access M4-07, draft revisions M4-06 and spreadsheet intake M4-04 pass.
 
 Updated: 2026-09-07. Production posting: DISABLED. Four sample invoices (USD45 total)
 and five USD10 sample bills have verified receipts. Three customer receipts totaling USD20
@@ -49,13 +49,13 @@ The operator's new manage-users grant was an explicit local bootstrap under stan
   amounts through the durable lifecycle. Native USD5 and USD10 receipts settled the USD15
   invoice; a third USD5 receipt remained unapplied. Signed AppliedAmount, related invoice
   payments and customer-wide unused credits are handled without double-counting.
-- Latest validation: 953 full-suite tests pass, plus 16 revision/evidence tests after
-  the final bounded-reason change and fresh-evidence regression. Lint, 31-tool stdio
-  checks and source/wheel builds pass. Installed sample draft correction retained the
-  original, rejected stale evidence and preview, required a fresh matching native check,
-  and left its successor validated with zero accounting writes. Signed isolated restore
-  recovered 26 jobs and 1109 files with valid integrity/audit, paused, without activating
-  the restored service. CI60 passed company access; revision CI follows the PR update.
+- Latest validation: 984 full-suite tests pass, plus 31 final intake tests after
+  strengthening workbook type/geometry checks. Lint, 32-tool stdio and source/wheel
+  builds pass. Installed CSV/XLSX qualification prepared two sample drafts only,
+  held an invalid amount, accepted the corrected file and reused the first draft after
+  row reordering. Restart/retry returned the identical jobs; accounting writes were zero.
+  Signed isolated restore recovered 28 jobs and 1139 files with valid integrity/audit,
+  paused, without activating the restored service. Draft-revision CI61 passed; intake CI follows the PR update.
 - Supplier payments now pass exact vendor/AP/Bank mapping, partial/full settlement,
   independent saved allocation/payable checks and missing-response recovery tests.
   Native sample readbacks verified the bill balance decreasing 10 -> 5 -> 0.
@@ -74,7 +74,7 @@ The operator's new manage-users grant was an explicit local bootstrap under stan
   CreditToApply unused amounts and net payable/vendor balance checks. Two native tests
   passed on the first attempt. Supplier-credit application and simple average-cost
   inventory returns are now sample-qualified. Broader currency/cost/settings remain partial.
-- Current step: spreadsheet intake and broader adjustment variants, then remaining
+- Current step: native financial reports and broader adjustment variants, then remaining
   M3–M6 acceptance gates. Sample posting is paused between bounded tests.
 - The [first-release checklist](docs/FIRST_RELEASE_SCOPE.md) is the release target;
   these qualified simple paths do not complete the wider currency/advanced variants.
@@ -83,7 +83,7 @@ The operator's new manage-users grant was an explicit local bootstrap under stan
   assigned companies by default. Explicit restrictions are respected. Required reviews,
   company binding and production/sample posting gates remain enforced. Role management
   and separately configurable self-approval pass through CLI/MCP; browser forms remain work.
-- CLI sample invoice/bill/payment commands and 31 narrow MCP tools are implemented. Native
+- CLI sample invoice/bill/payment commands and 32 narrow MCP tools are implemented. Native
   attempts cannot enter simulation recovery; bill receipts are excluded from the
   historical invoice register. All company identity, sources and mappings stay private.
 

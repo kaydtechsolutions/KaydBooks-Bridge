@@ -20,6 +20,9 @@ def main(argv=None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("capabilities")
     commands.add_parser("check-config")
+    intake = commands.add_parser("table-intake")
+    intake.add_argument("action", choices=("preview", "prepare_rows"))
+    intake.add_argument("input", type=Path)
     revise = commands.add_parser("revise-document")
     revise.add_argument("job_id")
     revise.add_argument("input", type=Path)
@@ -78,7 +81,16 @@ def main(argv=None) -> int:
                 raise BridgeError("private config path and explicit company required")
             bridge = Bridge(args.config)
             token = os.environ.get("KAYDBOOKS_TOKEN", "")
-            if args.command == "prepare":
+            if args.command == "table-intake":
+                from .hermes_tools import Tools
+
+                if args.input.stat().st_size > 131072:
+                    raise BridgeError("intake request too large")
+                values = json.loads(args.input.read_text(encoding="utf-8"))
+                result = Tools(args.config, token).call(
+                    "table_intake_v1", args.company, {"action": args.action, "parameters": values}
+                )
+            elif args.command == "prepare":
                 if args.input.stat().st_size > 131072:
                     raise BridgeError("input too large")
                 envelope = json.loads(args.input.read_text(encoding="utf-8"))
