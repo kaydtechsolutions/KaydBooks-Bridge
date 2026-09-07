@@ -339,6 +339,8 @@ def test_browser_all_operation_forms_use_exact_shared_payload_fields(page, opera
     page.get_by_role("button", name="New document", exact=True).first.click()
     page.get_by_label("Document type", exact=True).select_option(operation)
     form = page.locator("#document-form")
+    if operation in ("supplier-payment.create", "supplier-credit.apply"):
+        assert form.locator('input[data-field="ref_number"]').get_attribute("maxlength") == "11"
     for name, value in {
         "customer_id": "customer-a",
         "vendor_id": "vendor-a",

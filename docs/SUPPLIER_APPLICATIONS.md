@@ -7,6 +7,8 @@ by the SDK request; a credit-only application must leave its balance unchanged.
 
 The payload contains `vendor_id`, `bank_id`, `bill_txn_id`, `credit_txn_id`,
 `total_amount`, `currency` and `ref_number`. The reference identifies the local intent;
+it accepts 1-11 letters, digits or hyphens, matching BillPaymentCheckAdd. Payload,
+browser and native-helper checks reject an overlong reference before dispatch.
 QuickBooks creates transaction links and may also create a zero-amount payment stub.
 The Bridge retains the stub identity when QuickBooks returns one. It does not describe
 that outcome as no new transaction.

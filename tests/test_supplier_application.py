@@ -399,6 +399,7 @@ def test_native_application_query_gate(application_case, tmp_path, receipt):
 @pytest.mark.skipif(os.name != "nt", reason="Windows native compiler")
 def test_native_application_write_gate(application_case, tmp_path):
     path, _, payload = application_case
+    payload["ref_number"] = "ABCDEFGHIJK"
     policy = Config.load(path).companies["company-a"]
     request = add_request(policy, payload, "1234998")
     source = Path("src/kaydbooks_bridge/native_supplier_application.ps1").read_text()
@@ -411,7 +412,7 @@ def test_native_application_write_gate(application_case, tmp_path):
     script.write_text(
         "$ErrorActionPreference='Stop'\nAdd-Type -ReferencedAssemblies System.Xml.dll -TypeDefinition @'\nusing System;using System.IO;using System.Xml;using System.Text;using System.Security.Cryptography;public static class Gate {\n"
         + methods
-        + "}\n'@\n$rq=Get-Content -Raw -LiteralPath $args[0]\n[Gate]::CheckWrite($rq,[Gate]::Hash($rq))\nforeach($bad in @($rq.Replace('<IsToBePrinted>false</IsToBePrinted>','<IsToBePrinted>true</IsToBePrinted>'),$rq.Replace('AppliedAmount','PaymentAmount'),$rq.Replace('BillPaymentCheckAdd','BillAdd'),$rq.Replace('<APAccountRef>','<CreditCardTxnInfo>'),$rq.Replace('<TxnID>bill-id</TxnID>','<FullName>bill-id</FullName>'))){if($bad -eq $rq){continue};$rejected=$false;try{[Gate]::CheckWrite($bad,[Gate]::Hash($bad))}catch{$rejected=$true};if(-not $rejected){throw 'unsafe payment write accepted'}}\n"
+        + "}\n'@\n$rq=Get-Content -Raw -LiteralPath $args[0]\n[Gate]::CheckWrite($rq,[Gate]::Hash($rq))\nforeach($bad in @($rq.Replace('<IsToBePrinted>false</IsToBePrinted>','<IsToBePrinted>true</IsToBePrinted>'),$rq.Replace('ABCDEFGHIJK','ABCDEFGHIJKL'),$rq.Replace('AppliedAmount','PaymentAmount'),$rq.Replace('BillPaymentCheckAdd','BillAdd'),$rq.Replace('<APAccountRef>','<CreditCardTxnInfo>'),$rq.Replace('<TxnID>bill-id</TxnID>','<FullName>bill-id</FullName>'))){if($bad -eq $rq){continue};$rejected=$false;try{[Gate]::CheckWrite($bad,[Gate]::Hash($bad))}catch{$rejected=$true};if(-not $rejected){throw 'unsafe payment write accepted'}}\n"
     )
     result = subprocess.run(
         [
@@ -648,3 +649,11 @@ def test_generated_zero_stub_is_independently_verified(application_case, case):
     _, receipt = validate_lookup(E.tostring(result), "1234", policy, payload, "stub-id")
     assert receipt["new_transaction_created"] and receipt["payment_stub"]["zero_amount_stub"]
     assert receipt["cash_movement"] is False and receipt["balances"]["bank"] == "100.00"
+
+
+def test_supplier_application_rejects_overlong_reference_before_write(application_case):
+    path, _, payload = application_case
+    policy = Config.load(path).companies["company-a"]
+    payload["ref_number"] = "ABCDEFGHIJKL"
+    with pytest.raises(BridgeError, match="1-11"):
+        plan(policy, payload)

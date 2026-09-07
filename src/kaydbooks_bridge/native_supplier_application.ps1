@@ -44,7 +44,7 @@ public static class ControlledSampleSupplierApplication {
   decimal amount;
   if(value==null||!System.Text.RegularExpressions.Regex.IsMatch(value.InnerText,@"\A[0-9]+\.[0-9]{2}\z")||!decimal.TryParse(value.InnerText,System.Globalization.NumberStyles.AllowDecimalPoint,System.Globalization.CultureInfo.InvariantCulture,out amount)||amount<=0||invoice==credit)throw new Exception("Positive explicit credit amount required");
   var reference=add.SelectSingleNode("RefNumber");
-  if(reference==null||!System.Text.RegularExpressions.Regex.IsMatch(reference.InnerText,@"\A[A-Za-z0-9-]{1,20}\z"))throw new Exception("Fixed local reference required");
+  if(reference==null||!System.Text.RegularExpressions.Regex.IsMatch(reference.InnerText,@"\A[A-Za-z0-9-]{1,11}\z"))throw new Exception("Supplier credit reference exceeds native limit");
   string shape="<PayeeEntityRef><ListID>"+vendor+"</ListID></PayeeEntityRef><APAccountRef><ListID>"+ap+"</ListID></APAccountRef><BankAccountRef><ListID>"+bank+"</ListID></BankAccountRef><RefNumber>"+reference.InnerText+"</RefNumber><AppliedToTxnAdd><TxnID>"+invoice+"</TxnID><SetCredit><CreditTxnID>"+credit+"</CreditTxnID><AppliedAmount>"+value.InnerText+"</AppliedAmount></SetCredit></AppliedToTxnAdd>";
   if(add.Attributes.Count!=0||add.InnerXml!=shape)throw new Exception("Only a credit link is permitted; no payment or extra fields");
  }

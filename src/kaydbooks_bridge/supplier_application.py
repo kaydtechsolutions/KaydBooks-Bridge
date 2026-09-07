@@ -77,9 +77,11 @@ def validate_payload(payload, policy):
     if money(payload["total_amount"]) > money(policy.max_total):
         raise BridgeError("credit amount exceeds policy")
     if not isinstance(payload["ref_number"], str) or not re.fullmatch(
-        r"[A-Za-z0-9-]{1,20}", payload["ref_number"]
+        r"[A-Za-z0-9-]{1,11}", payload["ref_number"]
     ):
-        raise BridgeError("credit application reference invalid")
+        raise BridgeError(
+            "supplier credit application reference requires 1-11 letters, digits or hyphens"
+        )
     return json.loads(canonical(payload))
 
 

@@ -596,7 +596,7 @@ function entry(existing = null, onTemplate = null, observed = null) {
       field("ref_number"),
       field("currency", [catalog.currency], catalog.currency),
     );
-    if (operation === "supplier-payment.create")
+    if (["supplier-payment.create", "supplier-credit.apply"].includes(operation))
       basics.querySelector('[data-field="ref_number"]').maxLength = 11;
     if (!isCreditApply) basics.append(field("txn_date"));
     if (operation === "bill.create")
