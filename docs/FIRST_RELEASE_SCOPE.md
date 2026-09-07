@@ -129,9 +129,14 @@ qualification are separate evidence; a passing mock does not establish native su
   spreadsheet mapping, reports and access controls. Synthetic browser tests and an
   installed native invoice draft/report run pass. Complete release variants, master
   forms and convenient original-transaction selection remain unfinished.
-- [ ] **M4-03:** PDF/photo/scan extraction is qualified against a retained test corpus;
+- [x] **M4-03:** PDF/photo/scan extraction is qualified against a retained test corpus;
   uncertain identities, numbers, dates and totals are held for review. Embedded
-  instructions cannot change permissions or execution policy.
+  instructions cannot change permissions or execution policy. Printed English PDF, PNG
+  and JPEG intake now passes a retained six-source local OCR corpus, ambiguity and
+  embedded-instruction checks, bounded decoding, revocation and required field review.
+  Installed sample upload/native-check preparation correctly held all unreviewed fields
+  with zero accounting writes. Unsupported/illegible sources remain manual review.
+  See [offline extraction](DOCUMENT_EXTRACTION.md).
 - [x] **M4-04:** Excel/CSV intake: explicit column mapping, row errors, preview, source
   hashes and stable duplicate identity across re-imports and partial batches. Installed
   CSV/XLSX qualification held an invalid amount, accepted a corrected file, preserved

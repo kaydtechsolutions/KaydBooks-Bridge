@@ -14,6 +14,7 @@ htmlcov/
 *.sqlite*
 .env
 .env.*
+node_modules/
 !.env.example
 private/
 runtime/

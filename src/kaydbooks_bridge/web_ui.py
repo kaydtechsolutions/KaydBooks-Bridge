@@ -216,7 +216,19 @@ def action(bridge, token, company, action, parameters):
         result["jobs"] = result["jobs"][-100:][::-1]
         return result
     if action == "job":
-        return bridge.status(token, company, **parameters)
+        result = bridge.status(token, company, **parameters)
+        from .extraction import schema
+
+        _, _, _, store = bridge._context(token, company, "read")
+        with store.transaction() as db:
+            schema(db)
+            observed = db.execute(
+                "SELECT e.result FROM extraction_jobs j JOIN document_extractions e ON e.id=j.extraction_id WHERE j.job_id=?",
+                (result["id"],),
+            ).fetchone()
+            if observed and store.verify_audit(db):
+                result["source_observations"] = json.loads(observed[0])
+        return result
     if action == "preview":
         return bridge.preview(token, company, **parameters)
     if action == "source":
@@ -349,6 +361,8 @@ def install(app, config_path, endpoint_url):
                     "company_access_v1",
                     "table_intake_v1",
                     "capture_document_v1",
+                    "extract_document_v1",
+                    "prepare_extraction_v1",
                 }:
                     from .hermes_tools import Tools
 

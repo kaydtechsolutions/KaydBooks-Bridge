@@ -37,9 +37,12 @@ there are no third-party scripts or external fonts. Production posting stays dis
 
 The browser covers current contracts, not unimplemented operation variants. Original
 transaction references currently require exact native transaction IDs. Master creation/
-updates, broader currencies/adjustments, extraction and Hermes conversation remain
+updates, broader currencies/adjustments and Hermes conversation remain
 separate acceptance work. M4-02 remains partial until the complete release operation
 matrix and convenient transaction selection are available.
+
+PDF/photo/scan upload now uses the [offline extraction workflow](DOCUMENT_EXTRACTION.md),
+retaining observations and holding every unreviewed field.
 
 ## Qualification
 

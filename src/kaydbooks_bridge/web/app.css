@@ -603,3 +603,11 @@ footer {
     gap: 20px;
   }
 }
+
+.observed-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 13px/1.6 monospace;
+  padding: 16px;
+  background: #f5f8f7;
+}

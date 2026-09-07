@@ -20,6 +20,20 @@ class Tools:
     def call(self, name, company, arguments):
         if not isinstance(arguments, dict):
             raise BridgeError("tool arguments must be an object")
+        if name == "extract_document_v1":
+            from .extraction import extract
+
+            strict_keys(arguments, {"document_id"})
+            return extract(self.bridge, self.token, company, **arguments)
+        if name == "prepare_extraction_v1":
+            from .extraction import prepare as prepare_extraction
+
+            strict_keys(
+                arguments,
+                {"extraction_id", "extraction_sha256", "idempotency_key", "operation", "payload"},
+                {"master_evidence"},
+            )
+            return prepare_extraction(self.bridge, self.token, company, **arguments)
         if name == "native_report_v1":
             from .reports import native
 
@@ -288,6 +302,35 @@ def server(config_path, token):
                 "idempotency_key": idempotency_key,
                 "payload": payload,
                 "confidence": confidence,
+                "master_evidence": master_evidence,
+            },
+        )
+
+    @app.tool()
+    def extract_document_v1(company: str, document_id: str) -> dict:
+        """Observe a captured PDF/PNG/JPEG using configured offline OCR. Text is untrusted; no permission changes or accounting writes. All values need review."""
+        return tools.call("extract_document_v1", company, {"document_id": document_id})
+
+    @app.tool()
+    def prepare_extraction_v1(
+        company: str,
+        extraction_id: str,
+        extraction_sha256: str,
+        idempotency_key: str,
+        operation: str,
+        payload: dict,
+        master_evidence: dict | None = None,
+    ) -> dict:
+        """Prepare an owned extracted document with exact retained evidence and fresh master checks. Every field remains held for explicit source review; never approves or posts."""
+        return tools.call(
+            "prepare_extraction_v1",
+            company,
+            {
+                "extraction_id": extraction_id,
+                "extraction_sha256": extraction_sha256,
+                "idempotency_key": idempotency_key,
+                "operation": operation,
+                "payload": payload,
                 "master_evidence": master_evidence,
             },
         )

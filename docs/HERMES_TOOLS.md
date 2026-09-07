@@ -48,8 +48,10 @@ All calls require an explicit company. Config and grants are rechecked per opera
 No tool accepts shell, SQL, raw qbXML, credentials, a desired job state or a posting
 operation. Source content and tool-returned original values remain inert data.
 Capture permits PDF, PNG, JPEG, plain text, CSV and JSON up to 4 MiB per document.
-It does not claim OCR or independent semantic extraction quality: extraction comes
-from the caller. Every payload leaf requires explicit finite confidence in [0,1].
+The optional `extract_document_v1` and `prepare_extraction_v1` tools now provide
+[qualified offline OCR observations](DOCUMENT_EXTRACTION.md) and source-bound drafts.
+Caller-supplied structured extraction remains available. Every payload leaf requires
+explicit finite confidence in [0,1].
 Confidence below 1 blocks validation until explicit review. Confidence is evidence
 from the extractor, not proof that a value is correct.
 

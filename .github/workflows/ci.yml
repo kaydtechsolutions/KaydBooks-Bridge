@@ -51,3 +51,27 @@ jobs:
       - run: uv run pytest tests/test_web_browser.py -q
         env:
           KAYDBOOKS_BROWSER_TESTS: "1"
+
+  offline-intake:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: pip install uv==0.12.7
+      - run: uv sync --frozen --extra dev --extra intake
+      - run: npm ci --ignore-scripts
+        working-directory: ocr
+      - run: uv run playwright install --with-deps chromium
+      - name: Qualify local corpus and source review
+        run: |
+          export KAYDBOOKS_OCR_NODE="$(command -v node)"
+          export KAYDBOOKS_OCR_MODULES="$PWD/ocr/node_modules"
+          uv run pytest tests/test_extraction.py tests/test_web_browser.py -q
+        env:
+          KAYDBOOKS_OCR_TESTS: "1"
+          KAYDBOOKS_BROWSER_TESTS: "1"

@@ -26,7 +26,7 @@ schemas must be compared with an adapter's pinned contract before use.
 | Capability | Evidence to collect privately | Bridge state / current alternative |
 | --- | --- | --- |
 | Chat | Product/version, active platform and clarification behavior | Planned; explicit CLI company |
-| Documents/vision | Enabled file/vision tools, model/dependencies, real extraction fixtures | Planned; structured synthetic intake |
+| Documents/vision | Optional local PDFium/Pillow, Node 22/Tesseract.js 7 English models; retained corpus | Printed-English PDF/PNG/JPEG OCR and mandatory source review qualified; no remote vision/model calls |
 | Skills/tools | Skills and MCP registration, tool schemas and selected permissions | Planned; authenticated CLI/service |
 | Scheduling | `cronjob` schema, scheduler runtime, owner/timezone and available actions | Planned; manual queued simulation |
 | Notifications | Messaging schema, authorized channels/recipient IDs, delivery receipts | Planned; local status/audit |

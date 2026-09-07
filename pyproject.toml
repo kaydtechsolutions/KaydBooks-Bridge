@@ -37,9 +37,14 @@ dev = [
     "ruff>=0.4",
     "uvicorn>=0.23",
     "playwright>=1.55,<2",
+    "reportlab>=4,<5",
 ]
 hermes = [
     "mcp>=1.10,<2",
+]
+intake = [
+    "pillow>=12,<13",
+    "pypdfium2>=5,<6",
 ]
 
 [project.urls]
@@ -59,7 +64,7 @@ kaydbooks-bridge-setup = "kaydbooks_bridge.onboarding:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-kaydbooks_bridge = ["*.ps1", "web/*.html", "web/*.css", "web/*.js"]
+kaydbooks_bridge = ["*.ps1", "*.cjs", "web/*.html", "web/*.css", "web/*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

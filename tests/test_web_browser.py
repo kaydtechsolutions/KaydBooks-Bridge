@@ -178,6 +178,44 @@ def test_browser_report_dates_labels_and_untrusted_cells(page, monkeypatch):
     assert page.locator("#report-result img").count() == 0
 
 
+@pytest.mark.skipif(os.getenv("KAYDBOOKS_OCR_TESTS") != "1", reason="explicit local OCR runtime")
+def test_browser_upload_observations_and_required_field_review(page, setup):
+    from pathlib import Path
+
+    page.get_by_role("button", name="Upload document", exact=True).click()
+    page.get_by_label("PDF, photo or scan", exact=True).set_input_files(
+        str(Path(__file__).with_name("fixtures") / "intake/clean-scan.png")
+    )
+    page.get_by_label("Source", exact=True).select_option("synthetic-intake")
+    page.get_by_role("button", name="Extract for review", exact=True).click()
+    page.get_by_text(
+        "Retained source observations - review against the original", exact=True
+    ).wait_for(timeout=45000)
+    page.get_by_label("Customer", exact=True).select_option("customer-a")
+    page.get_by_label("Reference", exact=True).fill("SCAN-1")
+    page.get_by_label("Transaction date", exact=True).fill("2026-09-07")
+    page.get_by_label("Item", exact=True).select_option("item-a")
+    page.get_by_label("Quantity", exact=True).fill("2")
+    page.get_by_label("Unit price", exact=True).fill("5.00")
+    page.get_by_role("button", name="Check details", exact=True).click()
+    page.get_by_role("button", name="Save and review", exact=True).click()
+    page.get_by_role("heading", name="SCAN-1", exact=True).wait_for()
+    assert page.get_by_text("Draft", exact=True).is_visible()
+    page.get_by_role("button", name="Validate draft", exact=True).click()
+    page.get_by_text(
+        "uncertain extracted fields require explicit source review", exact=True
+    ).wait_for()
+    for checkbox in page.locator("#content input[type=checkbox]").all():
+        checkbox.check()
+    page.get_by_role("button", name="Confirm reviewed values", exact=True).click()
+    page.get_by_text(
+        "Source review recorded. The draft can now be validated.", exact=True
+    ).wait_for()
+    page.get_by_role("button", name="Validate draft", exact=True).click()
+    page.get_by_text("Validated", exact=True).wait_for()
+    assert len(setup[0].status(TOKENS["operator-a"], "company-a")["jobs"]) == 1
+
+
 def test_browser_spreadsheet_mapping_errors_and_retry(page, setup):
     page.get_by_role("button", name="Import spreadsheet", exact=True).click()
     page.get_by_label("CSV or XLSX file").set_input_files(

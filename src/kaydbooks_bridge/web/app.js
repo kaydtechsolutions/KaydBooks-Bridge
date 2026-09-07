@@ -277,6 +277,7 @@ async function show(next) {
     reports: "Reports",
     imports: "Import spreadsheet",
     access: "User access",
+    upload: "Upload document",
   }[view];
   if (!catalog) {
     empty("Choose your company");
@@ -287,7 +288,9 @@ async function show(next) {
   if (view === "entry") entry();
   if (view === "reports") reportForm();
   if (view === "imports") imports();
+  if (view === "upload") uploadDocument();
   if (view === "access") await access();
+  window.scrollTo(0, 0);
 }
 async function overview() {
   const state = await api("status");
@@ -368,7 +371,7 @@ async function overview() {
     ),
   );
 }
-function entry(existing = null, onTemplate = null) {
+function entry(existing = null, onTemplate = null, observed = null) {
   evidence = null;
   requestKey = keyFor();
   currentJob = existing;
@@ -433,13 +436,24 @@ function entry(existing = null, onTemplate = null) {
           parent_fingerprint: existing.fingerprint,
           reason: $("correction-reason").value,
         };
-      const job = await api("prepare", params);
-      await api("validate", { job_id: job.id });
+      const job = observed
+        ? await api("prepare_extraction_v1", {
+            extraction_id: observed.extraction_id,
+            extraction_sha256: observed.sha256,
+            idempotency_key: requestKey,
+            operation: op.value,
+            payload: params.payload,
+            master_evidence: evidence.evidence,
+          })
+        : await api("prepare", params);
+      if (!observed) await api("validate", { job_id: job.id });
       await openJob(job.id);
       notice(
-        existing
-          ? "Correction saved. The original and its history are retained."
-          : "Draft saved and validated. Review it before approval or posting.",
+        observed
+          ? "Source draft saved. Confirm every uncertain value against the original before validation."
+          : existing
+            ? "Correction saved. The original and its history are retained."
+            : "Draft saved and validated. Review it before approval or posting.",
       );
     },
     "primary",
@@ -681,6 +695,33 @@ function entry(existing = null, onTemplate = null) {
         : [check, save]),
     ),
   );
+  if (observed) {
+    namespace.value = observed.namespace;
+    namespace.disabled = true;
+    const sourcePanel = el(
+      "details",
+      { class: "form-section", open: "open" },
+      el(
+        "summary",
+        {},
+        "Retained source observations - review against the original",
+      ),
+    );
+    for (const page of observed.pages)
+      sourcePanel.append(
+        el("h3", {}, "Page " + page.page),
+        el("pre", { class: "observed-text" }, page.text),
+      );
+    sourcePanel.append(
+      table(
+        ["Observed field", "Alternatives"],
+        Object.entries(observed.candidates)
+          .filter(([, v]) => v.length)
+          .map(([k, v]) => [title(k), v.map((c) => c.text).join(" | ")]),
+      ),
+    );
+    form.prepend(sourcePanel);
+  }
   $("content").replaceChildren(
     panel(
       onTemplate
@@ -813,6 +854,19 @@ async function openJob(id) {
     p.append(
       el("p", { class: "small" }, "QuickBooks transaction: " + job.txn_id),
     );
+  if (job.source_observations) {
+    const observed = el(
+      "details",
+      { class: "form-section" },
+      el("summary", {}, "Read retained OCR observations"),
+    );
+    for (const page of job.source_observations.pages)
+      observed.append(
+        el("h3", {}, "Page " + page.page),
+        el("pre", { class: "observed-text" }, page.text),
+      );
+    p.append(observed);
+  }
   const source = job.source;
   p.append(
     el(
@@ -903,6 +957,7 @@ async function openJob(id) {
   }
   p.append(el("section", { class: "form-section" }, actions));
   $("content").replaceChildren(p);
+  window.scrollTo(0, 0);
 }
 
 function reportForm() {
@@ -1509,5 +1564,69 @@ function intakePreview(batch, plan) {
       outcomes,
     ),
     el("div", { id: "row-detail" }),
+  );
+}
+
+function uploadDocument() {
+  const file = el("input", { type: "file", accept: ".pdf,.png,.jpg,.jpeg" }),
+    source = el("select");
+  options(
+    source,
+    catalog.sources,
+    "Choose a source",
+    catalog.sources.length === 1 ? catalog.sources[0] : "",
+  );
+  $("content").replaceChildren(
+    panel(
+      "Read a source document",
+      "Printed English PDF, PNG or JPEG, up to 4 MB and four pages. Extraction retains alternatives for review; it never approves or posts.",
+      el(
+        "div",
+        { class: "grid two" },
+        el("label", {}, "PDF, photo or scan", file),
+        el("label", {}, "Source", source),
+      ),
+      el(
+        "section",
+        { class: "form-section" },
+        button(
+          "Extract for review",
+          async () => {
+            const upload = file.files[0];
+            if (!upload || upload.size > 4 * 1024 * 1024 || !source.value)
+              throw Error("Choose a source and a supported file up to 4 MB.");
+            const suffix = upload.name.toLowerCase().split(".").at(-1),
+              media_type = {
+                pdf: "application/pdf",
+                png: "image/png",
+                jpg: "image/jpeg",
+                jpeg: "image/jpeg",
+              }[suffix];
+            if (!media_type) throw Error("Choose PDF, PNG or JPEG.");
+            const bytes = new Uint8Array(await upload.arrayBuffer());
+            let raw = "";
+            for (let i = 0; i < bytes.length; i += 16384)
+              raw += String.fromCharCode(...bytes.subarray(i, i + 16384));
+            const retained = await api("capture_document_v1", {
+              namespace: source.value,
+              reference: "scan-" + crypto.randomUUID().replaceAll("-", ""),
+              media_type,
+              content_base64: btoa(raw),
+            });
+            notice(
+              "Reading the document with local OCR. No values are approved automatically...",
+            );
+            const result = await api("extract_document_v1", {
+              document_id: retained.document_id,
+            });
+            entry(null, null, result);
+            notice(
+              "Source retained. Enter the intended transaction from these observations, then check details and review every field.",
+            );
+          },
+          "primary",
+        ),
+      ),
+    ),
   );
 }

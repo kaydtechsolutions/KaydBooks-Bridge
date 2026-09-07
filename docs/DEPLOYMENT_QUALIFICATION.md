@@ -78,9 +78,10 @@ No production approval is requested by the software itself. A production pilot n
 explicit operator authorization and a separate company-onboarding review, supported
 transaction/report scope, operational backup/failover procedures, dedicated least-
 privilege service identity, external immutable audit retention, monitoring and ownership.
-Taxable and advanced-inventory variants and native financial-report APIs need separate real
-qualification. OCR quality, full Hermes conversational workflows and optional external
-collaboration have not been qualified. Current code rejects unsupported operations.
+Tax is excluded. Eighteen native single-currency reports and the printed-English local OCR
+corpus are qualified. Advanced inventory/currency/report variants, broader OCR layouts,
+full Hermes conversations and configured external delivery remain incomplete. Current
+code rejects unsupported operations.
 
 No production accounting changes, business-record deletion, external messaging, paid
 model calls, PR merge or release publication are part of the staging qualification.

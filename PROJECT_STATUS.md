@@ -1,7 +1,7 @@
 # KaydBooks Bridge project status
 
 Tax functionality and tax reports are excluded from this release by operator instruction
-on 2026-09-07. Non-tax checks remain enforced. 32 acceptance gates remain unfinished; manual workflow M5-02, company access M4-07, draft revisions M4-06 and spreadsheet intake M4-04 pass.
+on 2026-09-07. Non-tax checks remain enforced. 31 acceptance gates remain unfinished; manual workflow M5-02, company access M4-07, draft revisions M4-06 spreadsheet intake M4-04, and offline document extraction M4-03 pass.
 
 Updated: 2026-09-07. Production posting: DISABLED. Four sample invoices (USD45 total)
 and five USD10 sample bills have verified receipts. Three customer receipts totaling USD20
@@ -39,6 +39,18 @@ up privately. This is supporting M4-02 work; the complete release matrix remains
 Signed installed-package restore preserved all 29 jobs and 1,539 files with valid audit,
 paused and without starting a restored service. See [browser workspace](docs/BROWSER_WORKSPACE.md).
 
+Offline document intake now ships with optional Python decoders and pinned local Node 22 /
+Tesseract.js 7.0.0 English models. Six retained synthetic PDF/image fixtures passed actual
+OCR, including conflicting values and embedded instructions. Every prepared field is
+held for explicit source review; original observations/source hashes survive retry and
+restore. Decoders receive no Bridge credentials. Installed sample upload and native
+master checks produced one additional held draft, bringing Bridge history to 30 jobs,
+with zero accounting writes. The fixture's party mapping remains unreviewed. M4-03 is
+complete for the documented printed-English matrix; unsupported or illegible material
+requires manual review. Signed installed restore preserved all 30 jobs and 1,549 files,
+with valid audit/integrity, paused and without starting a restored service.
+See [offline document extraction](docs/DOCUMENT_EXTRACTION.md).
+
 ## M3â€“M7 sample implementation and qualification
 
 ### Current release plan: complete M3â€“M6 before final M7
@@ -61,7 +73,7 @@ paused and without starting a restored service. See [browser workspace](docs/BRO
   amounts through the durable lifecycle. Native USD5 and USD10 receipts settled the USD15
   invoice; a third USD5 receipt remained unapplied. Signed AppliedAmount, related invoice
   payments and customer-wide unused credits are handled without double-counting.
-- Latest validation: 1,048 full-suite tests pass, including 14 real-browser cases. Lint, 33-tool stdio checks and
+- Latest validation: 1,064 full-suite tests pass, including 15 browser cases and 15 intake cases. Lint, 35-tool stdio checks and
   source/wheel builds pass. Eighteen native single-currency report types returned
   complete rows/columns. Independent P&L/balance-sheet/trial-balance/ledger comparisons
   and customer/vendor statement/balance/aging reconciliation passed. Extra native reads
@@ -122,18 +134,19 @@ paused and without starting a restored service. See [browser workspace](docs/BRO
 
 | Milestone | Current implementation/evidence | Remaining scope |
 | --- | --- | --- |
-| M3 | Non-tax service/inventory/mixed invoices; expense/service/inventory bills and standard terms; customer/supplier payments and unapplied service credits; native readback, stock effects and recovery | Credits/refunds, broader terms, currency variants, master-management interface and qualification |
-| M4 | Twenty-three narrow MCP tools; immutable source bytes/hash, explicit field confidence/review; installed Hermes discovery and actual MCP-to-SDK sample preparation | OCR quality, conversational model runs, draft correction/revision |
-| M5 | Local bounded schedules, occurrence deduplication, dependencies/cancellation, local-only outbox, versioned preferences, canonical delegation, read-only board | Native Hermes cron/channels/delegation/Kanban connections; external delivery |
-| M6 | Historical verified-invoice register with dates, source hashes, observation times, derived totals and private exports | Native QuickBooks financial reports and optional GUI fallback |
-| M7 | Signed quiescent snapshot, isolated restore/integrity/audit drill, private ACL inspection, package qualification | Production pilot authorization, dedicated service account, operational failover and external immutable audit retention |
+| M3 | Base-currency invoices/bills, service/simple inventory/mixed lines, receipts/payments, credits/applications/refund and inventory supplier return; native readback and recovery | Broader adjustment/terms/currency/settings variants, master-management interface and full failure matrix |
+| M4 | 35 narrow MCP tools; immutable sources/revisions, field review, spreadsheet intake, local OCR corpus, access management and browser forms for current contracts | Complete release forms/transaction selection and actual Hermes conversation |
+| M5 | Manual posting default; local board schedules/deduplication, dependencies/cancellation, outbox previews, preferences and delegation | Scheduled/automatic accounting dispatch, configured Hermes delivery and end-to-end qualification |
+| M6 | 18 native single-currency reports, exact dates/basis, complete rows and independent financial/balance reconciliation; historical receipt register | Cash flow, currency/location variants and complete supported report matrix |
+| M7 | Private setup, installed service and signed quiescent 30-job restore with integrity/audit checks | Final supported workflow matrix, operational ownership/failover, retention/monitoring and readiness report |
 
 - Actual MCP qualification retained original source bytes, ran a fresh sample master
   lookup, prepared/validated/previewed/queued a document invoice, preserved its duplicate
   job identity and rejected a different company. No accounting write tool is exposed.
 - Uncertain values require review-source permission and exact fingerprint/value
   confirmation. Original uncertainty is retained and revoked reviewer grants block use.
-  No model calls or OCR accuracy claims are included.
+  This earlier MCP run included no model calls or OCR qualification; the later local
+  OCR corpus is documented separately above.
 - Local staging workflows passed; the test schedule was cancelled. Outbox entries are
   local previews, never deliveries. The report matched three historical receipts totaling
   USD30; it does not claim current balances or a complete company ledger.
