@@ -26,6 +26,10 @@ def validate_payload(operation, payload, policy):
         from .checks import validate_payload as validate_check
 
         return validate_check(payload, policy)
+    if operation == "inventory-transfer.create":
+        from .inventory_transfers import validate_payload as validate_inventory_transfer
+
+        return validate_inventory_transfer(payload, policy)
     if operation == "journal.create":
         from .journal_entries import validate_payload as validate_journal
 
@@ -78,6 +82,10 @@ def validate_payload(operation, payload, policy):
 def require_evidence(config, policy, store, db, job, now):
     if job["operation"] == "check.create":
         from .check_evidence import require
+
+        return require(config, policy, store, db, job, now)
+    if job["operation"] == "inventory-transfer.create":
+        from .inventory_transfer_evidence import require
 
         return require(config, policy, store, db, job, now)
     if job["operation"] == "journal.create":
@@ -183,6 +191,7 @@ class Bridge:
             "customer-payment.create",
             "supplier-payment.create",
             "check.create",
+            "inventory-transfer.create",
             "journal.create",
             "sales-receipt.create",
             "customer-credit.create",
@@ -258,6 +267,8 @@ class Bridge:
                 resolver = resolve_evidence
                 if envelope["operation"] == "check.create":
                     from .check_evidence import resolve as resolver
+                if envelope["operation"] == "inventory-transfer.create":
+                    from .inventory_transfer_evidence import resolve as resolver
                 if envelope["operation"] == "journal.create":
                     from .journal_evidence import resolve as resolver
                 if envelope["operation"] == "sales-receipt.create":
@@ -295,6 +306,7 @@ class Bridge:
                 "customer-payment.create",
                 "supplier-payment.create",
                 "check.create",
+                "inventory-transfer.create",
                 "journal.create",
                 "sales-receipt.create",
                 "customer-credit.create",
@@ -408,7 +420,9 @@ class Bridge:
         master = store.job(db, job_id)["operation"] == "master.change"
         if master:
             table = "master_evidence_links"
-        if store.job(db, job_id)["operation"] == "check.create":
+        if store.job(db, job_id)["operation"] == "inventory-transfer.create":
+            table = "inventory_transfer_evidence_links"
+        elif store.job(db, job_id)["operation"] == "check.create":
             table = "check_evidence_links"
         elif store.job(db, job_id)["operation"] == "journal.create":
             table = "journal_evidence_links"
@@ -523,6 +537,7 @@ class Bridge:
                 "customer-payment.create",
                 "supplier-payment.create",
                 "check.create",
+                "inventory-transfer.create",
                 "journal.create",
                 "sales-receipt.create",
                 "customer-credit.create",
@@ -608,6 +623,7 @@ class Bridge:
                 "customer-payment.create",
                 "supplier-payment.create",
                 "check.create",
+                "inventory-transfer.create",
                 "journal.create",
                 "sales-receipt.create",
                 "customer-credit.create",
@@ -627,6 +643,19 @@ class Bridge:
                     "balances": job["master_evidence"]["balances"],
                     "total": format(
                         sum(
+                            Decimal(line["quantity"])
+                            * Decimal(
+                                job["master_evidence"]["balances"]["items"][
+                                    policy.inventory_transfer_masters["items"][line["item_id"]]
+                                ]["average_cost"]
+                            )
+                            for line in job["payload"]["lines"]
+                        ),
+                        ".2f",
+                    )
+                    if job["operation"] == "inventory-transfer.create"
+                    else format(
+                        sum(
                             Decimal(line["amount"])
                             for line in job["payload"]["lines"]
                             if line["side"] == "debit"
@@ -638,6 +667,7 @@ class Bridge:
                     if job["operation"]
                     not in (
                         "check.create",
+                        "inventory-transfer.create",
                         "journal.create",
                         "sales-receipt.create",
                         "customer-credit.create",
@@ -779,6 +809,7 @@ class Bridge:
                 "customer-payment.create",
                 "supplier-payment.create",
                 "check.create",
+                "inventory-transfer.create",
                 "journal.create",
                 "sales-receipt.create",
                 "customer-credit.create",
@@ -934,6 +965,7 @@ class Bridge:
                 "customer-payment.create",
                 "supplier-payment.create",
                 "check.create",
+                "inventory-transfer.create",
                 "journal.create",
                 "sales-receipt.create",
                 "customer-credit.create",

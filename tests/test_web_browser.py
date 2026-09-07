@@ -38,6 +38,10 @@ def page(setup, monkeypatch):
             "master_income": "INCOME",
             "master_expense": "EXPENSE",
         },
+        inventory_transfer_masters={
+            "sites": {"source": "S-A", "destination": "S-B"},
+            "items": {"item-a": "I-A"},
+        },
         journal_masters={"accounts": {"cash": "B-A", "office": "E-A"}},
         bill_masters={
             "vendors": {"vendor-a": "V-A"},
@@ -430,6 +434,8 @@ def test_browser_all_operation_forms_use_exact_shared_payload_fields(page, opera
     if operation in ("supplier-payment.create", "supplier-credit.apply"):
         assert form.locator('input[data-field="ref_number"]').get_attribute("maxlength") == "11"
     for name, value in {
+        "from_site_id": "source",
+        "to_site_id": "destination",
         "customer_id": "customer-a",
         "vendor_id": "vendor-a",
         "currency": "USD",
@@ -469,7 +475,10 @@ def test_browser_all_operation_forms_use_exact_shared_payload_fields(page, opera
     assert request["company"] == "company-a" and request["parameters"]["operation"] == operation
     payload = request["parameters"]["payload"]
     assert payload["ref_number"] == "FORM-1" and payload["currency"] == "USD"
-    if operation == "journal.create":
+    if operation == "inventory-transfer.create":
+        assert payload["lines"] == [{"item_id": "item-a", "quantity": "1"}]
+        assert payload["from_site_id"] == "source" and payload["to_site_id"] == "destination"
+    elif operation == "journal.create":
         assert payload["lines"] == [
             {"account_id": "office", "side": "debit", "amount": "5.00"},
             {"account_id": "cash", "side": "credit", "amount": "5.00"},

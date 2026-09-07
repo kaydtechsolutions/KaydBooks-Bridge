@@ -1,13 +1,16 @@
 """Transactional expansion of the fixed QBWC read-operation allowlist."""
 
+from .inventory_catalog import OPERATION
 from .qbwc_contracts import CONTRACTS, OPERATIONS_SQL
+
+READ_OPERATIONS_SQL = OPERATIONS_SQL + ",'" + OPERATION + "'"
 
 
 def expand_read_operations(db):
     sql = db.execute(
         "SELECT sql FROM sqlite_master WHERE type='table' AND name='qbwc_invoice_jobs'"
     ).fetchone()[0]
-    if all("'" + operation + "'" in sql for operation in CONTRACTS):
+    if all("'" + operation + "'" in sql for operation in (*CONTRACTS, OPERATION)):
         return
     # Other table triggers refer to this table; retain them across the rebuild.
     triggers = db.execute(
@@ -20,7 +23,7 @@ def expand_read_operations(db):
         id TEXT PRIMARY KEY, actor TEXT NOT NULL, connector TEXT NOT NULL,
         payload TEXT NOT NULL, context_hash TEXT NOT NULL, ticket TEXT UNIQUE,
         txn_id TEXT, operation TEXT NOT NULL DEFAULT 'invoice.create'
-        CHECK(operation IN ({OPERATIONS_SQL})))""")
+        CHECK(operation IN ({READ_OPERATIONS_SQL})))""")
     # Preserve rowid too: browser evidence lookup orders reads by insertion order.
     db.execute("""INSERT INTO qbwc_invoice_jobs_next
         (rowid,id,actor,connector,payload,context_hash,ticket,txn_id,operation)

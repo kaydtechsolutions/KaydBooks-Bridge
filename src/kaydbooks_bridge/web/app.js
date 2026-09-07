@@ -427,7 +427,7 @@ function entry(existing = null, onTemplate = null, observed = null) {
     });
     if (evidence.pending) {
       save.disabled = true;
-      const label = {"check.create": "Check", "journal.create": "Journal", "sales-receipt.create": "Sales receipt", "invoice.create": "Invoice", "bill.create": "Bill", "customer-payment.create": "Customer payment", "supplier-payment.create": "Supplier payment", "customer-credit.create": "Credit memo", "supplier-credit.create": "Bill credit"}[op.value] || "Details";
+      const label = {"inventory-transfer.create": "Inventory transfer", "check.create": "Check", "journal.create": "Journal", "sales-receipt.create": "Sales receipt", "invoice.create": "Invoice", "bill.create": "Bill", "customer-payment.create": "Customer payment", "supplier-payment.create": "Supplier payment", "customer-credit.create": "Credit memo", "supplier-credit.create": "Bill credit"}[op.value] || "Details";
       notice(label + " check queued. Run Update Selected in QuickBooks Web Connector, then click Check details again.");
       return;
     }
@@ -582,7 +582,9 @@ function entry(existing = null, onTemplate = null, observed = null) {
       [...row.children]
         .filter((x) => !type || !x.contains(type))
         .forEach((x) => x.remove());
-      if (operation === "check.create") {
+      if (operation === "inventory-transfer.create") {
+        row.append(field("item_id", catalog.choices.transfer_items, data.item_id || ""), field("quantity", null, data.quantity || ""));
+      } else if (operation === "check.create") {
         row.append(field("expense_id", catalog.choices.expenses, data.expense_id || ""), field("amount", null, data.amount || ""), field("memo", null, data.memo || "", true, "Line memo"));
       } else if (operation === "journal.create") {
         row.append(field("account_id", catalog.choices.journal_accounts, data.account_id || "", false, "Account"), field("side", ["debit", "credit"], data.side || "debit", false, "Debit or credit"), field("amount", null, data.amount || ""), field("memo", null, data.memo || "", true, "Line memo"));
@@ -673,6 +675,15 @@ function entry(existing = null, onTemplate = null, observed = null) {
       basics.append(field("vendor_id", catalog.choices.bill_vendors), field("bank_id", catalog.choices.banks), field("ref_number"), field("txn_date"), field("currency", [catalog.currency], catalog.currency), field("memo", null, "", true, "Memo"));
       basics.querySelector('[data-field="ref_number"]').maxLength = 11;
       lineSection.append(el("h3", {}, "Expenses"), lines, button("Add line", () => addLine()));
+      if (existing) { for (const [k,v] of Object.entries(existing.payload)) if (!Array.isArray(v)) setValue(basics,k,v); for (const row of existing.payload.lines) addLine(row); }
+      else addLine();
+      return;
+    }
+    if (op.value === "inventory-transfer.create") {
+      collection = "lines";
+      basics.append(field("from_site_id", catalog.choices.inventory_sites, "", false, "From inventory site"), field("to_site_id", catalog.choices.inventory_sites, "", false, "To inventory site"), field("ref_number"), field("txn_date"), field("currency", [catalog.currency], catalog.currency), field("memo", null, "", true, "Memo"));
+      basics.querySelector('[data-field="ref_number"]').maxLength = 11;
+      lineSection.append(el("h3", {}, "Stock to transfer"), lines, button("Add line", () => addLine()));
       if (existing) { for (const [k,v] of Object.entries(existing.payload)) if (!Array.isArray(v)) setValue(basics,k,v); for (const row of existing.payload.lines) addLine(row); }
       else addLine();
       return;
@@ -973,7 +984,7 @@ async function openJob(id) {
   if (job.state === "queued" && permissions("post-sample"))
     actions.append(
       button(
-        ["check.create", "journal.create", "sales-receipt.create", "invoice.create", "bill.create", "customer-payment.create", "supplier-payment.create", "customer-credit.create", "supplier-credit.create"].includes(job.operation) ? "Queue in Web Connector" : "Post to sample company",
+        ["inventory-transfer.create", "check.create", "journal.create", "sales-receipt.create", "invoice.create", "bill.create", "customer-payment.create", "supplier-payment.create", "customer-credit.create", "supplier-credit.create"].includes(job.operation) ? "Queue in Web Connector" : "Post to sample company",
         async () => {
           await api("post-sample", { job_id: id });
           await openJob(id);

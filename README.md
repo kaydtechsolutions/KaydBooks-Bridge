@@ -14,8 +14,10 @@ as Bridge endpoints: they do not enforce Bridge company permissions or durable j
 ## What works now
 
 **Client connection decision:** QuickBooks Web Connector (`.qwc`) is the required
-primary connection. Invoice, bill, customer-payment, supplier-payment, credit-memo
-and bill-credit browser workflows now use the durable Web Connector lifecycle.
+primary connection. All eight selected data-entry types have browser workflows on
+the durable Web Connector lifecycle, alongside supplier payments and bill credits.
+Five selected types have installed sample qualification; journals, expense checks
+and inventory transfers still need their final live checks.
 Installed sample evidence and remaining qualification are recorded in the
 [data-entry readiness checklist](docs/DATA_ENTRY_READINESS.md). Broader transaction,
 report and scheduling migration from the direct-SDK adapters remains unfinished. See the

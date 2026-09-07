@@ -68,8 +68,8 @@ recipient is the operator's configured chat, not customers or numbers in uploads
 | Capture and extract uploads, prepare rows | Local tools exist; the actual Hermes WhatsApp upload-to-batch conversation is not qualified |
 | Review and exact human confirmation | Bridge reviews/approvals exist; trusted WhatsApp confirmation binding and batch approval are unfinished |
 | Hermes-to-Windows connection | Local stdio MCP tools exist; this Linux-to-Windows deployment is not qualified |
-| Web Connector master checks and dispatch from Hermes | Browser paths exist for six types; Hermes tools still contain native reads and expose no approval/posting tool |
-| All eight selected types | Five have basic sample QBWC qualification: sales receipt, invoice, bill, customer payment, credit memo; journal, inventory transfer and check remain |
+| Web Connector master checks and dispatch from Hermes | Browser paths exist for all eight selected types; Hermes tools still contain native reads and expose no approval/posting tool |
+| All eight selected types | Five have basic sample QBWC qualification: sales receipt, invoice, bill, customer payment, credit memo; journal, inventory transfer and check are implemented/tested but installed acceptance remains pending |
 | Result generation and WhatsApp delivery | Job states/receipts exist; batch summary, delivery tracking and actual channel test remain |
 | Multiple company files | Company isolation/private onboarding exist; each actual file needs its own binding, mappings and qualification; automatic file switching is not claimed |
 | Installable pilot and recovery | Development package exists; final candidate install, walkthrough and end-to-end recovery qualification remain |
@@ -117,3 +117,13 @@ Adding a production file to configuration does not authorize accounting writes.
 Publishing/merging and production accounting still require separate authorization.
 This request selects operator WhatsApp result delivery as a feature; the exact
 destination must be supplied before an actual message test can be performed.
+
+## Current three-path qualification hold
+
+Journals, expense checks and site transfers have shared QBWC implementations and
+browser forms. Their [supported scope and recovery details](QBWC_JOURNALS_CHECKS_TRANSFERS.md)
+are explicit. The installed sample journal is held after QuickBooks discarded an
+unsupported header memo; the corrected implementation uses line memos. The original
+journal needs its approved memo restored on the lines and read-only reconciliation.
+Further sample writes remain paused. Inventory sites are now confirmed enabled and the source/destination master check passed; the controlled transfer itself remains pending. These paths earn no live acceptance credit
+until those checks pass. Tax and production posting remain outside the scope.

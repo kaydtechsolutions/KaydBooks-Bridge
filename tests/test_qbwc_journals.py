@@ -299,3 +299,10 @@ def test_us_journal_memo_uses_supported_line_fields(journal_case):
         journal.validate_receipt(
             E.tostring(root), policy, payload, "981", operation="JournalEntryAdd"
         )
+
+
+def test_non_scalar_journal_side_is_validation_error(journal_case):
+    path, _, payload = journal_case
+    payload["lines"][0]["side"] = ["debit"]
+    with pytest.raises(BridgeError):
+        journal.validate_payload(payload, Config.load(path).companies["company-a"])

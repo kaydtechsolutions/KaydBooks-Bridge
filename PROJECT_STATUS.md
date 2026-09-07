@@ -16,6 +16,31 @@ Linux Hermes host details and the operator's WhatsApp destination are needed for
 actual connection/delivery qualification. No new accounting writes or messages
 were sent for this scope update. Production posting remains disabled.
 
+## Current remaining entry paths
+
+All eight selected transaction paths now have implementations and browser forms.
+Journals, expense checks and inventory transfers are not yet installed-qualified.
+Full regression passed **1,419 tests**, with 50 optional tests skipped. All 13
+transaction browser-form tests passed separately. Subsequent focused checks cover
+24 transfer/catalog cases and journal input hardening: the final combined run passed
+59 tests (17 journals, 18 checks, 24 transfers/catalog). Lint, format, JavaScript syntax
+and package build passed; 12 installed implementation/interface hashes match the source.
+
+The first installed journal saved USD5, but returned warning 530 for an unsupported
+US header Memo. The Bridge held it; it was not resubmitted. The correction uses
+line memos and is installed. Repair of the original sample journal's line memos
+and read-only reconciliation are pending. That unresolved write blocks the live
+expense-check test; its installed read-only master check has passed. Inventory-site
+tracking is now confirmed enabled. The test stock unit is at Atlanta Warehouse;
+Distribution Center has not held that item and is correctly treated as zero after
+verifying both identities. The empty-destination correction is installed and the live transfer master check passed (source 1, destination 0).
+Posting remains paused.
+
+Latest isolated upgrade preserved 59 tables and 4,663 rows with intact audit,
+integrity and foreign keys. The package adds transfer evidence and a fixed read-only
+inventory-site catalog. See [supported fields and limitations](docs/QBWC_JOURNALS_CHECKS_TRANSFERS.md).
+V01-5 remains **5/8 (62.5%)**; v0.1.0 remains **5/15 (33.3%)** until live acceptance.
+
 ## Latest data-entry qualification
 
 Sales receipt KB-SR-001 passed installed QBWC qualification in the authorized

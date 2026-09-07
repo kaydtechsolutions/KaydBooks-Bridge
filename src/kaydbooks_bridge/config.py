@@ -55,6 +55,8 @@ class Company:
     sample_payment_posting: dict = field(default_factory=dict)
     supplier_payment_masters: dict = field(default_factory=dict)
     sample_supplier_payment_posting: dict = field(default_factory=dict)
+    inventory_transfer_masters: dict = field(default_factory=dict)
+    sample_inventory_transfer_posting: dict = field(default_factory=dict)
     journal_masters: dict = field(default_factory=dict)
     sample_check_posting: dict = field(default_factory=dict)
     sample_journal_posting: dict = field(default_factory=dict)
@@ -92,6 +94,8 @@ def company_policy_context(policy):
         "allow_self_approval",
         "supplier_payment_masters",
         "sample_supplier_payment_posting",
+        "inventory_transfer_masters",
+        "sample_inventory_transfer_posting",
         "journal_masters",
         "sample_check_posting",
         "sample_journal_posting",
@@ -160,6 +164,8 @@ class Config:
                     "sample_payment_posting",
                     "supplier_payment_masters",
                     "sample_supplier_payment_posting",
+                    "inventory_transfer_masters",
+                    "sample_inventory_transfer_posting",
                     "journal_masters",
                     "sample_check_posting",
                     "sample_journal_posting",
@@ -291,6 +297,28 @@ class Config:
                     or type(supplier_gate["expires_at"]) not in (int, float)
                 ):
                     raise BridgeError("invalid controlled sample supplier payment posting gate")
+            from .inventory_transfers import validate_masters as validate_inventory_transfer_masters
+
+            validate_inventory_transfer_masters(companies[name].inventory_transfer_masters)
+            inventory_transfer_gate = companies[name].sample_inventory_transfer_posting
+            if not isinstance(inventory_transfer_gate, dict):
+                raise BridgeError("sample inventory_transfer posting gate must be an object")
+            if inventory_transfer_gate:
+                strict_keys(
+                    inventory_transfer_gate,
+                    {"connector", "authorization", "ref_prefix", "max_transfers", "expires_at"},
+                )
+                identifier(inventory_transfer_gate["connector"])
+                if (
+                    not isinstance(inventory_transfer_gate["authorization"], str)
+                    or not 20 <= len(inventory_transfer_gate["authorization"]) <= 1000
+                    or not isinstance(inventory_transfer_gate["ref_prefix"], str)
+                    or not re.fullmatch(r"[A-Z0-9-]{3,8}", inventory_transfer_gate["ref_prefix"])
+                    or type(inventory_transfer_gate["max_transfers"]) is not int
+                    or not 1 <= inventory_transfer_gate["max_transfers"] <= 10
+                    or type(inventory_transfer_gate["expires_at"]) not in (int, float)
+                ):
+                    raise BridgeError("invalid controlled sample inventory_transfer posting gate")
             from .journal_entries import validate_masters as validate_journal_masters
 
             validate_journal_masters(companies[name].journal_masters)

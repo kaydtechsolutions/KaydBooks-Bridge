@@ -96,7 +96,11 @@ def validate_payload(payload, policy):
     for line in lines:
         strict_keys(line, {"account_id", "side", "amount"}, {"memo"})
         identifier(line["account_id"])
-        if line["account_id"] not in maps["accounts"] or line["side"] not in totals:
+        if (
+            line["account_id"] not in maps["accounts"]
+            or not isinstance(line["side"], str)
+            or line["side"] not in totals
+        ):
             raise BridgeError("configured journal account and debit/credit side required")
         amount = money(line["amount"])
         if amount <= 0:

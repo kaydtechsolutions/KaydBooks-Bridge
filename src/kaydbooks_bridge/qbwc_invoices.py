@@ -14,11 +14,16 @@ from .validation import canonical
 def make_plan(company, payload, txn_id=None, operation="invoice.create"):
     from .qbwc_contracts import contract
 
+    if operation == "inventory-sites.read":
+        from .inventory_catalog import plan as site_plan
+
+        return site_plan(company, payload, txn_id)
     contract(operation)
     if operation in (
         "customer-payment.create",
         "supplier-payment.create",
         "check.create",
+        "inventory-transfer.create",
         "journal.create",
         "sales-receipt.create",
         "customer-credit.create",
@@ -50,10 +55,15 @@ def make_plan(company, payload, txn_id=None, operation="invoice.create"):
 
 
 def append_request(request, correlation, check):
+    if check.get("operation") == "inventory-sites.read":
+        from .inventory_catalog import append_request as append_sites
+
+        return append_sites(request, correlation)
     if check.get("operation") in (
         "customer-payment.create",
         "supplier-payment.create",
         "check.create",
+        "inventory-transfer.create",
         "journal.create",
         "sales-receipt.create",
         "customer-credit.create",
@@ -81,10 +91,15 @@ def append_request(request, correlation, check):
 
 
 def check_response(response, correlation, check):
+    if check.get("operation") == "inventory-sites.read":
+        from .inventory_catalog import validate_response as site_response
+
+        return site_response(response, correlation)
     if check.get("operation") in (
         "customer-payment.create",
         "supplier-payment.create",
         "check.create",
+        "inventory-transfer.create",
         "journal.create",
         "sales-receipt.create",
         "customer-credit.create",
@@ -204,6 +219,12 @@ def invoice_job(
         ):
             discovery, receipt = check_response(row["response_xml"], row["correlation"], check)
             service._verify_discovery_response(discovery, row, connector)
+            if operation == "inventory-sites.read":
+                result.update(operation=operation, transport="qbwc", **receipt)
+                store.event(
+                    db, time.time(), actor, None, "inventory_site_catalog_read", {"job": job_id}
+                )
+                return result
             if receipt is not None:
                 result.update(
                     operation="invoice-receipt-check",
@@ -220,6 +241,7 @@ def invoice_job(
                 "customer-payment.create",
                 "supplier-payment.create",
                 "check.create",
+                "inventory-transfer.create",
                 "journal.create",
                 "sales-receipt.create",
                 "customer-credit.create",

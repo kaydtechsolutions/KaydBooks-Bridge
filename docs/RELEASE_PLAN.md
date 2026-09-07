@@ -71,12 +71,12 @@ local candidate builds and authorized sample qualification may continue.
 | Customer payment | Basic installed Web Connector sample qualification passed |
 | Bill | Basic installed Web Connector sample qualification passed |
 | Sales receipt | Basic installed Web Connector sample qualification passed |
-| Journal | Implementation and qualification required |
-| Inventory transfer | Implementation and qualification required |
-| Check | Implementation and qualification required |
+| Journal | Implemented/tested; saved sample memo repair and reconciliation pending |
+| Inventory transfer | Implemented/tested; live source/destination verification pending |
+| Check | Implemented/tested; installed master check passed, write pending |
 
 Five of eight selected entry types (62.5%) have a basic installed sample qualification.
 This measures entry types only, not feature variants, remaining pilot operational
 checks or total release readiness. Supplier payments and bill credits remain
-implemented and sample-qualified additional features. Prioritize the three missing
+implemented and sample-qualified additional features. Prioritize live qualification of the three remaining
 selected types before broader roadmap expansion.

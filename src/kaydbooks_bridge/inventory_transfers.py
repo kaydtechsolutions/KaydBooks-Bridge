@@ -13,14 +13,24 @@ from .invoice_commercial import decimal_evidence
 from .invoice_compatibility import required_id
 from .validation import digest, money
 
-FIELDS = ("TxnID", "EditSequence", "TxnDate", "RefNumber", "FromInventorySiteRef",
-          "ToInventorySiteRef", "Memo", "TransferInventoryLineRet")
+FIELDS = (
+    "TxnID",
+    "EditSequence",
+    "TxnDate",
+    "RefNumber",
+    "FromInventorySiteRef",
+    "ToInventorySiteRef",
+    "Memo",
+    "TransferInventoryLineRet",
+)
 
 
 def quantity(value):
     result = decimal_evidence(value)
     if result <= 0 or result > 1000000 or result.as_tuple().exponent < -6:
-        raise BridgeError("transfer quantity must be positive, at most one million, with at most six decimals")
+        raise BridgeError(
+            "transfer quantity must be positive, at most one million, with at most six decimals"
+        )
     return result
 
 
@@ -38,7 +48,11 @@ def validate_masters(value):
 
 
 def validate_payload(payload, policy):
-    strict_keys(payload, {"txn_date", "ref_number", "currency", "from_site_id", "to_site_id", "lines"}, {"memo"})
+    strict_keys(
+        payload,
+        {"txn_date", "ref_number", "currency", "from_site_id", "to_site_id", "lines"},
+        {"memo"},
+    )
     maps = validate_masters(policy.inventory_transfer_masters)
     if not maps or payload["currency"] != policy.currency:
         raise BridgeError("configured inventory transfer masters and company currency required")
@@ -54,7 +68,12 @@ def validate_payload(payload, policy):
     except (ValueError, TypeError) as exc:
         raise BridgeError("transfer date requires YYYY-MM-DD") from exc
     ref = payload["ref_number"]
-    if not isinstance(ref, str) or not 1 <= len(ref) <= 11 or not ref.isascii() or not all(c.isalnum() or c == "-" for c in ref):
+    if (
+        not isinstance(ref, str)
+        or not 1 <= len(ref) <= 11
+        or not ref.isascii()
+        or not all(c.isalnum() or c == "-" for c in ref)
+    ):
         raise BridgeError("transfer reference requires 1-11 ASCII letters, digits or hyphens")
     if not isinstance(payload["lines"], list) or not 1 <= len(payload["lines"]) <= 20:
         raise BridgeError("transfer requires 1-20 stock lines")
@@ -75,21 +94,48 @@ def validate_payload(payload, policy):
 def plan(policy, payload):
     payload = validate_payload(payload, policy)
     maps = policy.inventory_transfer_masters
-    result = {"payload": payload, "from": maps["sites"][payload["from_site_id"]],
-              "to": maps["sites"][payload["to_site_id"]],
-              "items": {line["item_id"]: maps["items"][line["item_id"]] for line in payload["lines"]},
-              "max_total": policy.max_total}
+    result = {
+        "payload": payload,
+        "from": maps["sites"][payload["from_site_id"]],
+        "to": maps["sites"][payload["to_site_id"]],
+        "items": {line["item_id"]: maps["items"][line["item_id"]] for line in payload["lines"]},
+        "max_total": policy.max_total,
+    }
     return {**result, "context_sha256": digest({"schema": "inventory-transfer-v1", **result})}
 
 
 def specs(check):
-    result = [("Preferences", None, ("MultiLocationInventoryPreferences", "ItemsAndInventoryPreferences", "MultiCurrencyPreferences"))]
+    result = [
+        (
+            "Preferences",
+            None,
+            (
+                "MultiLocationInventoryPreferences",
+                "ItemsAndInventoryPreferences",
+                "MultiCurrencyPreferences",
+            ),
+        )
+    ]
     for site in (check["from"], check["to"]):
         result.append(("InventorySite", site, ("ListID", "IsActive", "ParentSiteRef")))
     for key in sorted(check["items"].values()):
-        result.append(("ItemInventory", key, ("ListID", "IsActive", "QuantityOnHand", "AverageCost")))
+        result.append(
+            ("ItemInventory", key, ("ListID", "IsActive", "QuantityOnHand", "AverageCost"))
+        )
         for site in (check["from"], check["to"]):
-            result.append(("ItemSites", (key, site), ("ListID", "ItemInventoryRef", "InventorySiteRef", "InventorySiteLocationRef", "QuantityOnHand")))
+            result.append(
+                (
+                    "ItemSites",
+                    (key, site),
+                    (
+                        "ListID",
+                        "ItemInventoryRef",
+                        "InventorySiteRef",
+                        "InventorySiteLocationRef",
+                        "QuantityOnHand",
+                    ),
+                )
+            )
     return result
 
 
@@ -113,30 +159,62 @@ def append_check(discovery, run, check):
 def validate_check(xml, run, check, *, recovering=False):
     root = fromstring(xml)
     expected = specs(check)
-    if root.tag != "QBXML" or len(root) != 1 or root[0].tag != "QBXMLMsgsRs" or len(root[0]) != 2 + len(expected):
+    if (
+        root.tag != "QBXML"
+        or len(root) != 1
+        or root[0].tag != "QBXMLMsgsRs"
+        or len(root[0]) != 2 + len(expected)
+    ):
         raise BridgeError("inventory transfer master response set differs")
     rows = list(parse_response(xml))
     balances = {"items": {}, "sites": {}}
     for i, (rs, (kind, key, _)) in enumerate(zip(rows[2:], expected, strict=True), 3):
-        if (rs.entity != kind or rs.request_id != run + str(i) or rs.status_code != 0
-            or rs.status_severity != "Info" or len(rs.records) != 1):
+        if rs.entity != kind or rs.request_id != run + str(i):
+            raise BridgeError("transfer master response is uncorrelated")
+        if (
+            kind == "ItemSites"
+            and rs.status_code == 1
+            and rs.status_severity == "Info"
+            and not rs.records
+        ):
+            # Exact item and site queries above independently verify both identities.
+            # QuickBooks returns no ItemSitesRet for a site that has never held this item.
+            balances["sites"].setdefault(key[0], {})[key[1]] = "0"
+            continue
+        if (
+            rs.entity != kind
+            or rs.request_id != run + str(i)
+            or rs.status_code != 0
+            or rs.status_severity != "Info"
+            or len(rs.records) != 1
+        ):
             raise BridgeError("transfer master response missing, unsuccessful or ambiguous")
         row = rs.records[0]
         if kind == "Preferences":
             location = row.get("MultiLocationInventoryPreferences", {})
             inventory = row.get("ItemsAndInventoryPreferences", {})
-            if (location.get("IsMultiLocationInventoryEnabled") != "true"
+            if (
+                location.get("IsMultiLocationInventoryEnabled") != "true"
                 or row.get("MultiCurrencyPreferences", {}).get("IsMultiCurrencyOn") != "false"
                 or inventory.get("IsTrackingSerialOrLotNumber") != "None"
-                or inventory.get("FIFOEnabled") != "false"):
-                raise BridgeError("transfer needs multi-location inventory enabled, single currency, average cost and no serial/lot tracking")
+                or inventory.get("FIFOEnabled") != "false"
+            ):
+                raise BridgeError(
+                    "transfer needs multi-location inventory enabled, single currency, average cost and no serial/lot tracking"
+                )
         elif kind == "ItemSites":
-            if (row.get("ItemInventoryRef", {}).get("ListID") != key[0]
+            if (
+                row.get("ItemInventoryRef", {}).get("ListID") != key[0]
                 or row.get("InventorySiteRef", {}).get("ListID") != key[1]
-                or "InventorySiteLocationRef" in row):
-                raise BridgeError("transfer item/site identity differs or bins require qualification")
+                or "InventorySiteLocationRef" in row
+            ):
+                raise BridgeError(
+                    "transfer item/site identity differs or bins require qualification"
+                )
             required_id(row.get("ListID"))
-            balances["sites"].setdefault(key[0], {})[key[1]] = str(decimal_evidence(row.get("QuantityOnHand")))
+            balances["sites"].setdefault(key[0], {})[key[1]] = str(
+                decimal_evidence(row.get("QuantityOnHand"))
+            )
         else:
             if row.get("ListID") != key or row.get("IsActive") != "true" or "ParentSiteRef" in row:
                 raise BridgeError("transfer master identity/activity differs")
@@ -144,7 +222,10 @@ def validate_check(xml, run, check, *, recovering=False):
                 cost = decimal_evidence(row.get("AverageCost"))
                 if cost < 0:
                     raise BridgeError("negative inventory cost requires review")
-                balances["items"][key] = {"quantity": str(decimal_evidence(row.get("QuantityOnHand"))), "average_cost": str(cost)}
+                balances["items"][key] = {
+                    "quantity": str(decimal_evidence(row.get("QuantityOnHand"))),
+                    "average_cost": str(cost),
+                }
     value = Decimal(0)
     for line in check["payload"]["lines"]:
         key = check["items"][line["item_id"]]
@@ -162,7 +243,11 @@ def validate_check(xml, run, check, *, recovering=False):
 def add_request(policy, payload, run):
     check = plan(policy, payload)
     root = E.Element("QBXML")
-    rq = E.SubElement(E.SubElement(root, "QBXMLMsgsRq", onError="stopOnError"), "TransferInventoryAddRq", requestID=run)
+    rq = E.SubElement(
+        E.SubElement(root, "QBXMLMsgsRq", onError="stopOnError"),
+        "TransferInventoryAddRq",
+        requestID=run,
+    )
     row = E.SubElement(rq, "TransferInventoryAdd")
     E.SubElement(row, "TxnDate").text = payload["txn_date"]
     E.SubElement(row, "RefNumber").text = payload["ref_number"]
@@ -192,12 +277,23 @@ def append_query(discovery, run, *, txn_id=None, ref_number=None):
 def validate_receipt(xml, policy, payload, run, *, operation="TransferInventoryQuery", txn_id=None):
     check = plan(policy, payload)
     root = fromstring(xml)
-    if (operation not in ("TransferInventoryAdd", "TransferInventoryQuery") or root.tag != "QBXML"
-        or len(root) != 1 or root[0].tag != "QBXMLMsgsRs" or len(root[0]) != 1):
+    if (
+        operation not in ("TransferInventoryAdd", "TransferInventoryQuery")
+        or root.tag != "QBXML"
+        or len(root) != 1
+        or root[0].tag != "QBXMLMsgsRs"
+        or len(root[0]) != 1
+    ):
         raise BridgeError("exact saved inventory transfer required")
     rs = root[0][0]
-    if (rs.tag != operation + "Rs" or rs.get("requestID") != run or rs.get("statusCode") != "0"
-        or rs.get("statusSeverity") != "Info" or len(rs) != 1 or rs[0].tag != "TransferInventoryRet"):
+    if (
+        rs.tag != operation + "Rs"
+        or rs.get("requestID") != run
+        or rs.get("statusCode") != "0"
+        or rs.get("statusSeverity") != "Info"
+        or len(rs) != 1
+        or rs[0].tag != "TransferInventoryRet"
+    ):
         raise BridgeError("transfer status/correlation differs")
     row = rs[0]
     native = required_id(common.scalar(row, "TxnID"))
@@ -218,19 +314,35 @@ def validate_receipt(xml, policy, payload, run, *, operation="TransferInventoryQ
     ids = []
     for node, line in zip(lines, payload["lines"], strict=True):
         ids.append(required_id(common.scalar(node, "TxnLineID")))
-        if (common.reference(node, "ItemRef") != check["items"][line["item_id"]]
+        if (
+            common.reference(node, "ItemRef") != check["items"][line["item_id"]]
             or quantity(common.scalar(node, "QuantityTransferred")) != quantity(line["quantity"])
-            or any(node.find(f) is not None for f in ("FromInventorySiteLocationRef", "ToInventorySiteLocationRef", "SerialNumber", "LotNumber"))):
+            or any(
+                node.find(f) is not None
+                for f in (
+                    "FromInventorySiteLocationRef",
+                    "ToInventorySiteLocationRef",
+                    "SerialNumber",
+                    "LotNumber",
+                )
+            )
+        ):
             raise BridgeError("saved transfer line differs")
     if len(set(ids)) != len(ids):
         raise BridgeError("ambiguous saved transfer lines")
-    return {"txn_id": native, "ref_number": payload["ref_number"], "line_ids": ids,
-            "quantity_transferred": str(sum(quantity(line["quantity"]) for line in payload["lines"])),
-            "verification": "matched-saved-inventory-transfer"}
+    return {
+        "txn_id": native,
+        "ref_number": payload["ref_number"],
+        "line_ids": ids,
+        "quantity_transferred": str(sum(quantity(line["quantity"]) for line in payload["lines"])),
+        "verification": "matched-saved-inventory-transfer",
+    }
 
 
 def append_lookup(discovery, run, policy, payload, txn_id):
-    return append_query(append_check(discovery, run, plan(policy, payload)), run + "99", txn_id=txn_id)
+    return append_query(
+        append_check(discovery, run, plan(policy, payload)), run + "99", txn_id=txn_id
+    )
 
 
 def validate_lookup(xml, run, policy, payload, txn_id):
@@ -239,28 +351,48 @@ def validate_lookup(xml, run, policy, payload, txn_id):
         raise BridgeError("invalid transfer lookup envelope")
     row = root[0][-1]
     root[0].remove(row)
-    discovery, balances = validate_check(E.tostring(root), run, plan(policy, payload), recovering=True)
+    discovery, balances = validate_check(
+        E.tostring(root), run, plan(policy, payload), recovering=True
+    )
     isolated = E.Element("QBXML")
     E.SubElement(isolated, "QBXMLMsgsRs").append(row)
-    return discovery, {**validate_receipt(E.tostring(isolated), policy, payload, run + "99", txn_id=txn_id), "balances": balances}
+    return discovery, {
+        **validate_receipt(E.tostring(isolated), policy, payload, run + "99", txn_id=txn_id),
+        "balances": balances,
+    }
 
 
 def verify_balance_effect(payload, before, after, *, policy):
     check = plan(policy, payload)
     keys = set(check["items"].values())
-    if any(set(group) != keys for group in (before["items"], after["items"], before["sites"], after["sites"])):
+    if any(
+        set(group) != keys
+        for group in (before["items"], after["items"], before["sites"], after["sites"])
+    ):
         raise BridgeError("original complete transfer balances required")
     effects = {}
     for line in payload["lines"]:
         key = check["items"][line["item_id"]]
         old, new = before["items"][key], after["items"][key]
-        if any(decimal_evidence(old[f]) != decimal_evidence(new[f]) for f in ("quantity", "average_cost")):
+        if any(
+            decimal_evidence(old[f]) != decimal_evidence(new[f])
+            for f in ("quantity", "average_cost")
+        ):
             raise BridgeError("transfer changed company stock total or average cost; never resend")
-        if set(before["sites"][key]) != {check["from"], check["to"]} or set(after["sites"][key]) != {check["from"], check["to"]}:
+        if set(before["sites"][key]) != {check["from"], check["to"]} or set(
+            after["sites"][key]
+        ) != {check["from"], check["to"]}:
             raise BridgeError("original source and destination balances required")
         q = quantity(line["quantity"])
         for site, delta in ((check["from"], -q), (check["to"], q)):
-            if decimal_evidence(before["sites"][key][site]) + delta != decimal_evidence(after["sites"][key][site]):
+            if decimal_evidence(before["sites"][key][site]) + delta != decimal_evidence(
+                after["sites"][key][site]
+            ):
                 raise BridgeError("transfer site stock effect differs; never resend")
-        effects[key] = {"quantity": str(q), "before": before["sites"][key], "after": after["sites"][key], "company_stock_unchanged": new}
+        effects[key] = {
+            "quantity": str(q),
+            "before": before["sites"][key],
+            "after": after["sites"][key],
+            "company_stock_unchanged": new,
+        }
     return effects
