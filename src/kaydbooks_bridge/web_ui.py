@@ -115,6 +115,44 @@ def check_masters(bridge, token, company, operation, connector_id, payload):
     if connector is None or connector.company != company:
         raise BridgeError("select the company's exact connector")
     payload = validate_payload(operation, payload, policy)
+    if operation == "invoice.create":
+        from .invoice_compatibility import plan
+        from .qbwc_invoices import invoice_job
+        from .validation import canonical
+
+        svc = DurableQBWCDiscoveryService.from_path(bridge.config_path)
+        actor = config.authenticate(token)
+        store = svc._stores[company]
+        context = plan(policy, payload)["context_sha256"]
+        with store.transaction() as db:
+            candidate = db.execute(
+                "SELECT q.id,q.ticket,s.created_at,s.state FROM qbwc_invoice_jobs q "
+                "LEFT JOIN qbwc_sessions s ON s.ticket=q.ticket "
+                "WHERE q.actor=? AND q.connector=? AND q.payload=? AND q.context_hash=? "
+                "AND q.txn_id IS NULL ORDER BY q.rowid DESC LIMIT 1",
+                (actor, connector_id, canonical(payload), context),
+            ).fetchone()
+        if candidate and (
+            candidate["ticket"] is None
+            or (
+                candidate["state"] in ("authenticated", "request-sent", "verified", "closed")
+                and 0
+                <= bridge.clock() - candidate["created_at"]
+                < policy.invoice_evidence_max_age_seconds
+            )
+        ):
+            check_id = candidate["id"]
+            result = invoice_job(svc, token, connector_id, check_id, payload=payload)
+        else:
+            check_id = "browser-" + str(time.time_ns())
+            result = invoice_job(svc, token, connector_id, check_id, payload=payload, enqueue=True)
+        reference = {"transport": "qbwc", "connector": connector_id, "id": check_id}
+        return {
+            "evidence": reference if result.get("compatibility") == "matched" else None,
+            "pending": result.get("compatibility") != "matched",
+            "payload_sha256": digest(payload),
+            "result": result,
+        }
     if operation == "master.change":
         from .master_checks import read
 
@@ -336,6 +374,14 @@ def action(bridge, token, company, action, parameters):
             parameters["confirmed_values"],
         )
     job = bridge.status(token, company, parameters["job_id"])
+    if job["operation"] == "invoice.create" and (
+        action == "post-sample" or job.get("posting_transport") == "qbwc"
+    ):
+        from .qbwc_posting import enqueue, recover
+
+        return (recover if action == "reconcile-sample" else enqueue)(
+            bridge, token, company, job["id"]
+        )
     modules = {
         "master.change": "master_posting",
         "invoice.create": "sample_posting",

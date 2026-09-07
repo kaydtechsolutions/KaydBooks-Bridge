@@ -1,5 +1,21 @@
 # KaydBooks Bridge project status
 
+Initial Web Connector invoice execution/recovery is implemented and under sample
+qualification. Browser invoice checks now queue QBWC reads; the posting action queues
+an explicitly bounded invoice for a single write handoff and independent readback.
+Interrupted outcomes recover only through queries; missing results never authorize
+a resend. Native/QBWC invoice attempts share the sample quota. Inventory stock effects
+and verified-original selection use retained QBWC evidence. Focused callback tests
+pass, including immutable recovery/write guards. An installed read-only check is
+queued; actual QBWC posting qualification is not yet claimed. See
+[the workflow and remaining qualification](docs/QBWC_INVOICE_POSTING.md).
+No acceptance gate is closed by automated transport tests alone. Production posting
+remains disabled. Other accounting contracts/reports and scheduling need migration.
+Validation: 1,300 full-suite tests passed with browser and offline OCR enabled;
+27 focused posting/recovery tests and the new browser waiting-state test passed after
+the final guards/UI changes. Lint, formatting, JavaScript syntax and package build
+passed. No accounting write has been queued or sent for this QBWC qualification.
+
 The operator now requires QuickBooks Web Connector (`.qwc`) as the primary client
 connection. See [the connection decision](docs/WEB_CONNECTOR_DIRECTION.md).
 Existing Web Connector reads and native sample transactions remain as tested;

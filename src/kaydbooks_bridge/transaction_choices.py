@@ -37,6 +37,15 @@ def saved(db, job, connector, entity, party_field, party_id, total_field):
             "SELECT response,request FROM sdk_discovery WHERE id=? AND connector=? AND state='verified' AND error=''",
             (reference.get("id"), connector.id),
         ).fetchone()
+    elif reference.get("transport") == "qbwc-posting":
+        row = db.execute(
+            "SELECT p.response,s.request FROM qbwc_invoice_runs r "
+            "JOIN qbwc_invoice_attempts a ON a.job_id=r.job_id "
+            "JOIN qbwc_invoice_steps s ON s.run_id=r.id AND s.phase='lookup' "
+            "JOIN qbwc_invoice_responses p ON p.run_id=r.id AND p.phase='lookup' "
+            "WHERE r.id=? AND a.connector=? AND r.job_id=? AND r.phase='done' AND p.result=100",
+            (reference.get("id"), connector.id, job["id"]),
+        ).fetchone()
     elif reference.get("transport") == "qbwc":
         row = db.execute(
             "SELECT s.response_xml,s.request_xml FROM qbwc_invoice_jobs j JOIN qbwc_sessions s ON s.ticket=j.ticket "

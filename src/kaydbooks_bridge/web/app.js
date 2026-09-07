@@ -425,6 +425,11 @@ function entry(existing = null, onTemplate = null, observed = null) {
       connector_id: connector.value,
       payload,
     });
+    if (evidence.pending) {
+      save.disabled = true;
+      notice("Invoice check queued. Run Update Selected in QuickBooks Web Connector, then click Check details again.");
+      return;
+    }
     notice("Details checked against QuickBooks. Save this draft for review.");
     save.disabled = false;
   });
@@ -944,7 +949,7 @@ async function openJob(id) {
   if (job.state === "queued" && permissions("post-sample"))
     actions.append(
       button(
-        "Post to sample company",
+        job.operation === "invoice.create" ? "Queue in Web Connector" : "Post to sample company",
         async () => {
           await api("post-sample", { job_id: id });
           await openJob(id);
@@ -968,6 +973,8 @@ async function openJob(id) {
     badge(job.state),
     detail,
   );
+  if (job.posting_transport === "qbwc" && job.state !== "verified")
+    p.append(el("p", {}, "Web Connector invoice: " + (job.state === "in-flight" ? "waiting for an update. Run Update Selected in QuickBooks Web Connector." : "read-only reconciliation required; never submit the invoice again.")));
   const rows = job.payload.lines || job.payload.allocations || [];
   if (job.operation === "master.change") {
     p.append(
@@ -2177,6 +2184,8 @@ function intakePreview(batch, plan) {
                   connector_id: batch.connector,
                   payload: row.payload,
                 });
+                if (verified.pending)
+                  throw Error("Invoice check queued in Web Connector. Run Update Selected, then prepare this row again.");
                 const prepared = await api("table_intake_v1", {
                   action: "prepare_rows",
                   parameters: {

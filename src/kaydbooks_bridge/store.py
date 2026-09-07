@@ -685,6 +685,9 @@ class Store:
             from .master_checks import schema as master_schema
 
             master_schema(db)
+            from .qbwc_posting_schema import schema as qbwc_posting_schema
+
+            qbwc_posting_schema(db)
 
     @contextmanager
     def transaction(self):
@@ -786,6 +789,10 @@ class Store:
                 if result["operation"] == "customer-payment.create"
                 else "native_bill_verified"
                 if result["operation"] == "bill.create"
+                else "qbwc_invoice_verified"
+                if db.execute(
+                    "SELECT 1 FROM qbwc_invoice_attempts WHERE job_id=?", (job_id,)
+                ).fetchone()
                 else "native_invoice_verified"
             )
             native = db.execute(
@@ -795,6 +802,9 @@ class Store:
             if native:
                 result["transaction_receipt"] = json.loads(native[0])
         from .revisions import decorate
+
+        if db.execute("SELECT 1 FROM qbwc_invoice_attempts WHERE job_id=?", (job_id,)).fetchone():
+            result["posting_transport"] = "qbwc"
 
         decorate(db, result)
         return result

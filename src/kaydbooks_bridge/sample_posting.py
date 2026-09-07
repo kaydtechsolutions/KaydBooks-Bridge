@@ -218,7 +218,9 @@ def post(bridge, token, company, job_id, *, exchange=windows_exchange, read_exch
             ):
                 raise BridgeError("company read session active")
             if (
-                db.execute("SELECT COUNT(*) FROM native_invoice_attempts").fetchone()[0]
+                db.execute(
+                    "SELECT (SELECT COUNT(*) FROM native_invoice_attempts) + (SELECT COUNT(*) FROM qbwc_invoice_attempts)"
+                ).fetchone()[0]
                 >= policy.sample_posting["max_invoices"]
             ):
                 raise BridgeError("sample dispatch quota reached")

@@ -124,4 +124,8 @@ def test_staging_health_is_explicitly_read_only(tmp_path, monkeypatch):
     monkeypatch.setenv("KAYDBOOKS_QBWC_SYNTHETIC_SECRET", "s" * 32)
     app = create_staging_app(config_path, "https://localhost:8443/qbwc")
     body = TestClient(app).get("/healthz").json()
-    assert body == {"status": "ready", "mode": "read-only-discovery", "live_posting": False}
+    assert body == {
+        "status": "ready",
+        "mode": "qbwc-discovery-and-gated-sample-invoices",
+        "live_posting": False,
+    }

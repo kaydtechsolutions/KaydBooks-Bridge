@@ -14,8 +14,10 @@ as Bridge endpoints: they do not enforce Bridge company permissions or durable j
 ## What works now
 
 **Client connection decision:** QuickBooks Web Connector (`.qwc`) is the required
-primary connection. Existing Web Connector reads work; transaction/report migration
-from the direct-SDK adapters remains unfinished. See the
+primary connection. Existing Web Connector reads work; an initial
+[invoice posting/recovery workflow](docs/QBWC_INVOICE_POSTING.md) is implemented with
+automated callback tests and pending installed qualification. Broader transaction/report
+migration from the direct-SDK adapters remains unfinished. See the
 [connection decision and migration requirements](docs/WEB_CONNECTOR_DIRECTION.md).
 
 The agreed [first-release scope and acceptance checklist](docs/FIRST_RELEASE_SCOPE.md)

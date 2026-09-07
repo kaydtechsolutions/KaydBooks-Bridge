@@ -57,6 +57,8 @@ Web Connector does not itself provide the native Batch Enter Transactions screen
 the Bridge batch workflow and supported underlying transaction contracts need design
 and qualification. Tax remains excluded.
 
-Next implementation priority is durable Web Connector transaction execution and
-recovery, starting with the existing invoice contract. No existing native-only gate
-is relabeled Web Connector-qualified. Production posting remains disabled.
+The initial [durable invoice posting and recovery implementation](QBWC_INVOICE_POSTING.md)
+now includes browser master checks, bounded queueing, single write handoff and
+independent readback. Automated callback tests pass; installed sample qualification
+is pending. Other contracts, report queries and scheduled posting still need migration.
+No native-only gate is relabeled Web Connector-qualified. Production remains disabled.

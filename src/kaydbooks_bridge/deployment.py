@@ -16,7 +16,7 @@ from uuid import UUID
 from qbwc_kit.qbxml import parse_response
 
 from .config import BridgeError, Config, outside_repository, strict_keys
-from .qbwc import DurableQBWCDiscoveryService, company_identity_digest
+from .qbwc import company_identity_digest
 from .store import Store
 
 
@@ -245,13 +245,22 @@ def create_staging_app(config_path: str | Path, endpoint_url: str, max_bytes: in
 
     @app.get("/healthz")
     def health():
-        return {"status": "ready", "mode": "read-only-discovery", "live_posting": False}
+        return {
+            "status": "ready",
+            "mode": "qbwc-discovery-and-gated-sample-invoices",
+            "live_posting": False,
+        }
 
     @app.get("/support")
     def support():
-        return {"service": "KaydBooks Bridge", "mode": "read-only qualification"}
+        return {
+            "service": "KaydBooks Bridge",
+            "mode": "QBWC with explicitly gated sample invoices; production disabled",
+        }
 
-    service = DurableQBWCDiscoveryService.from_path(config_path)
+    from .qbwc_posting import DurableQBWCPostingService
+
+    service = DurableQBWCPostingService.from_path(config_path)
     from .web_ui import install
 
     install(app, config_path, endpoint_url)

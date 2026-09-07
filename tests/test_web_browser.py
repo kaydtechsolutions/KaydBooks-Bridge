@@ -110,6 +110,27 @@ def test_browser_dispatch_rules_review_cancel_and_restart(page):
     page.get_by_text("browser-profile · automatic · Cancelled", exact=True).wait_for()
 
 
+def test_invoice_waits_for_web_connector_before_enabling_save(page, monkeypatch):
+    fill_invoice(page)
+    monkeypatch.setattr(
+        web_ui, "check_masters", lambda *a, **kw: {"evidence": None, "pending": True}
+    )
+    page.get_by_role("button", name="Check details", exact=True).click()
+    page.get_by_text(
+        "Invoice check queued. Run Update Selected in QuickBooks Web Connector, then click Check details again.",
+        exact=True,
+    ).wait_for()
+    assert page.get_by_role("button", name="Save and review", exact=True).is_disabled()
+    monkeypatch.setattr(
+        web_ui, "check_masters", lambda *a, **kw: {"evidence": None, "pending": False}
+    )
+    page.get_by_role("button", name="Check details", exact=True).click()
+    page.get_by_text(
+        "Details checked against QuickBooks. Save this draft for review.", exact=True
+    ).wait_for()
+    assert page.get_by_role("button", name="Save and review", exact=True).is_enabled()
+
+
 def fill_invoice(page, reference="WEB-1"):
     page.get_by_role("button", name="New document", exact=True).first.click()
     page.get_by_label("Source", exact=True).select_option("synthetic-intake")
