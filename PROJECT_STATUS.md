@@ -1,5 +1,18 @@
 # KaydBooks Bridge project status
 
+Payment, credit and refund forms now select searchable verified Bridge originals.
+Company/connector identity, retained response hashes, correlated native transaction
+and party IDs are checked; current remapped aliases cannot select another party's
+history. Historical original amounts never substitute for fresh balances. Party or
+connection changes clear selections and invalidate checks. Native IDs remain available
+for records created outside verified Bridge history; full native discovery is separate.
+Installed qualification found all 19 verified originals, exercised seven form families
+and passed fresh customer/supplier payment reads with zero drafts or accounting writes.
+Desktop/mobile layouts passed. The full suite passed 1,258 tests with browser/OCR,
+lint and package builds. Supplier-adjustment CI72 passed all 11 jobs. Company remains
+paused; production disabled. Next: customer inventory returns and stock reconciliation.
+The 28 unfinished gates below remain unchanged; tax is excluded.
+
 Supplier-bill document/line discounts and charges are installed-sample qualified.
 Two separately approved USD12 bills preserved original expense/service lines and
 verified signed adjustment accounts, scope memos and independent BillToPay balances.

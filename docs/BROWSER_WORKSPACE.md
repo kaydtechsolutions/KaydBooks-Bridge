@@ -18,6 +18,14 @@ Every API request authenticates again and checks current company permissions.
   receipt/payment, credit, refund and credit-application contracts. A native master
   check precedes preparation. Editing a field invalidates that check. Decimal line
   multiplication uses integer arithmetic and the same half-up cents rule as the service.
+- Payment, credit and refund forms offer searchable verified Bridge originals by
+  reference or native ID, with date, currency and original amount. Search is scoped
+  to the selected company's confirmed connector and exact mapped native party. It
+  checks retained response hashes and correlated saved-record identities, supports
+  bounded pages, and excludes drafts, simulations and uncertain outcomes. A reused
+  alias cannot expose another native party's records. Party/connection changes clear
+  selections. Historical amounts never populate payable amounts or bypass a fresh
+  check. Records created outside verified Bridge history still require their exact ID.
 - Review uses shared validation, approval, queueing and controlled sample dispatch.
   Approval and queueing are separate actions. A browser cannot bypass sample limits,
   paused state, required approval, current permissions or native preflight checks.
@@ -40,11 +48,10 @@ as text, never HTML. The API exposes an allowlist of actions, checks its own ori
 limits bodies to 6 MB and disables caching. Static scripts/styles ship inside the wheel;
 there are no third-party scripts or external fonts. Production posting stays disabled.
 
-The browser covers current contracts, not unimplemented operation variants. Original
-transaction references currently require exact native transaction IDs. Master creation/
-updates, broader currencies/adjustments and Hermes conversation remain
-separate acceptance work. M4-02 remains partial until the complete release operation
-matrix and convenient transaction selection are available.
+The browser covers current contracts, including master creation/update and selection
+from verified Bridge history. Broader currencies/adjustments, discovery of transactions
+created outside that history and Hermes conversation remain separate acceptance work.
+M4-02 remains partial until the complete release operation matrix is available.
 
 PDF/photo/scan upload now uses the [offline extraction workflow](DOCUMENT_EXTRACTION.md),
 retaining observations and holding every unreviewed field.
@@ -72,6 +79,13 @@ one USD5 service draft, rendered a complete 16-row P&L over verified TLS, and in
 desktop/mobile layouts with no page errors. The installed service retained the draft,
 remained paused and performed zero accounting writes. Private screenshots and proofs
 remain outside the repository.
+
+Installed selection qualification found all 19 verified original invoices, bills and
+credits. All seven payment/credit/refund forms selected the matching native originals
+and cleared selections after party changes. Fresh customer/supplier payment checks
+passed over verified TLS. Job states, attempts and transaction identities were
+unchanged; no draft or accounting write occurred. Desktop/mobile selection layouts
+passed with no page errors. Search remains historical discovery, not balance evidence.
 
 Native qualification discovered QuickBooks' abbreviated same-month date heading
 (`September 1 - 7, 2026`). The report parser now expands that exact shape and checks

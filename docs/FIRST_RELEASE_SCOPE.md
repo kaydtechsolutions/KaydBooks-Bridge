@@ -146,7 +146,10 @@ qualification are separate evidence; a passing mock does not establish native su
   Browser forms now cover the nine current contracts, corrections, source review,
   spreadsheet mapping, reports and access controls. Synthetic browser tests and an
   installed native invoice draft/report run pass. Complete release variants and
-  convenient original-transaction selection remain unfinished. Master
+  discovery of originals created outside verified Bridge history remain unfinished.
+  Payment/credit/refund forms now offer party-scoped, searchable verified originals;
+  installed selection and fresh payment checks pass without preparing or posting.
+  Master
   create/update forms now pass native read/check and desktop/mobile qualification.
 - [x] **M4-03:** PDF/photo/scan extraction is qualified against a retained test corpus;
   uncertain identities, numbers, dates and totals are held for review. Embedded

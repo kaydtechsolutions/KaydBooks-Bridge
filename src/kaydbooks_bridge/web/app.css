@@ -611,3 +611,25 @@ footer {
   padding: 16px;
   background: #f5f8f7;
 }
+
+.transaction-picker {
+  min-width: 0;
+}
+.transaction-picker button {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+.transaction-results {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+@media (max-width: 760px) {
+  .transaction-picker {
+    grid-column: 1 / -1;
+  }
+}

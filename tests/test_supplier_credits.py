@@ -220,6 +220,33 @@ def test_credit_note_verifies_customer_effect_and_never_resends(queued_credit, c
     assert session.writes == 1 and bridge.audit(token, "company-a")["valid"]
 
 
+def test_supplier_credit_history_keeps_original_amount_and_native_vendor(queued_credit):
+    from kaydbooks_bridge.transaction_choices import search
+
+    bridge, token, job_id, session = queued_credit
+    job = post(bridge, token, "company-a", job_id, exchange=session, read_exchange=session.read)
+    raw = json.loads(bridge.config_path.read_text())
+    raw["companies"]["company-a"]["supplier_payment_masters"] = {
+        "vendors": {"other-alias": "V-A"},
+        "payable": "AP-A",
+        "banks": {"bank": "B-A"},
+    }
+    bridge.config_path.write_text(json.dumps(raw))
+    result = search(
+        bridge,
+        token,
+        "company-a",
+        "connector-company-a",
+        "supplier-credit.apply",
+        "other-alias",
+        "supplier-credit",
+        "",
+    )
+    assert result["choices"][0]["txn_id"] == job["txn_id"]
+    assert result["choices"][0]["original_amount"] == "10.00"
+    assert session.writes == 1
+
+
 def test_credit_balance_mismatch_holds_result(queued_credit):
     bridge, token, job_id, session = queued_credit
     session.wrong_balance = True

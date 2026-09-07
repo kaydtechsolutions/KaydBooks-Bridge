@@ -478,6 +478,56 @@ function entry(existing = null, onTemplate = null, observed = null) {
     save.disabled = true;
   });
   let collection = "lines";
+  const transactionSelectors = new Set();
+  function transactionField(name, current = "", kind) {
+    const inputField = field(name, null, current);
+    const input = inputField.querySelector("input");
+    const results = el("div", { class: "transaction-results" });
+    const selected = el("p", { class: "small" });
+    const searchInput = el("input", { type: "search", maxlength: "80" });
+    const chooser = el("div", { class: "hidden" },
+      el("p", { class: "small" }, "Verified Bridge history only. Amounts shown are original amounts; Check details reads current QuickBooks balances. For a record created elsewhere, enter its exact ID above."),
+      el("label", {}, "Search " + names[name].toLowerCase(), searchInput), results,
+    );
+    let cursor = "";
+    async function find(more = false) {
+      const context = {operation: op.value, connector_id: connector.value,
+        party_id: value(basics, op.value.startsWith("customer") ? "customer_id" : "vendor_id"),
+        kind, search: searchInput.value, cursor: more ? cursor : ""};
+      if (!context.party_id || !context.connector_id) throw Error("Choose a customer or supplier and connection first.");
+      const data = await api("transaction-choices", context);
+      if (!chooser.isConnected || context.operation !== op.value || context.connector_id !== connector.value) return;
+      if (!more) results.replaceChildren();
+      results.querySelector("[data-more]")?.remove();
+      for (const row of data.choices) {
+        results.append(button("Use " + row.reference + " · " + row.date + " · " + row.currency + " " + row.original_amount,
+          () => {
+            input.value = row.txn_id;
+            selected.textContent = "Selected " + row.reference + " · " + row.date + ". Check details before saving.";
+            chooser.classList.add("hidden"); evidence = null; save.disabled = true;
+          }));
+      }
+      cursor = data.next_cursor;
+      if (cursor) {
+        const moreButton = button("More matching transactions", () => find(true));
+        moreButton.dataset.more = "true"; results.append(moreButton);
+      }
+      if (!results.children.length) results.append(el("p", {}, "No matching verified Bridge transactions."));
+    }
+    chooser.append(button("Search history", () => find()));
+    searchInput.addEventListener("input", () => { cursor = ""; results.replaceChildren(); });
+    input.addEventListener("input", () => { selected.textContent = ""; });
+    const reset = () => {
+      input.value = ""; selected.textContent = ""; results.replaceChildren();
+      chooser.classList.add("hidden"); cursor = "";
+    };
+    transactionSelectors.add(reset);
+    return el("div", { class: "transaction-picker" }, inputField,
+      button("Choose " + names[name].toLowerCase(), async () => {
+        chooser.classList.remove("hidden"); await find();
+      }), selected, chooser);
+  }
+  connector.addEventListener("change", () => transactionSelectors.forEach(reset => reset()));
   const adjustmentRows = el("div", { id: "adjustments" });
   const adjustmentSection = el("section", { class: "form-section" },
     el("h3", {}, "Discounts and charges"),
@@ -528,7 +578,8 @@ function entry(existing = null, onTemplate = null, observed = null) {
         .forEach((x) => x.remove());
       if (isAllocation) {
         row.append(
-          field("txn_id", null, data.txn_id || ""),
+          transactionField("txn_id", data.txn_id || "",
+            operation === "customer-payment.create" ? "invoice" : operation === "supplier-payment.create" ? "bill" : "customer-credit"),
           field("amount", null, data.amount || ""),
         );
         if (
@@ -600,6 +651,7 @@ function entry(existing = null, onTemplate = null, observed = null) {
     lines.append(row);
   }
   function build() {
+    transactionSelectors.clear();
     basics.replaceChildren();
     extras.replaceChildren();
     lines.replaceChildren();
@@ -624,6 +676,8 @@ function entry(existing = null, onTemplate = null, observed = null) {
       field("ref_number"),
       field("currency", [catalog.currency], catalog.currency),
     );
+    basics.querySelector('[data-field="' + (isCustomer ? "customer_id" : "vendor_id") + '"]')
+      .addEventListener("change", () => transactionSelectors.forEach(reset => reset()));
     if (["supplier-payment.create", "supplier-credit.apply"].includes(operation))
       basics.querySelector('[data-field="ref_number"]').maxLength = 11;
     if (!isCreditApply) basics.append(field("txn_date"));
@@ -636,14 +690,14 @@ function entry(existing = null, onTemplate = null, observed = null) {
       operation === "customer-credit.create" ||
       operation === "customer-credit.apply"
     )
-      basics.append(field("invoice_txn_id"));
+      basics.append(transactionField("invoice_txn_id", "", "invoice"));
     if (
       operation === "supplier-credit.create" ||
       operation === "supplier-credit.apply"
     )
-      basics.append(field("bill_txn_id"));
+      basics.append(transactionField("bill_txn_id", "", "bill"));
     if (isCreditApply)
-      basics.append(field("credit_txn_id"), field("total_amount"));
+      basics.append(transactionField("credit_txn_id", "", isCustomer ? "customer-credit" : "supplier-credit"), field("total_amount"));
     if (
       operation === "supplier-payment.create" ||
       operation === "supplier-credit.apply"

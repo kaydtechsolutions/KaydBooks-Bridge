@@ -221,6 +221,14 @@ def action(bridge, token, company, action, parameters):
         "table-columns": {"document_id", "format"},
         "source": {"job_id"},
         "master-lookup": {"connector_id", "kind", "list_id"},
+        "transaction-choices": {
+            "connector_id",
+            "operation",
+            "party_id",
+            "kind",
+            "search",
+            "cursor",
+        },
     }
     if action not in contracts:
         raise BridgeError("browser action unavailable")
@@ -306,6 +314,10 @@ def action(bridge, token, company, action, parameters):
         from .master_checks import read
 
         return read(bridge, token, company, **parameters)
+    if action == "transaction-choices":
+        from .transaction_choices import search
+
+        return search(bridge, token, company, **parameters)
     if action == "prepare":
         return manual(bridge, token, company, **parameters)
     if action in {"validate", "approve", "submit"}:

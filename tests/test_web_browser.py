@@ -341,7 +341,7 @@ def test_browser_spreadsheet_mapping_errors_and_retry(page, setup):
 
 
 @pytest.mark.parametrize("operation", [op for op in web_ui.OPERATIONS if op != "master.change"])
-def test_browser_all_operation_forms_use_exact_shared_payload_fields(page, operation):
+def test_browser_all_operation_forms_use_exact_shared_payload_fields(page, operation, monkeypatch):
     page.get_by_role("button", name="New document", exact=True).first.click()
     page.get_by_label("Document type", exact=True).select_option(operation)
     form = page.locator("#document-form")
@@ -390,6 +390,45 @@ def test_browser_all_operation_forms_use_exact_shared_payload_fields(page, opera
         assert payload["allocations"] == [{"txn_id": "TXN-1", "amount": "5.00"}]
     else:
         assert payload["lines"][0]["amount"] == "5.00"
+    from kaydbooks_bridge import transaction_choices
+
+    requests = []
+
+    def history(*args, **params):
+        requests.append(params)
+        return {
+            "choices": [
+                {
+                    "txn_id": "HISTORY-ID",
+                    "reference": "HIST-1",
+                    "date": "2026-09-06",
+                    "currency": "USD",
+                    "original_amount": "5.00",
+                }
+            ],
+            "next_cursor": None,
+        }
+
+    monkeypatch.setattr(transaction_choices, "search", history)
+    page.locator("body:not([aria-busy])").wait_for()
+    selectors = page.locator(".transaction-picker").all()
+    for picker in selectors:
+        picker.get_by_role("button").first.click()
+        picker.get_by_role("button", name="Use HIST-1 · 2026-09-06 · USD 5.00", exact=True).click()
+        assert picker.locator("input[data-field]").input_value() == "HISTORY-ID"
+        assert page.get_by_role("button", name="Save and review", exact=True).is_disabled()
+        assert requests[-1]["operation"] == operation
+        assert requests[-1]["party_id"] == (
+            "customer-a" if operation.startswith("customer") else "vendor-a"
+        )
+    if selectors:
+        # Party changes clear prior selections instead of retaining another party's identity.
+        party = "customer_id" if operation.startswith("customer") else "vendor_id"
+        form.locator(f'select[data-field="{party}"]').select_option("")
+        for picker in selectors:
+            assert picker.locator("input[data-field]").input_value() == ""
+        page.set_viewport_size({"width": 390, "height": 844})
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
 
 
 @pytest.mark.parametrize("kind", ["customer", "supplier"])
