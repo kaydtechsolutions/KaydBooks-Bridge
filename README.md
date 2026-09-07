@@ -14,11 +14,11 @@ as Bridge endpoints: they do not enforce Bridge company permissions or durable j
 ## What works now
 
 **Client connection decision:** QuickBooks Web Connector (`.qwc`) is the required
-primary connection. Existing Web Connector reads work; an initial
-[invoice posting/recovery workflow](docs/QBWC_INVOICE_POSTING.md) is implemented with
-automated callback tests and one independently verified installed sample invoice.
-Actual interruption/recovery qualification and broader transaction/report
-migration from the direct-SDK adapters remains unfinished. See the
+primary connection. Invoice, bill, customer-payment, supplier-payment, credit-memo
+and bill-credit browser workflows now use the durable Web Connector lifecycle.
+Installed sample evidence and remaining qualification are recorded in the
+[data-entry readiness checklist](docs/DATA_ENTRY_READINESS.md). Broader transaction,
+report and scheduling migration from the direct-SDK adapters remains unfinished. See the
 [connection decision and migration requirements](docs/WEB_CONNECTOR_DIRECTION.md).
 
 The agreed [first-release scope and acceptance checklist](docs/FIRST_RELEASE_SCOPE.md)
@@ -26,6 +26,10 @@ covers the remaining transactions, inputs, posting modes and reports. M3–M6 mu
 their required gates before final M7 deployment qualification; tax functionality and
 tax reports are excluded from this release by operator choice; the current sample
 invoice path is only part of that release.
+
+An [incremental release plan](docs/RELEASE_PLAN.md) proposes an earlier, explicitly
+limited sample-company pilot followed by small versioned additions. Its scope is
+pending operator selection; the broad roadmap is not declared complete.
 
 - Explicit company context and per-company private SQLite databases.
 - Environment-backed credentials, explicit company assignment, full supported permissions
