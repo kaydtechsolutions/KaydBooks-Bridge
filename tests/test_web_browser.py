@@ -82,6 +82,27 @@ def page(setup, monkeypatch):
         assert not errors
 
 
+def test_browser_dispatch_rules_review_cancel_and_restart(page):
+    page.get_by_role("button", name="Posting schedules", exact=True).click()
+    page.get_by_label("Profile Id", exact=True).fill("browser-profile")
+    page.get_by_label("Mode", exact=True).select_option("automatic")
+    page.get_by_label("Source", exact=True).select_option("synthetic-intake")
+    assert page.get_by_role("button", name="Enable reviewed profile").is_disabled()
+    page.get_by_role("button", name="Review dispatch rules").click()
+    assert page.get_by_role("button", name="Enable reviewed profile").is_enabled()
+    page.get_by_label("Max Amount Total", exact=True).fill("10.00")
+    assert page.get_by_role("button", name="Enable reviewed profile").is_disabled()
+    page.get_by_role("button", name="Review dispatch rules").click()
+    page.get_by_role("button", name="Enable reviewed profile").click()
+    page.get_by_text("browser-profile · automatic · Enabled", exact=True).wait_for()
+    page.get_by_text("browser-profile · automatic · Enabled", exact=True).click()
+    page.get_by_role("button", name="Cancel browser-profile", exact=True).click()
+    page.get_by_text("browser-profile · automatic · Cancelled", exact=True).wait_for()
+    page.get_by_role("button", name="Overview", exact=True).click()
+    page.get_by_role("button", name="Posting schedules", exact=True).click()
+    page.get_by_text("browser-profile · automatic · Cancelled", exact=True).wait_for()
+
+
 def fill_invoice(page, reference="WEB-1"):
     page.get_by_role("button", name="New document", exact=True).first.click()
     page.get_by_label("Source", exact=True).select_option("synthetic-intake")

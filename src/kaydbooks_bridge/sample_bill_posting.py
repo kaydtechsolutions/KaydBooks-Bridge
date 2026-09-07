@@ -203,6 +203,9 @@ def post(bridge, token, company, job_id, *, exchange=windows_exchange, read_exch
             from .source_review import require as require_review
 
             require_review(config, policy, store, db, job)
+            from .dispatch import require as require_dispatch
+
+            require_dispatch(config, actor, policy, store, db, job, bridge.clock())
             if job["state"] != "queued":
                 raise BridgeError(
                     "sample posting requires queued job; never retry a dispatched bill"
@@ -272,6 +275,15 @@ def post(bridge, token, company, job_id, *, exchange=windows_exchange, read_exch
                     current_config, current_actor, current_policy, current, bridge.clock()
                 )
                 require_review(current_config, current_policy, store, db, current)
+                require_dispatch(
+                    current_config,
+                    current_actor,
+                    current_policy,
+                    store,
+                    db,
+                    current,
+                    bridge.clock(),
+                )
                 if (
                     current["state"] != "in-flight"
                     or current["attempt"] != attempt

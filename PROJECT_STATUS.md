@@ -1,7 +1,10 @@
 # KaydBooks Bridge project status
 
 Tax functionality and tax reports are excluded from this release by operator instruction
-on 2026-09-07. Non-tax checks remain enforced. 31 acceptance gates remain unfinished; manual workflow M5-02, company access M4-07, draft revisions M4-06 spreadsheet intake M4-04, and offline document extraction M4-03 pass.
+on 2026-09-07. Non-tax checks remain enforced. 29 acceptance gates remain unfinished:
+M3—10, M4—2, M5—2, M6—11, M7—4. Manual, scheduled and bounded automatic modes
+M5-02/03/04, company access M4-07, draft revisions M4-06, spreadsheet intake M4-04,
+and offline document extraction M4-03 pass.
 
 Updated: 2026-09-07. Production posting: DISABLED. Four sample invoices (USD45 total)
 and five USD10 sample bills have verified receipts. Three customer receipts totaling USD20
@@ -51,6 +54,23 @@ requires manual review. Signed installed restore preserved all 30 jobs and 1,549
 with valid audit/integrity, paused and without starting a restored service.
 See [offline document extraction](docs/DOCUMENT_EXTRACTION.md).
 
+Scheduled and rule-based automatic dispatch now share all nine native operation
+fences. Immutable profiles/occurrences/claims reserve exact jobs, fingerprints and
+budgets; cancellation and current permissions/policy are checked at final native
+authorization. Restart resumes only an undispatched queued claim; an uncertain native
+attempt requires reconciliation and is never resent. Browser rules require review,
+and a separately started installed worker is opt-in. No accounting MCP tool was added.
+
+Installed qualification wrote two separately approved USD5 service invoices, one per
+mode, and independently verified both saved records. A fresh Customer Balance Summary
+reports USD32, matching the prior USD22 plus USD10. Restarted workers performed zero
+repeat writes. Both profiles are cancelled and the company is paused. The private
+invoice quota allowed exactly two new attempts and is now exhausted. Six sample
+invoices totaling USD55 have verified receipts; no production writes occurred.
+Signed isolated restore preserved all 32 jobs and 1,623 evidence files, including both
+cancelled profiles, claims and results, with valid integrity/audit and no restored service.
+Desktop/mobile browser checks passed over verified TLS. See [dispatch modes](docs/DISPATCH_MODES.md).
+
 ## M3â€“M7 sample implementation and qualification
 
 ### Current release plan: complete M3â€“M6 before final M7
@@ -73,7 +93,7 @@ See [offline document extraction](docs/DOCUMENT_EXTRACTION.md).
   amounts through the durable lifecycle. Native USD5 and USD10 receipts settled the USD15
   invoice; a third USD5 receipt remained unapplied. Signed AppliedAmount, related invoice
   payments and customer-wide unused credits are handled without double-counting.
-- Latest validation: 1,064 full-suite tests pass, including 15 browser cases and 15 intake cases. Lint, 35-tool stdio checks and
+- Latest validation: 1,087 full-suite tests pass, including 22 dispatch, 16 browser and 15 intake cases. Lint, 35-tool stdio checks and
   source/wheel builds pass. Eighteen native single-currency report types returned
   complete rows/columns. Independent P&L/balance-sheet/trial-balance/ledger comparisons
   and customer/vendor statement/balance/aging reconciliation passed. Extra native reads

@@ -168,11 +168,20 @@ qualification are separate evidence; a passing mock does not establish native su
   deliberate posting action remain distinct and auditable. New-company setup requires
   approval and enables no dispatch gate. The manual acceptance test proves approval
   and submit perform zero writes; only deliberate native dispatch writes, with ordered audit.
-- [ ] **M5-03:** Scheduled posting of approved work: persisted cadence/timezone,
+- [x] **M5-03:** Scheduled posting of approved work: persisted cadence/timezone,
   cancellation, missed-run policy, restart recovery and no overlapping dispatch.
-- [ ] **M5-04:** Automatic mode: explicitly configured rules, limits, source/review
+  Installed bounded scheduled dispatch wrote one approved USD5 sample invoice and
+  independently verified it. A restarted worker performed zero repeat writes. Durable
+  claims, cancellation at final authorization, skipped/coalesced runs, policy/grant
+  revocation and interrupted planning pass synthetic tests and signed isolated restore.
+- [x] **M5-04:** Automatic mode: explicitly configured rules, limits, source/review
   policy and eligible operations; exceptions held for review; permission/identity/master
   and duplicate checks remain identical to manual dispatch.
+  Installed source/operation/count/amount rules wrote and independently verified one
+  additional approved USD5 sample invoice. Unapproved submission was rejected in both
+  modes. Profiles were cancelled and the company paused afterward; production remains
+  unavailable. See [dispatch modes](DISPATCH_MODES.md). Notification delivery and the
+  broader operation matrix remain separate M5-06/M3-12 gates.
 - [ ] **M5-05:** Hermes messaging: verify supported channel interface/version, company
   destination and recipient authorization; redact output, deduplicate/retry deliveries
   without replaying accounting transactions; test approvals, failures and completion.

@@ -290,6 +290,7 @@ async function show(next) {
   if (view === "imports") imports();
   if (view === "upload") uploadDocument();
   if (view === "access") await access();
+  if (view === "dispatch") await postingSchedules();
   window.scrollTo(0, 0);
 }
 async function overview() {
@@ -1105,6 +1106,175 @@ function drawReport(report) {
     ),
   );
   notice("Report received. Native totals and source evidence are retained.");
+}
+
+async function postingSchedules() {
+  const data = await api("dispatch-status");
+  const body = panel(
+    "Posting schedules",
+    "Manual is the default. Enabled profiles dispatch only queued, approved work under the selected company's sample limits. Exceptions stay in review.",
+  );
+  for (const profile of data.profiles) {
+    const details = el(
+      "details",
+      {},
+      el(
+        "summary",
+        {},
+        profile.id +
+          " · " +
+          profile.definition.mode +
+          " · " +
+          (profile.enabled ? "Enabled" : "Cancelled"),
+      ),
+      el(
+        "pre",
+        {},
+        JSON.stringify(
+          { rules: profile.definition, runs: profile.occurrences },
+          null,
+          2,
+        ),
+      ),
+    );
+    if (profile.enabled && permissions("manage-workflows"))
+      details.append(
+        button("Cancel " + profile.id, async () => {
+          await api("dispatch-cancel", { profile_id: profile.id });
+          await postingSchedules();
+          notice("Profile cancelled. Future write authorizations are stopped.");
+        }),
+      );
+    body.append(details);
+  }
+  if (
+    !["manage-workflows", "post-sample", "submit", "validate"].every(
+      permissions,
+    )
+  ) {
+    body.append(
+      el("p", {}, "Your permissions allow viewing these profiles only."),
+    );
+    $("content").replaceChildren(body);
+    return;
+  }
+  const jobs = (await api("status")).jobs.filter((j) => j.state === "queued");
+  const form = el(
+    "form",
+    { class: "form-grid" },
+    field("profile_id", null, "profile-" + Date.now()),
+    field("mode", ["scheduled", "automatic"], "scheduled"),
+    field(
+      "operation",
+      Object.entries(catalog.operations).map(([id, label]) => ({ id, label })),
+      "invoice.create",
+    ),
+    field("source", catalog.sources),
+    field(
+      "scheduled_job",
+      jobs.map((j) => ({ id: j.id, label: j.ref_number || j.id })),
+      "",
+      true,
+    ),
+    field(
+      "first_run_utc",
+      null,
+      new Date(Date.now() + 60000).toISOString().slice(0, 16),
+    ),
+    field("interval_minutes", null, "15"),
+    field("max_runs", null, "1"),
+    field("expires_hours", null, "1"),
+    field("missed_run", ["skip", "coalesce"], "skip"),
+    field("grace_seconds", null, "30"),
+    field("max_jobs_per_run", null, "1"),
+    field("max_jobs_total", null, "1"),
+    field("max_amount_per_job", null, "5.00"),
+    field("max_amount_total", null, "5.00"),
+  );
+  form.querySelector('[data-field="first_run_utc"]').type = "datetime-local";
+  form.append(
+    el(
+      "p",
+      { class: "small" },
+      "First run is UTC. Scheduled mode binds the selected job; automatic mode selects owned queued jobs matching the operation and source. Budgets include held attempts. A separately started dispatch worker is needed for unattended runs.",
+    ),
+  );
+  const review = el("pre", { class: "hidden" });
+  let pending = null;
+  const enable = button(
+    "Enable reviewed profile",
+    async () => {
+      if (!pending) throw Error("Review these rules first.");
+      await api("dispatch-create", pending);
+      await postingSchedules();
+      notice(
+        "Profile enabled. Required approvals and sample limits still apply.",
+      );
+    },
+    "primary",
+  );
+  enable.disabled = true;
+  form.addEventListener("input", () => {
+    pending = null;
+    enable.disabled = true;
+    review.classList.add("hidden");
+  });
+  form.append(
+    button("Review dispatch rules", async () => {
+      if (!form.reportValidity()) return;
+      const first = new Date(value(form, "first_run_utc") + ":00Z");
+      const number = (name) => {
+        const v = Number(value(form, name));
+        if (!Number.isInteger(v)) throw Error("Enter whole-number limits.");
+        return v;
+      };
+      const mode = value(form, "mode");
+      if (mode === "scheduled" && !value(form, "scheduled_job"))
+        throw Error("Choose a queued job for scheduled mode.");
+      pending = {
+        profile_id: value(form, "profile_id"),
+        specification: {
+          mode,
+          timezone: "UTC",
+          first_run: first.toISOString(),
+          interval_seconds: number("interval_minutes") * 60,
+          max_runs: number("max_runs"),
+          expires_at: first.getTime() / 1000 + number("expires_hours") * 3600,
+          missed_run: value(form, "missed_run"),
+          grace_seconds: number("grace_seconds"),
+          operations: [value(form, "operation")],
+          sources: [value(form, "source")],
+          job_ids: mode === "scheduled" ? [value(form, "scheduled_job")] : [],
+          max_jobs_per_run: number("max_jobs_per_run"),
+          max_jobs_total: number("max_jobs_total"),
+          max_amount_per_job: value(form, "max_amount_per_job"),
+          max_amount_total: value(form, "max_amount_total"),
+        },
+      };
+      review.textContent = JSON.stringify(pending, null, 2);
+      review.classList.remove("hidden");
+      enable.disabled = false;
+    }),
+    review,
+    enable,
+  );
+  form.addEventListener("submit", (e) => e.preventDefault());
+  body.append(
+    panel(
+      "New dispatch profile",
+      "Review the exact rules before enabling them.",
+      form,
+    ),
+    button("Run due sample work", async () => {
+      const result = await api("dispatch-tick");
+      await postingSchedules();
+      notice(
+        result.results.length +
+          " due job(s) processed; inspect each retained result.",
+      );
+    }),
+  );
+  $("content").replaceChildren(body);
 }
 
 async function access() {

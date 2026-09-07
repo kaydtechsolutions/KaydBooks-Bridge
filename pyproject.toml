@@ -59,6 +59,7 @@ kaydbooks-bridge-tools = "kaydbooks_bridge.hermes_tools:main"
 kaydbooks-bridge-operations = "kaydbooks_bridge.operations:main"
 kaydbooks-bridge-qualification = "kaydbooks_bridge.qualification:main"
 kaydbooks-bridge-setup = "kaydbooks_bridge.onboarding:main"
+kaydbooks-bridge-dispatch = "kaydbooks_bridge.dispatch:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

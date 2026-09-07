@@ -179,6 +179,10 @@ def manual(
 def action(bridge, token, company, action, parameters):
     contracts = {
         "status": set(),
+        "dispatch-status": set(),
+        "dispatch-create": {"profile_id", "specification"},
+        "dispatch-cancel": {"profile_id"},
+        "dispatch-tick": set(),
         "job": {"job_id"},
         "preview": {"job_id"},
         "check": {"operation", "connector_id", "payload"},
@@ -200,6 +204,16 @@ def action(bridge, token, company, action, parameters):
         contracts[action],
         {"master_evidence", "revision"} if action == "prepare" else set(),
     )
+    if action.startswith("dispatch-"):
+        from . import dispatch
+
+        method = {
+            "dispatch-status": dispatch.status,
+            "dispatch-create": dispatch.create,
+            "dispatch-cancel": dispatch.cancel,
+            "dispatch-tick": dispatch.tick,
+        }[action]
+        return method(bridge, token, company, **parameters)
     if action == "status":
         result = bridge.status(token, company)
         _, _, _, store = bridge._context(token, company, "read")

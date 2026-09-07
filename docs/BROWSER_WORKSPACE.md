@@ -1,5 +1,10 @@
 # Browser workspace
 
+Posting schedules now offer reviewed exact-job schedules and source/operation rules
+with bounded counts/amounts, expiration, missed-run handling and durable cancellation.
+An explicitly started installed worker performs unattended sample dispatch; starting
+the web workspace alone never starts a worker. See [dispatch modes](DISPATCH_MODES.md).
+
 The installed HTTPS service serves its browser workspace at `/app`. Sign in with
 the private Bridge access key and explicitly select an assigned company. Keys stay
 in page memory and are cleared on sign-out/reload. No company is selected implicitly.
