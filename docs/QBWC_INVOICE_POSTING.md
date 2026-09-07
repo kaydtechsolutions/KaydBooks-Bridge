@@ -85,9 +85,9 @@ Automated SOAP tests cover successful posting/readback, exact repeats, restarts,
 lost write responses, read-only recovery, missing results, wrong saved records,
 inventory effects, stale/revoked authority, changed company/version, malformed
 responses and immutable database evidence. Browser invoice checks and dispatch route
-through QBWC. These tests use synthetic QuickBooks responses. Actual interruption/
-recovery remains pending; the successful installed invoice below does not qualify
-that gate or other invoice variants.
+through QBWC. These tests use synthetic QuickBooks responses. Actual service-invoice
+interruption/recovery is separately qualified below; other invoice variants still
+require installed qualification.
 
 Validation passed 1,300 full-suite tests with browser/offline OCR enabled, followed
 by 27 focused posting/recovery tests and the browser waiting-state check for final
@@ -115,5 +115,24 @@ same stable repair profile imported successfully and created its FileID. No new 
 were generated. This records the observed sequence, not proof of one underlying
 root cause. Windows Server required .NET 3.5 for CP3; installation was verified.
 
-Next: qualify an actual interrupted QBWC exchange and read-only recovery without
-resending the write. Production posting and broader client release remain disabled.
+### Installed lost-write-response recovery
+
+A second separately approved USD5 non-tax service invoice exercised an actual
+process interruption. A private, single-job fault harness exited after receiving
+QuickBooks' successful add response but before accepting it into the durable
+lifecycle. Web Connector reported a connection failure. The saved write handoff
+remained, with no accepted add response. The harness was then replaced by the normal
+service; expiration using the actual clock held the job for reconciliation.
+
+With posting paused, recovery performed only a reference search (75%) and independent
+exact-TxnID readback (100%). The invoice identity, lines, amounts and USD5 remaining
+balance matched, including the TxnID reported in the privately withheld response.
+The job became verified with one original attempt, one total write handoff and no
+recovery writes. Re-enqueue and recovery of the verified job were both refused.
+Retained response hashes and audit integrity passed; no uncertain jobs or active
+sessions remained. The bounded quota remains consumed. The six fault-selector
+checks passed, and implementation CI78 passed all 11 jobs. Fault code and raw
+company evidence are private and are not part of the distributed package.
+
+Next: qualify an inventory invoice and its stock effects through actual QBWC.
+Production posting and broader client release remain disabled.

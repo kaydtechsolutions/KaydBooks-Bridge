@@ -1,5 +1,18 @@
 # KaydBooks Bridge project status
 
+Actual QBWC lost-write-response recovery is now qualified for a USD5 non-tax
+service invoice. A private one-job harness exited after QuickBooks returned a
+successful add response, before the Bridge accepted it. After restoring the normal
+service, real session expiration held the outcome as unknown. Read-only reference
+search and exact-TxnID readback independently verified the same saved invoice.
+One attempt and one write handoff remain; recovery sent zero writes. Repeat posting
+and recovery of the verified job were refused. Response hashes and audit integrity
+passed. Posting is paused, the bounded invoice quota is exhausted, and raw evidence
+and the fault harness remain private. CI78 passed all 11 jobs. Next: installed QBWC
+inventory invoice/stock-effect qualification, then remaining entry/report contracts.
+This closes the initial service-invoice interruption check, not a broader release
+gate: 28 gates remain (M3—9, M4—2, M5—2, M6—11, M7—4).
+
 Delayed QBWC first updates now have an explicit recovery outcome when no request
 was ever handed out: `failed / qbwc_not_dispatched`. Current context, ownership and
 audit checks, closed sessions and immutable SQL evidence are required. Attempt
@@ -15,7 +28,7 @@ and verified-original selection use retained QBWC evidence. Focused callback tes
 pass, including immutable recovery/write guards. Installed QBWC qualification now
 verified one separately approved USD5 service invoice with one write handoff and
 independent saved-invoice readback. Duplicate dispatch was refused. Actual
-interruption/recovery remains unqualified. See
+interruption/recovery is qualified for the service invoice described above. See
 [the workflow and remaining qualification](docs/QBWC_INVOICE_POSTING.md).
 No acceptance gate is closed by automated transport tests alone. Production posting
 remains disabled. Other accounting contracts/reports and scheduling need migration.
@@ -29,7 +42,7 @@ The operator now requires QuickBooks Web Connector (`.qwc`) as the primary clien
 connection. See [the connection decision](docs/WEB_CONNECTOR_DIRECTION.md).
 Existing Web Connector reads and native sample transactions remain as tested;
 transaction/report migration through Web Connector is not yet completed. Next:
-actual QBWC interruption/recovery qualification, then the remaining required
+actual QBWC inventory invoice qualification, then the remaining required
 entry/report contracts. Native-only evidence must not close QBWC qualification gates.
 This is a deployment-direction change; it does not enable accounting posting or
 complete any of the 28 unfinished gates recorded below. Tax remains excluded.

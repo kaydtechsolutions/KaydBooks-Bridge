@@ -61,6 +61,9 @@ The initial [durable invoice posting and recovery implementation](QBWC_INVOICE_P
 now includes browser master checks, bounded queueing, single write handoff and
 independent readback. Automated callback tests pass; one installed USD5 service
 invoice passed preflight, single write handoff and exact saved-invoice readback.
-Duplicate dispatch was refused and posting was paused again. Actual interruption/
-recovery remains pending. Other contracts, reports and scheduling need migration.
+Duplicate dispatch was refused and posting was paused again. Actual service-invoice
+interruption/recovery also passed: after a deliberate process exit before accepting
+the successful add response, read-only recovery verified the same saved invoice
+with one total write handoff. Inventory variants still need installed QBWC
+qualification. Other contracts, reports and scheduling need migration.
 No native-only gate is relabeled Web Connector-qualified. Production remains disabled.
