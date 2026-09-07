@@ -1,12 +1,21 @@
 # KaydBooks Bridge project status
 
+Both installed Web Connector credit paths passed: USD15 mixed customer credit,
+customer balance 59 to 44 and stock 2 to 4 at unchanged average cost; USD20 mixed
+supplier credit, vendor/net payables 54 to 34 and stock 4 to 2. Exact saved lines,
+unused credit, one attempt/one write, response hashes, audit and repeat-action
+refusal passed. Posting is paused. Six of fourteen requested entry types now have
+basic Web Connector sample qualification; broader variants remain. The proposed
+[incremental release plan](docs/RELEASE_PLAN.md) offers a smaller sample pilot;
+operator selection is pending and no release has been published.
+
 Credit memos and bill credits now use Web Connector for browser master checks,
 controlled posting and query-only recovery. Original-record capacity, party/net
 payable effects and inventory stock/cost are verified from retained preflight
 evidence. The affected suite passed 226 tests and six browser waiting-state checks;
 lint, formatting, JavaScript syntax and package build passed. An isolated migration
 preserved identical contents in all 56 tables and 3,739 rows with valid audit,
-integrity and foreign keys. Installed credit qualification remains pending.
+integrity and foreign keys. Basic installed credit qualification passed above.
 See [credit transport](docs/QBWC_CREDITS.md).
 Checklist completion is 13/41 M3–M7 gates (31.7%); 28 remain. These gates retain
 their documented native/transport scope and do not measure the newer fourteen-entry

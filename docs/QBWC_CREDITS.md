@@ -26,5 +26,14 @@ web contracts. Six browser waiting-state checks passed. Lint, formatting,
 JavaScript syntax and package build passed. A separate installed-database copy
 retained identical contents across all 56 tables and 3,739 rows with valid audit,
 integrity and foreign keys; the live database was not modified by that check.
-Actual installed QuickBooks credit qualification remains pending. Automated
-evidence does not close the broader release gates or enable production posting.
+
+Installed Web Connector qualification passed for both credit types. A USD15 mixed
+customer credit matched both lines, reduced customer balance USD59 to USD44 and
+returned two stock units (2 to 4), retaining USD5 average cost. A USD20 mixed
+supplier credit matched expense, purchased-service and inventory lines, reduced
+vendor/net payable balance USD54 to USD34 and returned two stock units (4 to 2).
+Unused customer/supplier credits matched USD15/USD20; neither was automatically
+applied to an original transaction. Each retained one attempt and one write, valid
+response hashes/audit and refusal of repeat dispatch/recovery. Posting was paused
+after each qualification. Broader variants and actual credit-interruption tests
+remain; these results do not close broader gates or enable production posting.

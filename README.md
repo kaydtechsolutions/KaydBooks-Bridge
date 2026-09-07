@@ -27,9 +27,9 @@ their required gates before final M7 deployment qualification; tax functionality
 tax reports are excluded from this release by operator choice; the current sample
 invoice path is only part of that release.
 
-An [incremental release plan](docs/RELEASE_PLAN.md) proposes an earlier, explicitly
-limited sample-company pilot followed by small versioned additions. Its scope is
-pending operator selection; the broad roadmap is not declared complete.
+An [incremental release plan](docs/RELEASE_PLAN.md) defines an earlier, explicitly
+limited eight-entry sample-company pilot followed by small versioned additions.
+The selected scope and its remaining work are tracked separately from the broad roadmap.
 
 - Explicit company context and per-company private SQLite databases.
 - Environment-backed credentials, explicit company assignment, full supported permissions
