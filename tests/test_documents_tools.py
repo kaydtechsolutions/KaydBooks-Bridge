@@ -150,9 +150,11 @@ def test_real_mcp_stdio_transport_without_model_calls(setup):
                 await session.initialize()
                 names = {tool.name for tool in (await session.list_tools()).tools}
                 assert (
-                    len(names) == 38
+                    len(names) == 42
                     and {
                         "status_v1",
+                        "batch_preview_v1",
+                        "batch_status_v1",
                         "company_access_v1",
                         "revise_document_v1",
                         "table_intake_v1",

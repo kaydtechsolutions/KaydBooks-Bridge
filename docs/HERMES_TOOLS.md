@@ -10,13 +10,18 @@ by `KAYDBOOKS_TOOL_TOKEN_ENV` (default `KAYDBOOKS_TOKEN`), and optionally
 New principals receive all supported permissions within their explicitly assigned
 companies by default. Operators may restrict them with an explicit grant list.
 Preparation needs prepare/read/validate; queueing needs submit and recovery needs
-recover. The tool server exposes no posting or approval tool even when its principal
-has those permissions; required review and posting gates still apply.
+recover. `qbwc_entry_v1` can enqueue a controlled sample write through Web Connector
+only after existing independent approval and posting gates pass. The tool server
+exposes no approval action. Legacy native tools remain outside the pilot allowlist.
 Optional local workflows require manage-workflows; receipt reports require report/read.
 All calls require an explicit company. Config and grants are rechecked per operation.
 
 | Tool v1 | Operation |
 | --- | --- |
+| company_catalog_v1 | Read authorized company mappings and supported entry forms |
+| qbwc_entry_v1 | Eight selected QBWC check/prepare/validate/preview/submit/dispatch/recover/status actions |
+| batch_preview_v1 | Freeze exact source-bound validated jobs for separate operator review |
+| batch_status_v1 | Read immutable batch progress and provider acknowledgments |
 | native_report_v1 | Fixed native reports with company/date/basis evidence |
 | table_intake_v1 | Explicit CSV/XLSX mapping, preview and row preparation |
 | company_access_v1 | Assigned-company users, combinable roles and exact restrictions |
@@ -56,8 +61,11 @@ All calls require an explicit company. Config and grants are rechecked per opera
 | receipt_register_v1 | Historical receipt report with source hashes and derived totals |
 | workflow_v1 | Bounded local schedule/cancel/tick/remember/delegate; no external delivery |
 
-No tool accepts shell, SQL, raw qbXML, credentials, a desired job state or a posting
-operation. Source content and tool-returned original values remain inert data.
+No tool accepts shell, SQL, raw qbXML, credentials or a desired job state. The only
+dispatch action uses the fixed QBWC contract and existing sample gates. Source
+content and tool-returned original values remain inert data. There are 42 raw tools;
+the seven-tool pilot allowlist and trusted confirmation adapter are documented in
+[Hermes channel integration](HERMES_CHANNEL.md).
 Capture permits PDF, PNG, JPEG, plain text, CSV and JSON up to 4 MiB per document.
 The optional `extract_document_v1` and `prepare_extraction_v1` tools now provide
 [qualified offline OCR observations](DOCUMENT_EXTRACTION.md) and source-bound drafts.

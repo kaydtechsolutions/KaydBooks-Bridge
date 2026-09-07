@@ -66,18 +66,19 @@ recipient is the operator's configured chat, not customers or numbers in uploads
 | Requirement | Current evidence / remaining work |
 | --- | --- |
 | Capture and extract uploads, prepare rows | Local tools exist; the actual Hermes WhatsApp upload-to-batch conversation is not qualified |
-| Review and exact human confirmation | Bridge reviews/approvals exist; trusted WhatsApp confirmation binding and batch approval are unfinished |
-| Hermes-to-Windows connection | Local stdio MCP tools exist; this Linux-to-Windows deployment is not qualified |
-| Web Connector master checks and dispatch from Hermes | Browser paths exist for all eight selected types; Hermes tools still contain native reads and expose no approval/posting tool |
+| Review and exact human confirmation | Actual operator DM confirmed the exact immutable sample invoice batch; separate reviewer approval recorded |
+| Hermes-to-Windows connection | Actual Linux SSH/MCP uses the same durable Windows state as Web Connector |
+| Web Connector master checks and dispatch from Hermes | Confirmed sample invoice dispatched once and saved invoice fields verified through QBWC readback |
 | All eight selected types | All eight have basic sample QBWC qualification within documented limits: sales receipt, invoice, bill, customer payment, credit memo, journal, expense check and site transfer |
-| Result generation and WhatsApp delivery | Job states/receipts exist; batch summary, delivery tracking and actual channel test remain |
+| Result generation and WhatsApp delivery | Deterministic verified batch result accepted by WhatsApp provider; preview and result IDs retained; handset read not inferred |
 | Multiple company files | Company isolation/private onboarding exist; each actual file needs its own binding, mappings and qualification; automatic file switching is not claimed |
 | Installable pilot and recovery | Development package exists; final candidate install, walkthrough and end-to-end recovery qualification remain |
 
 All eight entry types (100%) have basic installed sample qualification. This
 is not the percentage of the complete Hermes workflow. The older 13/41 broad
 roadmap count is historical context, not this release's completion score. No
-complete upload-confirm-post-WhatsApp run has been verified yet.
+complete operator-upload conversation has been verified yet. The controlled-source
+preview-confirm-post-result path has passed in the sample company.
 
 ## v0.1.0 milestone scorecard
 
@@ -88,15 +89,15 @@ estimate of time or effort.
 
 | Milestone | Status | Verified checks | Completion |
 | --- | --- | --- | --- |
-| V01-1 Upload and prepare through Hermes | Local foundation exists; conversation test pending | 0/1 | 0% |
-| V01-2 Exact operator confirmation | Bridge approval exists; trusted channel binding pending | 0/1 | 0% |
-| V01-3 Linux Hermes to Windows Bridge | Remote connection qualification pending | 0/1 | 0% |
-| V01-4 Hermes-driven QBWC dispatch | Browser foundation exists; Hermes migration pending | 0/1 | 0% |
+| V01-1 Upload and prepare through Hermes | Remote source capture verified; full upload/prepare conversation pending | 0/1 | 0% |
+| V01-2 Exact operator confirmation | Real native operator reply accepted for the exact sample batch | 1/1 | 100% |
+| V01-3 Linux Hermes to Windows Bridge | Same-state SSH/MCP read and repeatable source capture verified | 1/1 | 100% |
+| V01-4 Hermes-driven QBWC dispatch | One confirmed sample invoice dispatched and matched to saved QBWC readback | 1/1 | 100% |
 | V01-5 Eight selected entry types | All eight basic sample checks passed; supported variants remain bounded | 8/8 | 100% |
-| V01-6 Mini report in operator WhatsApp | Summary/delivery workflow pending | 0/1 | 0% |
+| V01-6 Mini report in operator WhatsApp | Verified batch result has durable provider acknowledgment | 1/1 | 100% |
 | V01-7 Per-company onboarding/isolation walkthrough | Private setup exists; complete deployment walkthrough pending | 0/1 | 0% |
 | V01-8 Installable candidate and end-to-end recovery | Final candidate/walkthrough pending | 0/1 | 0% |
-| **Total** | **In development; not ready for production** | **8/15** | **53.3% (53% rounded)** |
+| **Total** | **In development; not ready for production** | **12/15** | **80%** |
 
 Include this scorecard in major progress updates. Name the milestone changed and
 the evidence closing its check. Do not increase completion for a commit, documentation
@@ -128,4 +129,39 @@ The one-unit site transfer passed source -1, destination +1 and unchanged total
 stock/average cost. Each new transaction retained one Add, exact saved fields,
 valid audit and duplicate refusal. General posting is paused with no unresolved
 sample write. Their [supported scope and recovery details](QBWC_JOURNALS_CHECKS_TRANSFERS.md)
-remain explicit. These complete V01-5; the other seven scorecard checks remain.
+remain explicit. These complete V01-5; three other scorecard checks remain.
+
+## Hermes connection and reviewed-batch implementation
+
+The actual Linux Hermes host now reaches the same durable Windows database used by
+Web Connector. A remote MCP lookup returned an existing verified journal; repeated
+original-source capture reused the same document ID and hash. This closes V01-3.
+The stdio launcher uses the physical Windows state path: packaged-app path
+virtualization must not create a second empty database when SSH launches Python.
+
+An explicitly authorized connection message was accepted by the selected operator's
+existing WhatsApp bridge and returned a provider message ID. Phone delivery/read
+receipt and the complete batch result workflow are not inferred from that response.
+The previous home chat remains unchanged.
+
+Exact source-bound batch previews, separate native-chat confirmation, serial QBWC
+dispatch and deterministic results are implemented with simulated regression checks.
+The signed private channel is not exposed as an MCP approval tool. Wrong chat,
+sender, group, owner-generated message and attachment-derived confirmations are
+rejected. A result waits for verified readback; uncertain writes stop the batch.
+A durable delivery claim prevents automatic resend after an unknown network result.
+Live inbound confirmation and batch-result delivery subsequently passed for one
+controlled USD5 service invoice. Installing the plugin in the actual named Hermes
+profile fixed the previously unknown confirmation command. After the first review
+expired, fresh evidence revalidated the same unposted job and a new review replaced
+the old one. The real operator confirmed that new review; one QBWC attempt created
+the invoice and matched its saved reference, lines, USD5 subtotal, zero tax and USD5
+balance remaining. Both preview and final result have provider acknowledgments.
+Posting was paused after verification and the audit remained valid. Private proofs
+retain the job, transaction, native event and provider IDs outside Git.
+
+This test used a controlled source captured through remote MCP, not an actual
+operator attachment conversation or a paid model run. It closes V01-2, V01-4 and
+V01-6, while V01-1, V01-7 and V01-8 remain open. The invoice receipt verifies the
+saved transaction, not a fresh full customer-balance report.
+See [channel integration](HERMES_CHANNEL.md) for installation and trust boundaries.

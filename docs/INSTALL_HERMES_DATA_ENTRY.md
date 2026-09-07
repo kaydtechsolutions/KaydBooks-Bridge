@@ -40,7 +40,8 @@ Record the commit and package version. `codex/foundation` is the evolving PR bra
 not a stable release. Final pilot installation will use a verified, versioned artifact.
 The Web Connector architecture does not require a separate developer SDK for clients;
 legacy Hermes tools using native SDK reads still need migration before this workflow
-can satisfy that installation boundary.
+can use those legacy tools without an SDK. The pilot's seven-tool allowlist uses
+QBWC instead; see [reviewed channel setup](HERMES_CHANNEL.md).
 
 ## 2. Create one private company bundle per QBW file
 
@@ -116,6 +117,8 @@ launcher must expose only this workflow's approved tools, disable parallel calls
 and use the same Windows company configuration and durable state as Web Connector.
 Validate discovery with `hermes mcp test kaydbooks` after the entry is configured.
 This is a connection check, not evidence of successful accounting or WhatsApp delivery.
+The actual pilot SSH/MCP connection is now qualified against the same Windows state;
+overall v0.1.0 acceptance is **12/15 (80%)**. The full operator walkthrough remains open.
 See the [official Hermes MCP reference](https://hermes-agent.nousresearch.com/docs/reference/mcp-config-reference/)
 and the [current Bridge tool inventory](HERMES_TOOLS.md).
 
