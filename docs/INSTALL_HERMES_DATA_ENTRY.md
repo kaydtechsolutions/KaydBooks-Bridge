@@ -1,8 +1,8 @@
 # Install the Hermes data-entry system for multiple companies
 
 Target: **KB v0.1.0**. The full upload, confirmation, posting and WhatsApp workflow
-has passed controlled sample tests, and the per-company deployment walkthrough has
-passed. Final clean-candidate installation and recovery qualification remains open. The commands below install
+has passed controlled sample tests and the per-company deployment walkthrough. A
+clean candidate installation and isolated recovery startup have also passed. The commands below install
 the current development candidate; they do not turn on production posting.
 There is no published v0.1.0 installer yet.
 
@@ -179,7 +179,8 @@ and use the same Windows company configuration and durable state as Web Connecto
 Validate discovery with `hermes mcp test kaydbooks` after the entry is configured.
 This is a connection check, not evidence of successful accounting or WhatsApp delivery.
 The actual pilot SSH/MCP connection is now qualified against the same Windows state;
-overall v0.1.0 acceptance is **14/15 (93%)**. The final candidate/recovery check remains open.
+overall v0.1.0 development-pilot acceptance is **15/15 (100%)**. Production posting,
+PR merge and release publication remain separately controlled.
 See the [official Hermes MCP reference](https://hermes-agent.nousresearch.com/docs/reference/mcp-config-reference/)
 and the [current Bridge tool inventory](HERMES_TOOLS.md).
 

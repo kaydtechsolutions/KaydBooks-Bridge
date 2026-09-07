@@ -72,7 +72,7 @@ recipient is the operator's configured chat, not customers or numbers in uploads
 | All eight selected types | All eight have basic sample QBWC qualification within documented limits: sales receipt, invoice, bill, customer payment, credit memo, journal, expense check and site transfer |
 | Result generation and WhatsApp delivery | Deterministic verified batch result accepted by WhatsApp provider; preview and result IDs retained; handset read not inferred |
 | Multiple company files | Company isolation/private onboarding exist; each actual file needs its own binding, mappings and qualification; automatic file switching is not claimed |
-| Installable pilot and recovery | Development package exists; final candidate install, walkthrough and end-to-end recovery qualification remain |
+| Installable pilot and recovery | Clean candidate install, signed restore and isolated recovered-service startup passed |
 
 All eight entry types (100%) have basic installed sample qualification. This
 is not the percentage of the complete Hermes workflow. The older 13/41 broad
@@ -96,8 +96,8 @@ estimate of time or effort.
 | V01-5 Eight selected entry types | All eight basic sample checks passed; supported variants remain bounded | 8/8 | 100% |
 | V01-6 Mini report in operator WhatsApp | Verified batch result has durable provider acknowledgment | 1/1 | 100% |
 | V01-7 Per-company onboarding/isolation walkthrough | Secret-safe 22-check sample walkthrough and automated cross-company isolation passed | 1/1 | 100% |
-| V01-8 Installable candidate and end-to-end recovery | Clean bundle installation and signed batch restore passed; end-to-end recovery remains open | 0/1 | 0% |
-| **Total** | **In development; not ready for production** | **14/15** | **93%** |
+| V01-8 Installable candidate and end-to-end recovery | Clean artifact/runtime, 74-job signed restore, isolated service startup and clean shutdown passed | 1/1 | 100% |
+| **Total** | **Development pilot qualified; production posting disabled** | **15/15** | **100%** |
 
 Include this scorecard in major progress updates. Name the milestone changed and
 the evidence closing its check. Do not increase completion for a commit, documentation
@@ -129,7 +129,7 @@ The one-unit site transfer passed source -1, destination +1 and unchanged total
 stock/average cost. Each new transaction retained one Add, exact saved fields,
 valid audit and duplicate refusal. General posting is paused with no unresolved
 sample write. Their [supported scope and recovery details](QBWC_JOURNALS_CHECKS_TRANSFERS.md)
-remain explicit. These complete V01-5; the final candidate/recovery check remains.
+remain explicit. These complete V01-5.
 
 ## Hermes connection and reviewed-batch implementation
 
@@ -162,7 +162,7 @@ retain the job, transaction, native event and provider IDs outside Git.
 
 This test used a controlled source captured through remote MCP, not an actual
 operator attachment conversation or a paid model run. It closes V01-2, V01-4 and
-V01-6. V01-8 remains open. The invoice receipt verifies the
+V01-6. The invoice receipt verifies the
 saved transaction, not a fresh full customer-balance report.
 See [channel integration](HERMES_CHANNEL.md) for installation and trust boundaries.
 
@@ -193,7 +193,7 @@ Hermes then found the same job through the Osman profile, created review batch
 `9ce2403809f365e264c81050`, checked its status and returned the exact review in the
 native WhatsApp conversation. The batch remained unconfirmed, the job remained
 validated, posting attempts stayed at zero, posting remained paused and the audit
-remained valid. This closes V01-1; the score is **14/15 (93%)**.
+remained valid. This closes V01-1.
 
 `setup hermes` now generates the private Windows launchers and Linux connection
 inputs from an existing company configuration. The generated launchers passed
@@ -205,3 +205,14 @@ selected mappings/gates, company-specific QWC, exact Hermes tool set, database a
 audit, retained QBWC connection evidence and paused state. Existing cross-company
 tests prove separate credentials/state and reject copied state. This closes V01-7
 without an accounting write.
+
+The commit-bound development candidate was built from a clean checkout and installed
+into a new Python 3.12 runtime with all Windows/Hermes/intake dependencies. Package
+imports, the public capability inventory and dependency consistency passed. A signed
+snapshot restored 74 jobs into a new isolated root with valid hashes, database
+integrity, foreign keys, company binding, audit continuity and paused state. The
+restored service then started on an isolated port, reported healthy with live posting
+disabled, retained all 74 jobs, and shut down cleanly. The source service stayed
+healthy and its accounting-attempt count did not change. This closes V01-8 and the
+KB v0.1.0 development-pilot score is **15/15 (100%)**. It does not authorize
+production posting, merge the PR or publish a release.

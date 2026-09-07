@@ -40,11 +40,13 @@ the signing key can rewrite evidence; HMAC is not a third-party immutable checkp
 
 ## Latest staging evidence
 
-- The latest complete run passed 771 tests; the additional ambiguous-payable regression
-  and updated 19-tool checks also pass. Three customer receipts total USD20: USD15 applied to the mixed
+- The latest complete run passed 1,496 tests with 50 environment-dependent skips. The
+  focused deployment/capability checks also pass. Three customer receipts total USD20: USD15 applied to the mixed
   invoice and USD5 unapplied. Independent Customer Balance Summary matches USD25.
-- The latest installed-package signed restore recovers 16 jobs with valid integrity,
-  foreign keys and audit. It stays paused and launches no service.
+- The latest clean installed-package signed restore recovers 74 jobs with valid
+  integrity, foreign keys and audit. It stays paused. A separate isolated recovered
+  service startup reported healthy with posting disabled, retained all 74 jobs, and
+  shut down cleanly without changing the source service's accounting-attempt count.
 - Two USD5 supplier payments settled one USD10 bill. Vendor Balance Summary and complete
   payable evidence agree on USD30 remaining across three bills.
 - The following earlier drills remain historical evidence; their counts predate later work.

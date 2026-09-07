@@ -1,7 +1,8 @@
 # KaydBooks Bridge development candidate
 
 This bundle contains the Windows wheel, the separate Linux Hermes plugin and setup
-guides. It is not a production release or a one-click installer. No company files,
+guides. Its development-pilot acceptance is 15/15; it is not a production release or
+a one-click installer. No company files,
 credentials, mappings, WhatsApp sessions or private qualification records are included.
 The source commit and SHA-256 of every included file are in `manifest.json`.
 
