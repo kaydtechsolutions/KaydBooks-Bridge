@@ -34,14 +34,21 @@ def schema(db):
 @audited
 def capture(bridge, token, company, namespace, reference, media_type, content_base64):
     _, actor, policy, store = bridge._context(token, company, "prepare")
-    identifier(namespace)
-    identifier(reference)
-    if (
-        namespace not in policy.sources
-        or not isinstance(reference, str)
-        or not 1 <= len(reference) <= 128
-    ):
-        raise BridgeError("invalid source reference")
+    if not isinstance(namespace, str) or namespace not in policy.sources:
+        raise BridgeError(
+            "source namespace must be one of company_catalog_v1.sources: "
+            + ", ".join(policy.sources)
+            + "; the company ID and filename are not source namespaces"
+        )
+    try:
+        identifier(reference)
+    except BridgeError as exc:
+        raise BridgeError(
+            "invalid source reference: use 1-64 lowercase letters, digits, underscores or "
+            "hyphens, starting with a letter (for example upload-001). Keep this ID stable "
+            "for retries. A filename or uppercase invoice number is not an upload ID; "
+            "preserve the original filename/content and invoice ref_number separately"
+        ) from exc
     if (
         media_type not in MEDIA_TYPES
         or not isinstance(content_base64, str)

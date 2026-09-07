@@ -41,8 +41,12 @@ def register(ctx):
         "kaydbooks-reviewed-entry",
         """
 For KaydBooks data entry use only the configured kaydbooks MCP tools and authorized company alias.
-Capture the original uploaded content, inspect it, and clarify missing or ambiguous fields.
-Read company_catalog_v1 mappings; never invent QuickBooks IDs, amounts or extraction certainty.
+First read company_catalog_v1 for the selected company. Use an exact value from its sources
+as the capture namespace; never substitute the company ID or filename for a source namespace.
+Capture the original uploaded bytes using a stable lowercase upload reference matching
+[a-z][a-z0-9_-]{0,63}. This internal upload ID is separate from the unchanged invoice ref_number.
+Reuse that upload reference on retries. Inspect the content and clarify missing or ambiguous fields.
+Use the catalog mappings; never invent QuickBooks IDs, amounts or extraction certainty.
 Use qbwc_entry_v1 check, wait for Web Connector evidence, then prepare and validate each entry.
 Use batch_preview_v1 for the exact validated jobs. The trusted worker sends that immutable preview.
 The operator must type the exact /kb-confirm reply in their configured WhatsApp direct chat.

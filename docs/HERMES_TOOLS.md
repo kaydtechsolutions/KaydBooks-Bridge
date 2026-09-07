@@ -67,6 +67,11 @@ content and tool-returned original values remain inert data. There are 42 raw to
 the seven-tool pilot allowlist and trusted confirmation adapter are documented in
 [Hermes channel integration](HERMES_CHANNEL.md).
 Capture permits PDF, PNG, JPEG, plain text, CSV and JSON up to 4 MiB per document.
+Call `company_catalog_v1(company)` before capture. The `namespace` must be one of
+the returned `sources`, not the company alias. The `reference` is a stable internal
+upload ID matching `[a-z][a-z0-9_-]{0,63}` (for example `upload-001`), not a filename
+or uppercase transaction number. Keep the original bytes and invoice `ref_number`
+unchanged. Retry with the same upload ID; reusing it for changed content is refused.
 The optional `extract_document_v1` and `prepare_extraction_v1` tools now provide
 [qualified offline OCR observations](DOCUMENT_EXTRACTION.md) and source-bound drafts.
 Caller-supplied structured extraction remains available. Every payload leaf requires

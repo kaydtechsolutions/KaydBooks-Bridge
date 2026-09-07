@@ -65,6 +65,34 @@ def test_hostile_source_is_retained_as_inert_bytes(setup):
     assert setup[0].audit(TOKENS["preparer-a"], "company-a")["valid"]
 
 
+def test_capture_guides_agent_to_authorized_namespace_and_stable_upload_id(setup):
+    bridge, path, _, envelope = setup
+    tools = Tools(path, TOKENS["preparer-a"])
+    content = b'{"ref_number":"KB-HM-002","amount":"5.00"}'
+    args = {
+        "namespace": "company-a",
+        "reference": "KB-HM-002-upload-test.json",
+        "media_type": "application/json",
+        "content_base64": base64.b64encode(content).decode(),
+    }
+    with pytest.raises(BridgeError, match="company_catalog_v1.sources"):
+        tools.call("capture_document_v1", "company-a", args)
+    args["namespace"] = envelope["source"]["namespace"]
+    for bad in ("KB-HM-002", "invoice.json", "../upload", "a" * 65, None):
+        args["reference"] = bad
+        with pytest.raises(BridgeError, match="invalid source reference: use 1-64"):
+            tools.call("capture_document_v1", "company-a", args)
+    args["reference"] = "upload-kb-hm-002"
+    captured = tools.call("capture_document_v1", "company-a", args)
+    assert tools.call("capture_document_v1", "company-a", args) == captured
+    assert captured["sha256"] == hashlib.sha256(content).hexdigest()
+    with Store(Config.load(path).root, "company-a").transaction() as db:
+        assert db.execute("SELECT COUNT(*) FROM documents").fetchone()[0] == 1
+        assert db.execute("SELECT bytes FROM documents").fetchone()[0] == content
+        assert db.execute("SELECT COUNT(*) FROM jobs").fetchone()[0] == 0
+    assert bridge.audit(TOKENS["preparer-a"], "company-a")["valid"]
+
+
 def test_uncertain_source_requires_separate_explicit_review(setup):
     tools, _, job = document(setup, 0.5)
     with pytest.raises(BridgeError, match="uncertain"):

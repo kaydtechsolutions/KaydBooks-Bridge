@@ -443,7 +443,7 @@ def server(config_path, token):
     def capture_document_v1(
         company: str, namespace: str, reference: str, media_type: str, content_base64: str
     ) -> dict:
-        """Retain original document bytes immutably in the authorized company."""
+        """Retain original document bytes immutably. First read company_catalog_v1(company): namespace must be an exact member of its sources, not the company ID. reference is a stable upload ID matching [a-z][a-z0-9_-]{0,63}, e.g. upload-001; never pass an uppercase invoice number, filename or path here. Preserve the original bytes and payload ref_number unchanged. Reuse the same namespace/reference for retries; different content under that ID is refused."""
         return tools.call(
             "capture_document_v1",
             company,
