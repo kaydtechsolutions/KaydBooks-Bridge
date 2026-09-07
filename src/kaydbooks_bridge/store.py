@@ -578,6 +578,29 @@ class Store:
                 (SELECT 1 FROM jobs WHERE id=NEW.job_id AND operation='supplier-payment.create'
                     AND state='unknown' AND txn_id IS NULL)
                 BEGIN SELECT RAISE(ABORT,'rejection requires an uncertain native supplier payment without receipt'); END""")
+            if not db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='qbwc_not_dispatched'"
+            ).fetchone():
+                db.execute("DROP TRIGGER IF EXISTS jobs_state_transition_guard")
+            db.execute("""CREATE TABLE IF NOT EXISTS qbwc_not_dispatched (
+                job_id TEXT PRIMARY KEY REFERENCES qbwc_invoice_attempts(job_id),
+                resolved_at REAL NOT NULL, actor TEXT NOT NULL)""")
+            for action in ("UPDATE", "DELETE"):
+                db.execute(f"""CREATE TRIGGER IF NOT EXISTS qbwc_not_dispatched_no_{action.lower()}
+                    BEFORE {action} ON qbwc_not_dispatched
+                    BEGIN SELECT RAISE(ABORT,'immutable undispatched evidence'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS qbwc_not_dispatched_insert_guard
+                BEFORE INSERT ON qbwc_not_dispatched WHEN
+                NOT EXISTS (SELECT 1 FROM jobs j JOIN qbwc_invoice_attempts a ON a.job_id=j.id
+                    WHERE j.id=NEW.job_id AND j.state='unknown' AND j.txn_id IS NULL
+                    AND j.operation='invoice.create' AND a.actor=NEW.actor)
+                OR NOT EXISTS (SELECT 1 FROM qbwc_invoice_runs WHERE job_id=NEW.job_id AND phase='held')
+                OR EXISTS (SELECT 1 FROM qbwc_invoice_steps s JOIN qbwc_invoice_runs r ON r.id=s.run_id
+                    WHERE r.job_id=NEW.job_id)
+                OR EXISTS (SELECT 1 FROM qbwc_invoice_runs r LEFT JOIN qbwc_sessions s ON s.ticket=r.ticket
+                    WHERE r.job_id=NEW.job_id AND (r.context IS NOT NULL OR r.txn_id IS NOT NULL
+                    OR r.phase!='held' OR s.state IN ('authenticated','request-sent','verified','blocked')))
+                BEGIN SELECT RAISE(ABORT,'closed never-started QBWC attempt required'); END""")
             db.execute("""CREATE TRIGGER IF NOT EXISTS jobs_state_transition_guard
                 BEFORE UPDATE OF state ON jobs
                 WHEN NOT (
@@ -599,6 +622,8 @@ class Store:
                         AND EXISTS (SELECT 1 FROM native_bill_rejections WHERE job_id=OLD.id))
                     OR (OLD.state='unknown' AND NEW.state='failed' AND NEW.operation='supplier-payment.create'
                         AND EXISTS (SELECT 1 FROM native_supplier_payment_rejections WHERE job_id=OLD.id))
+                    OR (OLD.state='unknown' AND NEW.state='failed' AND NEW.operation='invoice.create'
+                        AND EXISTS (SELECT 1 FROM qbwc_not_dispatched WHERE job_id=OLD.id))
                 )
                 BEGIN SELECT RAISE(ABORT, 'invalid job state transition'); END""")
             db.execute("""CREATE TRIGGER IF NOT EXISTS jobs_approval_guard

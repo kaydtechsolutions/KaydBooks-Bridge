@@ -1,5 +1,11 @@
 # KaydBooks Bridge project status
 
+Delayed QBWC first updates now have an explicit recovery outcome when no request
+was ever handed out: `failed / qbwc_not_dispatched`. Current context, ownership and
+audit checks, closed sessions and immutable SQL evidence are required. Attempt
+history and quota remain consumed. This fixes a never-started attempt being left
+permanently uncertain; it does not weaken stale-evidence or no-resend protections.
+
 Initial Web Connector invoice execution/recovery is implemented and under sample
 qualification. Browser invoice checks now queue QBWC reads; the posting action queues
 an explicitly bounded invoice for a single write handoff and independent readback.

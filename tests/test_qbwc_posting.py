@@ -136,6 +136,54 @@ def test_matching_preexisting_invoice_uses_readback_without_write(queued, tmp_pa
     )
 
 
+def test_recovery_closes_never_started_attempt_without_refunding_quota(queued):
+    bridge, token, job, svc, ticket = start(queued)
+    call(svc, "closeConnection", ticket=ticket)
+    assert bridge.status(token, "company-a", job)["state"] == "unknown"
+    result = recover(bridge, token, "company-a", job)
+    assert result["state"] == "failed" and result["detail"] == "qbwc_not_dispatched"
+    assert result["lease_until"] is not None  # Preserve immutable dispatch history.
+    with svc._stores["company-a"].transaction() as db:
+        assert db.execute("SELECT COUNT(*) FROM qbwc_invoice_attempts").fetchone()[0] == 1
+        assert db.execute("SELECT COUNT(*) FROM qbwc_invoice_runs").fetchone()[0] == 1
+        assert db.execute("SELECT COUNT(*) FROM qbwc_invoice_steps").fetchone()[0] == 0
+        with pytest.raises(sqlite3.IntegrityError, match="immutable undispatched"):
+            db.execute("DELETE FROM qbwc_not_dispatched WHERE job_id=?", (job,))
+    assert bridge.audit(token, "company-a")["valid"]
+    with pytest.raises(BridgeError, match="never resend"):
+        enqueue(bridge, token, "company-a", job)
+    with pytest.raises(BridgeError, match="owned uncertain"):
+        recover(bridge, token, "company-a", job)
+
+
+def test_never_started_attempt_cannot_resolve_while_connector_session_active(queued):
+    bridge, token, job, svc, ticket = start(queued)
+    with svc._stores["company-a"].transaction() as db:
+        db.execute("UPDATE control SET paused=1")
+    assert send(svc, ticket) == ""
+    with pytest.raises(BridgeError, match="existing company read session"):
+        recover(bridge, token, "company-a", job)
+    assert bridge.status(token, "company-a", job)["state"] == "unknown"
+    call(svc, "closeConnection", ticket=ticket)
+    assert recover(bridge, token, "company-a", job)["detail"] == "qbwc_not_dispatched"
+
+
+def test_sent_write_cannot_be_classified_as_never_dispatched(queued):
+    bridge, token, job, svc, ticket = start(queued)
+    preflight_cycle(svc, ticket)
+    assert "InvoiceAddRq" in send(svc, ticket)
+    call(svc, "closeConnection", ticket=ticket)
+    with svc._stores["company-a"].transaction() as db:
+        actor = db.execute(
+            "SELECT actor FROM qbwc_invoice_attempts WHERE job_id=?", (job,)
+        ).fetchone()[0]
+        with pytest.raises(sqlite3.IntegrityError, match="never-started"):
+            db.execute("INSERT INTO qbwc_not_dispatched VALUES (?,?,?)", (job, svc.clock(), actor))
+        with pytest.raises(sqlite3.IntegrityError, match="invalid job state transition"):
+            db.execute("UPDATE jobs SET state='failed' WHERE id=?", (job,))
+    assert recover(bridge, token, "company-a", job)["state"] == "unknown"
+
+
 @pytest.mark.parametrize("fault", ["pause", "permission", "policy", "expiry", "stale-preflight"])
 def test_current_authority_checked_at_write_handoff(queued, fault):
     bridge, token, job, svc, ticket = start(queued)

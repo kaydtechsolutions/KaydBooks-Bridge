@@ -136,6 +136,39 @@ def recover(bridge, token, company, job_id):
         ):
             raise BridgeError("original QBWC context and intact audit required")
         _idle(db)
+        if (
+            job["state"] == "unknown"
+            and db.execute(
+                "SELECT 1 FROM qbwc_invoice_runs WHERE job_id=? AND phase='held'",
+                (job_id,),
+            ).fetchone()
+            and not db.execute(
+                "SELECT 1 FROM qbwc_invoice_steps s JOIN qbwc_invoice_runs r "
+                "ON r.id=s.run_id WHERE r.job_id=?",
+                (job_id,),
+            ).fetchone()
+            and not db.execute(
+                "SELECT 1 FROM qbwc_invoice_runs WHERE job_id=? "
+                "AND (context IS NOT NULL OR txn_id IS NOT NULL OR phase!='held')",
+                (job_id,),
+            ).fetchone()
+        ):
+            db.execute(
+                "INSERT INTO qbwc_not_dispatched VALUES (?,?,?)", (job_id, bridge.clock(), actor)
+            )
+            db.execute(
+                "UPDATE jobs SET state='failed',detail='qbwc_not_dispatched' WHERE id=?",
+                (job_id,),
+            )
+            store.event(
+                db,
+                bridge.clock(),
+                actor,
+                job_id,
+                "qbwc_invoice_not_dispatched",
+                {"attempt": attempt["attempt"], "request_handoffs": 0, "quota_retained": True},
+            )
+            return store.job(db, job_id)
         db.execute(
             "UPDATE qbwc_invoice_runs SET phase='held' WHERE job_id=? AND phase NOT IN ('done','held')",
             (job_id,),

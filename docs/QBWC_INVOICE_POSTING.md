@@ -52,6 +52,13 @@ for reconciliation. The shared company unresolved-write constraint prevents anot
 accounting write while an outcome is uncertain. Native and QBWC invoice attempts
 consume the same cumulative sample quota.
 
+If the first callback arrives after its evidence or dispatch lease expires, the
+write is blocked. Recovery can close that held attempt as `qbwc_not_dispatched`
+only when every run has no context, no saved transaction and no request handoff,
+and no connector session is active. An immutable SQL-guarded resolution preserves
+the attempt and consumed quota. It does not refresh evidence, requeue the job or
+authorize resending. Once any request was handed out, normal reconciliation applies.
+
 Inventory invoices require their original preflight stock baseline and exact saved
 stock decrease, including recovery after the sale exhausted stock. Verified QBWC
 receipts appear in browser review and the verified-original transaction selector.
