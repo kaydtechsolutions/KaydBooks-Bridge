@@ -196,6 +196,16 @@ filters, paging/completeness, empty results, permissions, and independent reconc
 - [ ] **M6-12:** Native report support matrix and actual sample reconciliation for each
   enabled report. Unsupported requests fail explicitly; history is not current balance.
 
+Native report qualification now covers 18 single-currency US qbXML 17 report types:
+financial statements, unpaid invoices/bills, statements, aging, inventory, sales and
+purchases. All native row/column counts passed. P&L and balance-sheet income match;
+trial-balance accounts match the general ledger; statements, aging buckets and balance
+summaries reconcile. Extra tests cover cash-basis financial statements, an empty period,
+exact entity/item filters and monthly columns. Unpaid reports explicitly exclude unapplied
+receipts/credits. Installed reads and retained-response recovery pass with zero writes.
+Cash flow, multi-currency report variants and inventory location support remain unfinished;
+these supporting results do not close the wider M6 gates. See [native reports](NATIVE_REPORTS.md).
+
 The existing historical verified-invoice register is qualified supporting evidence.
 It does not satisfy the unpaid invoices, aging, financial statement or ledger gates.
 

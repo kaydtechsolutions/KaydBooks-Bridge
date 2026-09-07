@@ -11,6 +11,7 @@ from pathlib import Path
 
 from .config import BridgeError
 from .qbwc import ACTIVE_STATES, UNCONFIRMED_IDENTITY, DurableQBWCDiscoveryService
+from .validation import digest
 
 
 @contextmanager
@@ -108,12 +109,46 @@ def discover(
     credit_receipt_check: dict | None = None,
     supplier_payment_check: dict | None = None,
     supplier_payment_receipt_check: dict | None = None,
+    report_query: dict | None = None,
 ) -> dict:
     """Run/resume fixed US qbXML 17 discovery under company permissions and audit.
 
     Unknown reads are held unless recover_read is explicit. This API cannot write.
     Real SDK results are recorded separately from QBWC callback sessions.
     """
+    if report_query is not None and any(
+        value is not None and value is not False
+        for value in (
+            accounts,
+            list_id,
+            invoice_check,
+            master_preview,
+            commercial_preview,
+            receipt_check,
+            bill_preview,
+            bill_check,
+            expense_accounts,
+            bill_receipt_check,
+            bill_terms,
+            bill_services,
+            payment_check,
+            payment_methods,
+            payment_receipt_check,
+            supplier_application_check,
+            supplier_application_receipt_check,
+            supplier_credit_check,
+            supplier_credit_receipt_check,
+            refund_check,
+            refund_receipt_check,
+            application_check,
+            application_receipt_check,
+            credit_check,
+            credit_receipt_check,
+            supplier_payment_check,
+            supplier_payment_receipt_check,
+        )
+    ):
+        raise BridgeError("report cannot be combined with another lookup")
     supplier_application = (
         supplier_application_check is not None or supplier_application_receipt_check is not None
     )
@@ -436,6 +471,16 @@ def discover(
         context_hash = check["context_sha256"]
         request = append_queries(request, run_id, check)
         operation = "invoice-master-compatibility"
+    report_plan = None
+    if report_query is not None:
+        from .native_reports import append_queries as append_report
+        from .native_reports import plan as plan_report
+
+        report_policy = config.authorize(actor, connector.company, "report")
+        report_plan = plan_report(report_policy, report_query)
+        context_hash = report_plan["context_sha256"]
+        request = append_report(request, run_id, report_plan)
+        operation = "native-report"
     with company_lock(store.path.with_suffix(".sdk.lock")):
         with store.transaction() as db:
             service._expire_active(db, store, time.time())
@@ -507,6 +552,11 @@ def discover(
             master_records = None
             receipt = None
             payment_balances = None
+            report_result = None
+            if report_plan is not None:
+                from .native_reports import validate_response as validate_report
+
+                discovery_response, report_result = validate_report(response, run_id, report_plan)
             if payment_policy is not None:
                 from .payment_receipt import validate_lookup
 
@@ -633,6 +683,22 @@ def discover(
                 complete=False,
                 operation=operation,
             )
+        if report_result is not None:
+            with store.transaction() as db:
+                if not store.verify_audit(db):
+                    raise BridgeError("report source audit is invalid")
+                started = db.execute(
+                    "SELECT MAX(at) FROM audit WHERE event='sdk_read_dispatch' AND json_extract(data,'$.run')=?",
+                    (run_id,),
+                ).fetchone()[0]
+            report_result.update(company=connector.company, identity_sha256=identity, host=host)
+            report_result.update(
+                read_started_at=started,
+                source={"transport": "direct-sdk", "run": run_id, "connector": connector_id},
+                scope="native report at retained read time; not a live view",
+            )
+            report_result["report_sha256"] = digest(report_result)
+            result.update(operation=operation, report=report_result)
         if receipt is not None:
             result.update(operation=operation, receipt=receipt, context_sha256=context_hash)
         if bill_plan is not None:

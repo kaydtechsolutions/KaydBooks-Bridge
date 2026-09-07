@@ -1,5 +1,6 @@
 """Historical register from verified receipts, not a live QuickBooks ledger report."""
 
+import os
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -16,9 +17,39 @@ INVENTORY = [
         "filters": ["date_from", "date_to"],
         "derived": True,
     },
-    {"id": "quickbooks-financial-reports", "status": "unavailable"},
+    {"id": "quickbooks-financial-reports", "status": "native-qualification-in-progress"},
     {"id": "desktop-report-fallback", "status": "disabled"},
 ]
+
+
+@audited
+def native(bridge, token, company, connector_id, run_id, specification, recover_read=False):
+    from .direct_sdk import discover
+    from .qbwc import DurableQBWCDiscoveryService
+
+    config, _, _, _ = bridge._context(token, company, "report")
+    connector = config.connectors.get(connector_id)
+    if connector is None or connector.company != company:
+        raise BridgeError("exact assigned-company connector required")
+    result = discover(
+        DurableQBWCDiscoveryService.from_path(bridge.config_path),
+        token,
+        connector_id,
+        os.environ.get(connector.password_env, ""),
+        run_id,
+        report_query=specification,
+        recover_read=recover_read,
+    )
+    from .native_reports import plan
+
+    latest, _, current, _ = bridge._context(token, company, "report")
+    latest.authorize(latest.authenticate(token), company, "read")
+    if (
+        latest.connectors.get(connector_id) != connector
+        or plan(current, specification)["context_sha256"] != result["report"]["context_sha256"]
+    ):
+        raise BridgeError("company or report policy changed during the read")
+    return result
 
 
 @audited

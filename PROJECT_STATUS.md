@@ -49,13 +49,16 @@ The operator's new manage-users grant was an explicit local bootstrap under stan
   amounts through the durable lifecycle. Native USD5 and USD10 receipts settled the USD15
   invoice; a third USD5 receipt remained unapplied. Signed AppliedAmount, related invoice
   payments and customer-wide unused credits are handled without double-counting.
-- Latest validation: 984 full-suite tests pass, plus 31 final intake tests after
-  strengthening workbook type/geometry checks. Lint, 32-tool stdio and source/wheel
-  builds pass. Installed CSV/XLSX qualification prepared two sample drafts only,
-  held an invalid amount, accepted the corrected file and reused the first draft after
-  row reordering. Restart/retry returned the identical jobs; accounting writes were zero.
-  Signed isolated restore recovered 28 jobs and 1139 files with valid integrity/audit,
-  paused, without activating the restored service. Draft-revision CI61 passed; intake CI follows the PR update.
+- Latest validation: 1,025 full-suite tests pass. Lint, 33-tool stdio checks and
+  source/wheel builds pass. Eighteen native single-currency report types returned
+  complete rows/columns. Independent P&L/balance-sheet/trial-balance/ledger comparisons
+  and customer/vendor statement/balance/aging reconciliation passed. Extra native reads
+  cover cash basis, empty periods, exact entity/item filters and monthly grouping.
+  Installed-package qualification revalidated all 18 retained report responses and
+  completed a fresh native P&L read with zero accounting writes. Original read timestamps
+  remain stable on cache/recovery. Signed isolated restore preserved 28 jobs and 1499
+  files with valid integrity/audit, paused and without starting a restored service.
+  CI62 passed spreadsheet intake; report CI follows.
 - Supplier payments now pass exact vendor/AP/Bank mapping, partial/full settlement,
   independent saved allocation/payable checks and missing-response recovery tests.
   Native sample readbacks verified the bill balance decreasing 10 -> 5 -> 0.
@@ -83,7 +86,7 @@ The operator's new manage-users grant was an explicit local bootstrap under stan
   assigned companies by default. Explicit restrictions are respected. Required reviews,
   company binding and production/sample posting gates remain enforced. Role management
   and separately configurable self-approval pass through CLI/MCP; browser forms remain work.
-- CLI sample invoice/bill/payment commands and 32 narrow MCP tools are implemented. Native
+- CLI sample invoice/bill/payment commands and 33 narrow MCP tools are implemented. Native
   attempts cannot enter simulation recovery; bill receipts are excluded from the
   historical invoice register. All company identity, sources and mappings stay private.
 

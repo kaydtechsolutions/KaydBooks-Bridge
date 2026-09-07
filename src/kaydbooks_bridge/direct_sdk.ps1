@@ -48,6 +48,46 @@ public static class PrivateReadOnlyDiscovery {
    default: throw new InvalidOperationException("Unsupported commercial query");
   }
  }
+ public static void ReportQuery(System.Xml.XmlNode node,string correlation) {
+  string family=node.Name.Replace("ReportQueryRq","");
+  if(Array.IndexOf(new string[]{"GeneralSummary","GeneralDetail","Aging"},family)<0 || node.Attributes.Count!=1 || node.Attributes["requestID"]==null || node.Attributes["requestID"].Value!=correlation+"4")throw new Exception("Fixed report query required");
+  string allowed=family=="GeneralSummary"?"ProfitAndLossStandard,BalanceSheetStandard,TrialBalance,CustomerBalanceSummary,VendorBalanceSummary,InventoryValuationSummary,InventoryStockStatusByItem,SalesByCustomerSummary,SalesByItemSummary,PurchaseByVendorSummary,PurchaseByItemSummary":family=="GeneralDetail"?"OpenInvoices,UnpaidBillsDetail,CustomerBalanceDetail,VendorBalanceDetail,GeneralLedger":"ARAgingSummary,APAgingSummary";
+  var kind=node.SelectSingleNode(family+"ReportType");
+  if(kind==null||Array.IndexOf(allowed.Split(','),kind.InnerText)<0)throw new Exception("Report type unavailable");
+  string expected="<"+family+"ReportType>"+kind.InnerText+"</"+family+"ReportType><DisplayReport>false</DisplayReport><ReportPeriod>";
+  var period=node.SelectSingleNode("ReportPeriod");
+  if(period==null)throw new Exception("Explicit report dates required");
+  foreach(string field in new string[]{"FromReportDate","ToReportDate"}) {
+   var value=period.SelectSingleNode(field);
+   if(value==null){if(field=="ToReportDate")throw new Exception("Report end date required");continue;}
+   DateTime parsed;
+   if(!DateTime.TryParseExact(value.InnerText,"yyyy-MM-dd",System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.None,out parsed))throw new Exception("Invalid report date");
+   expected+="<"+field+">"+value.InnerText+"</"+field+">";
+  }
+  expected+="</ReportPeriod>";
+  foreach(string filter in new string[]{"ReportEntityFilter","ReportItemFilter"}) {
+   var value=node.SelectSingleNode(filter+"/ListID");
+   if(value==null)continue;
+   if(!System.Text.RegularExpressions.Regex.IsMatch(value.InnerText,@"\A[A-Za-z0-9-]{1,31}\z"))throw new Exception("Exact report filter required");
+   expected+="<"+filter+"><ListID>"+value.InnerText+"</ListID></"+filter+">";
+  }
+  if(kind.InnerText=="OpenInvoices"||kind.InnerText=="UnpaidBillsDetail")expected+="<ReportTxnTypeFilter><TxnTypeFilter>"+(kind.InnerText=="OpenInvoices"?"Invoice":"Bill")+"</TxnTypeFilter></ReportTxnTypeFilter>";
+  bool inventory=kind.InnerText=="InventoryValuationSummary"||kind.InnerText=="InventoryStockStatusByItem";
+  bool fixedBasis=inventory||Array.IndexOf(new string[]{"CustomerBalanceSummary","VendorBalanceSummary","OpenInvoices","UnpaidBillsDetail"},kind.InnerText)>=0;
+  if(family=="GeneralSummary"&&!inventory) {
+   var grouping=node.SelectSingleNode("SummarizeColumnsBy");
+   if(grouping==null||Array.IndexOf(new string[]{"TotalOnly","Month","Quarter","Year"},grouping.InnerText)<0)throw new Exception("Invalid report grouping");
+   expected+="<SummarizeColumnsBy>"+grouping.InnerText+"</SummarizeColumnsBy>";
+  }
+  if(family=="GeneralDetail")expected+="<ReportOpenBalanceAsOf>ReportEndDate</ReportOpenBalanceAsOf>";
+  if(family=="Aging")expected+="<ReportAgingAsOf>ReportEndDate</ReportAgingAsOf>";
+  else if(!fixedBasis) {
+   var basis=node.SelectSingleNode("ReportBasis");
+   if(basis==null||(basis.InnerText!="Cash"&&basis.InnerText!="Accrual"))throw new Exception("Explicit report basis required");
+   expected+="<ReportBasis>"+basis.InnerText+"</ReportBasis>";
+  }
+  if(node.InnerXml!=expected)throw new Exception("Only fixed report parameters are accepted");
+ }
  public static void Run(string dir, string requestFile, string outputFile) {
   IRequestProcessor4 rp=null; string ticket=null; bool opened=false; string response=null;
   Save(dir,"started.txt",DateTime.UtcNow.ToString("o")+" direct SDK diagnostic; transport evidence; binding validation required");
@@ -73,6 +113,14 @@ public static class PrivateReadOnlyDiscovery {
    var root=doc.DocumentElement;
    if(root.Name!="QBXML" || root.ChildNodes.Count!=1) throw new InvalidOperationException("Invalid discovery envelope");
    var batch=root.FirstChild;
+   if(batch.ChildNodes.Count==4 && batch.LastChild.Name.EndsWith("ReportQueryRq")) {
+    string correlation=batch.FirstChild.Attributes["requestID"].Value;
+    correlation=correlation.Substring(0,correlation.Length-1);
+    FixedQuery(batch.ChildNodes[2],"Preferences","MultiCurrencyPreferences",false);
+    if(batch.ChildNodes[2].Attributes["requestID"].Value!=correlation+"3")throw new Exception("Report preferences correlation differs");
+    ReportQuery(batch.LastChild,correlation);
+    while(batch.ChildNodes.Count>2)batch.RemoveChild(batch.LastChild);
+   }
    if(batch.ChildNodes.Count==7 && batch.ChildNodes[5].Name=="InvoiceQueryRq" && batch.ChildNodes[6].Name=="CreditMemoQueryRq") {
     string correlation=batch.FirstChild.Attributes["requestID"].Value;
     correlation=correlation.Substring(0,correlation.Length-1);

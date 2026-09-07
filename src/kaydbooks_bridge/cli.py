@@ -20,6 +20,8 @@ def main(argv=None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("capabilities")
     commands.add_parser("check-config")
+    native_report = commands.add_parser("native-report")
+    native_report.add_argument("input", type=Path)
     intake = commands.add_parser("table-intake")
     intake.add_argument("action", choices=("preview", "prepare_rows"))
     intake.add_argument("input", type=Path)
@@ -81,7 +83,17 @@ def main(argv=None) -> int:
                 raise BridgeError("private config path and explicit company required")
             bridge = Bridge(args.config)
             token = os.environ.get("KAYDBOOKS_TOKEN", "")
-            if args.command == "table-intake":
+            if args.command == "native-report":
+                from .hermes_tools import Tools
+
+                if args.input.stat().st_size > 16384:
+                    raise BridgeError("report request too large")
+                result = Tools(args.config, token).call(
+                    "native_report_v1",
+                    args.company,
+                    json.loads(args.input.read_text(encoding="utf-8")),
+                )
+            elif args.command == "table-intake":
                 from .hermes_tools import Tools
 
                 if args.input.stat().st_size > 131072:
