@@ -12,7 +12,7 @@ import sys
 import pytest
 
 from kaydbooks_bridge.config import BridgeError, Config
-from kaydbooks_bridge.documents import fields
+from kaydbooks_bridge.documents import confidence_schema, fields
 from kaydbooks_bridge.hermes_tools import Tools
 from kaydbooks_bridge.source_review import review
 from kaydbooks_bridge.store import Store
@@ -91,6 +91,44 @@ def test_capture_guides_agent_to_authorized_namespace_and_stable_upload_id(setup
         assert db.execute("SELECT bytes FROM documents").fetchone()[0] == content
         assert db.execute("SELECT COUNT(*) FROM jobs").fetchone()[0] == 0
     assert bridge.audit(TOKENS["preparer-a"], "company-a")["valid"]
+
+
+def test_confidence_schema_rejects_reported_formats_and_preserves_uncertainty(setup):
+    import jsonschema
+
+    tools, source, job = document(setup, confidence=0.5)
+    payload = job["payload"]
+    schema = confidence_schema(payload)
+    valid = {path: 1 for path in fields(payload)}
+    assert "lines.0.amount" in valid and "lines" not in valid
+    jsonschema.validate(valid, schema)
+    variants = [
+        {},
+        {**valid, "lines": 1},
+        {k.replace("lines.0.", "lines[0]."): v for k, v in valid.items()},
+        {**valid, "lines.0.amount": {"score": 1}},
+        {**valid, "lines.0.amount": True},
+    ]
+    for scores in variants:
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(scores, schema)
+        with pytest.raises(BridgeError, match="Required keys:.*lines.0.amount"):
+            tools.call(
+                "prepare_invoice_v1",
+                "company-a",
+                {
+                    "document_id": source["document_id"],
+                    "idempotency_key": "document-one",
+                    "payload": payload,
+                    "confidence": scores,
+                },
+            )
+    uncertain = {**valid, "lines.0.amount": 0.5}
+    jsonschema.validate(uncertain, schema)
+    # Valid shape does not grant certainty or approval.
+    assert "lines.0.amount" in job["source"]["uncertain_fields"]
+    with pytest.raises(BridgeError, match="uncertain"):
+        tools.call("validate_v1", "company-a", {"job_id": job["id"]})
 
 
 def test_uncertain_source_requires_separate_explicit_review(setup):

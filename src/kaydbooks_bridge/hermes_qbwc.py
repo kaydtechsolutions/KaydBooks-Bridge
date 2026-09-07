@@ -1,7 +1,7 @@
 """Hermes entry tools use the same fixed QBWC path as the qualified browser forms."""
 
 from .config import BridgeError, strict_keys
-from .documents import prepare, revise
+from .documents import confidence_schema, prepare, revise
 from .qbwc_posting import enqueue, recover
 from .web_ui import check_masters
 
@@ -61,6 +61,12 @@ def parameter_schema():
             properties["connector_id"]["description"] = (
                 "Exact connector from company_catalog_v1.connectors"
             )
+        if "confidence" in properties:
+            properties["confidence"].update(
+                description="Flat numeric score for every payload leaf, using dot indices such as lines.0.amount. Do not include lines or other container keys. Use the exact confidence_schema returned by check; do not infer certainty from a successful master check.",
+                additionalProperties={"type": "number", "minimum": 0, "maximum": 1},
+                propertyNames={"pattern": r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)*$"},
+            )
         variants.append(
             {
                 "title": action
@@ -101,7 +107,8 @@ def call(bridge, token, company, arguments):
         if not isinstance(params["operation"], str) or params["operation"] not in OPERATIONS:
             raise BridgeError("entry operation is outside the selected eight")
         if action == "check":
-            return check_masters(bridge, token, company, **params)
+            result = check_masters(bridge, token, company, **params)
+            return {**result, "confidence_schema": confidence_schema(params["payload"])}
         return prepare(bridge, token, company, **params)
     job = bridge.status(token, company, params["job_id"])
     if job["operation"] not in OPERATIONS:

@@ -83,6 +83,17 @@ Expected Bridge rejections return `ok: false` and a specific `error` in a normal
 tool response. They are not success, transport failure or permission to bypass
 approval. This prevents ordinary field mistakes from parking Hermes's MCP connection.
 
+Every successful `check` response also includes `confidence_schema`, a JSON Schema
+with the exact required **payload leaf paths**, numeric scores from 0 through 1 and
+no additional keys. For example, a single invoice line uses `lines.0.item_id`,
+`lines.0.quantity`, `lines.0.unit_price` and `lines.0.amount`; never `lines`, nested
+arrays or `lines[0].amount`. Top-level scalar fields such as `currency` and
+`txn_date` have their own scores. Optional payload fields require scores only when
+present. Scores below 1 retain uncertainty and require source review; a matched
+master check does not establish extraction confidence. The server does not fill
+in scores or grant approval. Invalid confidence errors list missing, unexpected
+and invalid keys for the submitted payload.
+
 Capture permits PDF, PNG, JPEG, plain text, CSV and JSON up to 4 MiB per document.
 Call `company_catalog_v1(company)` before capture. The `namespace` must be one of
 the returned `sources`, not the company alias. The `reference` is a stable internal

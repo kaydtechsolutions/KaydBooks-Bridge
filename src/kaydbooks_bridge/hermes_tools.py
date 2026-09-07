@@ -332,6 +332,9 @@ def server(config_path, token):
         Repeat that same check after pending=true until evidence is returned.
         prepare requires operation, document_id, idempotency_key, payload, confidence;
         pass the check's evidence as master_evidence. Each other job action takes job_id.
+        confidence must match check.confidence_schema: a flat map of every payload
+        leaf path to a numeric score 0-1. Use lines.0.amount, never lines[0].amount;
+        omit containers such as lines. A successful check is not extraction certainty.
         Expected Bridge rejections return ok=false with an error; they are not a
         broken transport or permission to bypass a gate.
         """

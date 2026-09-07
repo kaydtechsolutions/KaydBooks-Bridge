@@ -111,6 +111,19 @@ def fields(value, prefix=""):
     return {prefix}
 
 
+def confidence_schema(payload):
+    """Describe exact leaf scores without choosing confidence on the caller's behalf."""
+    return {
+        "type": "object",
+        "description": "Flat leaf-path scores only; dot-separated zero-based array indices (lines.0.amount), no container keys or brackets. Scores describe extraction certainty, not approval.",
+        "properties": {
+            name: {"type": "number", "minimum": 0, "maximum": 1} for name in sorted(fields(payload))
+        },
+        "required": sorted(fields(payload)),
+        "additionalProperties": False,
+    }
+
+
 @audited
 def prepare(
     bridge,
@@ -139,7 +152,19 @@ def prepare(
         type(v) not in (int, float) or not math.isfinite(v) or not 0 <= v <= 1
         for v in confidence.values()
     ):
-        raise BridgeError("explicit confidence required for every extracted field")
+        invalid = [
+            str(k)
+            for k, v in confidence.items()
+            if type(v) not in (int, float) or not math.isfinite(v) or not 0 <= v <= 1
+        ]
+        raise BridgeError(
+            "explicit confidence required for every extracted field: use a flat map of leaf paths "
+            "to finite numbers 0-1, with dot indices (lines.0.amount), no brackets or container keys. "
+            f"Required keys: {', '.join(sorted(expected))}. "
+            f"Missing: {', '.join(sorted(expected - set(confidence))) or 'none'}. "
+            f"Unexpected: {', '.join(sorted(str(k) for k in set(confidence) - expected)) or 'none'}. "
+            f"Invalid scores: {', '.join(invalid) or 'none'}. Do not invent confidence to pass validation."
+        )
     with store.transaction() as db:
         schema(db)
         row = db.execute(

@@ -52,6 +52,9 @@ For check, parameters contain exactly operation, connector_id from catalog.conne
 Do not include document_id, namespace or reference in check. Repeat the same check after pending=true.
 For prepare, pass operation, document_id, idempotency_key, payload, confidence and the returned
 check evidence as master_evidence. validate/preview/status/submit/dispatch/recover take only job_id.
+Build confidence using the exact confidence_schema returned by check: flat leaf paths only,
+zero-based dot indices such as lines.0.amount, no brackets and no container keys like lines.
+Scores must be finite numbers 0-1 reflecting extraction certainty, never automatic approval.
 An ok=false tool result is a rejection: correct its stated fields or report the hold; never treat it as success.
 Use batch_preview_v1 for the exact validated jobs. The trusted worker sends that immutable preview.
 The operator must type the exact /kb-confirm reply in their configured WhatsApp direct chat.
