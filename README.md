@@ -27,9 +27,15 @@ their required gates before final M7 deployment qualification; tax functionality
 tax reports are excluded from this release by operator choice; the current sample
 invoice path is only part of that release.
 
-An [incremental release plan](docs/RELEASE_PLAN.md) defines an earlier, explicitly
-limited eight-entry sample-company pilot followed by small versioned additions.
-The selected scope and its remaining work are tracked separately from the broad roadmap.
+The active **KB v0.1.0** target is **upload to Hermes -> confirm with the operator ->
+data entry through Web Connector -> mini result report in Hermes WhatsApp**.
+The [workflow and milestone scorecard](docs/HERMES_DATA_ENTRY_PILOT.md) records
+**4/15 verified acceptance checks (27%)**, including four of eight selected entry
+types. The complete conversational workflow is not ready yet. Follow the
+[multi-company development installation guide](docs/INSTALL_HERMES_DATA_ENTRY.md)
+and [incremental release plan](docs/RELEASE_PLAN.md); each company requires private
+configuration and separate qualification. Broader daily reports and customer
+statements are deferred from v0.1.0.
 
 - Explicit company context and per-company private SQLite databases.
 - Environment-backed credentials, explicit company assignment, full supported permissions

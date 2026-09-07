@@ -1,13 +1,16 @@
 # Incremental release plan
 
 The operator requested small versioned releases so usable work can be tested
-without waiting for the entire roadmap. The operator selected eight entry types for the earliest pilot on 2026-09-07.
-The proposed first version is KB v0.1.0.
+without waiting for the entire roadmap. The active KB v0.1.0 target is now
+**upload to Hermes -> exact operator confirmation -> Bridge/Web Connector entry
+-> mini result report in the operator's Hermes WhatsApp chat**, using the eight
+selected entry types. The [workflow specification and milestone scorecard](HERMES_DATA_ENTRY_PILOT.md)
+take priority over broader roadmap work. Current verified acceptance: **4/15 (27%)**.
 No release has been published by creating this plan.
 
 | Version | Proposed scope |
 | --- | --- |
-| KB v0.1.0 | Sample-company pilot: sales receipt, invoice, credit memo, customer payment, bill, journal, inventory transfer and check through Web Connector |
+| KB v0.1.0 | Hermes upload, human confirmation, Web Connector entry and operator WhatsApp result; sales receipt, invoice, credit memo, customer payment, bill, journal, inventory transfer and check |
 | KB v0.1.1, v0.1.2 | Fixes within the pilot's supported scope |
 | KB v0.2.0 and later 0.x versions | Additional data-entry types, delivered in independently verified groups |
 | KB v1.0.0 | Agreed daily workflow qualified: selected data entry, customer balances/statements, daily reports and authorized Hermes/WhatsApp delivery |
@@ -24,8 +27,11 @@ bump or tag is implied by this proposal.
 
 ## Earliest pilot boundary
 
-The selected pilot uses one explicitly configured sample company, manual reviewed
-entry, non-tax USD transactions and the documented simple-inventory settings.
+Initial qualification uses the explicitly confirmed sample company, operator-reviewed
+entry through Hermes, non-tax USD transactions and the documented simple-inventory settings.
+The installation design supports separately configured company files; each needs its
+own identity, mappings, authorization and qualification. See the
+[multi-company installation guide](INSTALL_HERMES_DATA_ENTRY.md).
 Each of the eight paths must have an installed sample receipt, exact accounting or
 stock-effect evidence, duplicate refusal and a valid audit. Existing production
 posting restrictions remain. Tax, unqualified variants, real customer messaging,

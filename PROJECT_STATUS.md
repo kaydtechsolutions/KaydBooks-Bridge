@@ -1,13 +1,33 @@
 # KaydBooks Bridge project status
 
+## Active release: KB v0.1.0
+
+The operator narrowed active work to Hermes upload -> exact operator confirmation
+-> Web Connector data entry -> mini result in the operator's Hermes WhatsApp chat.
+Keep the eight selected entry types. Daily reports, customer statement delivery
+and broader roadmap expansion are deferred. The current score is **4/15 verified
+acceptance checks (26.7%, rounded 27%)**; four of eight entry types passed basic
+sample qualification, while seven workflow/setup checks remain open. Partial
+implementation is not counted as a passed end-to-end check. See the
+[milestone scorecard](docs/HERMES_DATA_ENTRY_PILOT.md) and
+[multi-company installation guide](docs/INSTALL_HERMES_DATA_ENTRY.md).
+Every major progress update must include this version, milestone status and score.
+Linux Hermes host details and the operator's WhatsApp destination are needed for
+actual connection/delivery qualification. No new accounting writes or messages
+were sent for this scope update. Production posting remains disabled.
+
+## Previous implementation evidence
+
 Both installed Web Connector credit paths passed: USD15 mixed customer credit,
 customer balance 59 to 44 and stock 2 to 4 at unchanged average cost; USD20 mixed
 supplier credit, vendor/net payables 54 to 34 and stock 4 to 2. Exact saved lines,
 unused credit, one attempt/one write, response hashes, audit and repeat-action
 refusal passed. Posting is paused. Six of fourteen requested entry types now have
 basic Web Connector sample qualification; broader variants remain. The proposed
-[incremental release plan](docs/RELEASE_PLAN.md) offers a smaller sample pilot;
-operator selection is pending and no release has been published.
+[incremental release plan](docs/RELEASE_PLAN.md) records the selected eight-entry
+pilot: sales receipt, invoice, credit memo, customer payment, bill, journal,
+inventory transfer and check. Four of these eight entry types have basic sample
+qualification; the four new types are next. No release has been published.
 
 Credit memos and bill credits now use Web Connector for browser master checks,
 controlled posting and query-only recovery. Original-record capacity, party/net
