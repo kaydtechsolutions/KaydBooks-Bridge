@@ -1,5 +1,19 @@
 # KaydBooks Bridge project status
 
+The blocked bill-interruption command was investigated. Read-only checks confirmed
+the normal installed service is running, company posting is paused, audit is valid,
+and the prepared candidate has zero attempts. The tool returned only "blocked by
+policy" before execution; the specific policy rationale could not be established.
+No permission controls were changed and the rejected command was not retried.
+Two new isolated subprocess tests passed: a test-owned process exits abruptly
+before or after accepting a synthetic BillAdd response, then a fresh service uses
+real session expiration and query-only recovery. Both retain one attempt and one
+write, verify the same bill, refuse repeat enqueue, and preserve audit integrity.
+These tests use temporary databases and synthetic responses without a network
+listener, installed-service interruption or QuickBooks writes. They strengthen
+automated recovery coverage; actual QuickBooks bill-interruption qualification
+remains pending and no broader acceptance gate is closed.
+
 Supplier bills now use Web Connector for browser master checks, controlled posting
 and query-only recovery. The installed sample verified one USD20 bill containing
 expense, purchased-service and inventory lines. Exact saved-record and BillToPay

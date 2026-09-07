@@ -39,6 +39,21 @@ automatic approval review rejected the service-stop/fault-harness command before
 execution. The prepared second candidate has zero write attempts, company posting
 is paused, and the normal service remains running. Synthetic recovery tests are
 not presented as actual interruption qualification.
+Investigation confirmed the normal service remained running, the audit remained
+valid and the candidate had zero attempts. The rejection provided no specific
+policy rationale. The blocked command was not retried and approval controls were
+not changed. Do not replay its preparation blindly: master evidence and the private
+one-job grant must still be valid at dispatch time.
+
+`tests/test_qbwc_bill_process_recovery.py` adds two isolated process-termination
+checks. A child operating only on temporary synthetic company state exits without
+`closeConnection`, either before or after accepting the simulated BillAdd response.
+A new service waits for actual session expiration and recovers by reference search
+and exact bill/payable readback. Both checks retain one attempt and one write,
+assert zero recovery writes, refuse re-enqueue and verify the audit. Neither check
+contacts QuickBooks or stops the installed Bridge, so actual QuickBooks interruption
+qualification is still pending.
+
 The affected suite passed 174 tests, with three further stock/permission cases
 passing afterward. The default full suite passed 1,282 tests with 41 optional
 browser/OCR tests skipped. A separate browser run passed 27 tests with one
