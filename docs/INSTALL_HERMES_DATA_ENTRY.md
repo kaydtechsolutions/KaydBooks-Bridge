@@ -117,6 +117,55 @@ files; verify the actual QuickBooks/Web Connector session behavior for that host
 
 ## 4. Connect the existing Linux Hermes installation
 
+For an already configured company and separate reviewer, generate the private
+connection files instead of writing the Windows launchers by hand. Create an
+operator-controlled request outside Git:
+
+```json
+{
+  "config": "C:\\BridgePrivate\\company-a\\bridge-config.json",
+  "credentials": "C:\\BridgePrivate\\company-a\\credentials.json",
+  "python": "C:\\KaydBooks-Runtime\\Scripts\\python.exe",
+  "company": "company-a",
+  "operator": "operator",
+  "reviewer": "channel-reviewer",
+  "ssh_host": "kaydbooks-windows",
+  "chat_id": "123456789@lid",
+  "sender_ids": ["123456789@lid"]
+}
+```
+
+Use the actual native WhatsApp direct-chat identity, configured SSH host alias and
+existing principal names. The reviewer must already have this company's approval
+permission and a distinct credential; this command does not grant permissions.
+The operator needs read, prepare, validate, submit and post-sample permissions for
+the current sample pilot. Independent approval must be enabled.
+
+```powershell
+& C:\KaydBooks-Runtime\Scripts\kaydbooks-bridge-setup.exe hermes --request C:\BridgePrivate\hermes-request.json --destination C:\BridgePrivate\company-a-channel
+```
+
+The new directory has nine files: tools/channel launchers, separate tool/channel
+credential files, signing credentials, Windows/Linux channel configuration, an MCP
+fragment, and installation instructions. The tools credential file contains only
+the selected operator token; the reviewer token stays on Windows. Keep the whole
+directory private. Copy only `linux-channel.json` to the trusted Linux channel
+service and restrict it to mode 0600. Merge the MCP fragment into the actual
+operator profile without replacing unrelated settings. Set
+`KAYDBOOKS_HERMES_CONFIG` to the Linux channel file for both gateway and worker.
+Both generated channel configurations start with outbound delivery disabled.
+
+Use the **physical paths visible to Windows SSH**. In packaged desktop environments,
+a virtualized AppData path can point to a different directory outside the desktop
+process. The generated launchers reference the existing config and state; they do
+not copy databases, start services, register QWC or enable posting. Destination
+reuse is rejected so an existing installation cannot be silently overwritten.
+
+For separate company/channel bindings, generate separate directories and use
+separate configured gateway profiles/workers. The current confirmation hook has
+one company binding per profile. It does not automatically route one chat across
+all company files. Verify each actual QBW connection separately.
+
 Retain the existing Hermes profile, model settings and WhatsApp session. Supply the
 Linux host location, Windows connection address, and intended operator chat so the
 private connection can be configured without putting them in Git. Bridge credentials

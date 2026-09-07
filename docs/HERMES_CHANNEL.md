@@ -72,6 +72,20 @@ reviewer needs approval permission. Do not expose that reviewer credential to MC
 
 ## Linux Hermes setup
 
+Run only one polling gateway per paired WhatsApp inbox. Two independent gateways
+sharing the same local bridge race to consume messages; a request can reach the
+wrong profile and its unrelated model credentials. When sharing one paired account,
+use the installed Hermes version's supported profile routing/multiplexing in one
+primary gateway, with an explicit operator chat route to the intended profile.
+Disable the competing standalone profile gateway and its second transport. Retain
+the working session path and existing default/home-chat route. Back up configuration
+and sessions before an idle restart, and verify both routing and WhatsApp health.
+Do not copy pairing credentials into a second active WhatsApp session.
+
+The optional `kaydbooks-bridge-setup hermes` command generates private fixed launchers
+and disabled channel/MCP configuration from an existing company deployment; see
+[the setup request and command](INSTALL_HERMES_DATA_ENTRY.md#4-connect-the-existing-linux-hermes-installation).
+
 Identify the actual gateway profile handling the chosen chat first. Copy
 `integrations/hermes/kaydbooks` into that profile's `plugins/kaydbooks`, preserving
 other plugins. Enable `kaydbooks` alongside its existing `plugins.enabled` entries

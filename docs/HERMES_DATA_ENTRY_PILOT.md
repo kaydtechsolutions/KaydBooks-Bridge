@@ -175,3 +175,16 @@ posting attempt reached verified readback, and preview/result provider receipts
 were retained. Posting was paused afterward and the audit verified successfully.
 This strengthens the existing confirmation/posting/delivery evidence, but does not
 close autonomous upload/preparation V01-1. The score remains **12/15 (80%)**.
+
+The seven-tool adapter now includes a read-only `find` entry action so Hermes can
+resolve a duplicate by exact operation/reference, inspect the owned existing job,
+and report verified status without inventing another reference or requesting a new
+posting confirmation. Actual remote lookup found the already verified attachment
+invoice. This verifies duplicate inspection, not a fresh autonomous preparation.
+
+`setup hermes` now generates the private Windows launchers and Linux connection
+inputs from an existing company configuration. The generated launchers passed
+actual Linux-to-Windows MCP discovery, existing-job lookup and signed channel
+status/clock checks against the same Windows state. Outbound stayed disabled in
+these generated files. This is additional V01-7 installation evidence; complete
+new-company QWC binding, mappings and the walkthrough remain open.

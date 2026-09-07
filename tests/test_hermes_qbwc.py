@@ -50,6 +50,20 @@ def test_hermes_dispatch_and_recover_use_qbwc_only(queued_journal, lost):
     assert receive(svc, ticket, sim.xml(send(svc, ticket))) == 100
     assert invoke("status")["state"] == "verified"
     assert sim.writes == 1
+    found = tools.call(
+        "qbwc_entry_v1",
+        "company-a",
+        {
+            "action": "find",
+            "parameters": {
+                "operation": "journal.create",
+                "ref_number": invoke("status")["payload"]["ref_number"].lower(),
+            },
+        },
+    )
+    assert not found["ambiguous"] and not found["posting_performed"]
+    assert [(x["id"], x["state"]) for x in found["matches"]] == [(j, "verified")]
+    assert sim.writes == 1
     with pytest.raises(BridgeError):
         invoke("dispatch")
 
@@ -96,3 +110,34 @@ def test_company_and_operation_bounds(queued_journal):
                 },
             },
         )
+
+
+def test_find_is_owned_scoped_exact_and_read_only(queued_journal):
+    b, t, j, sim = queued_journal
+    tools = Tools(b.config_path, t)
+    ref = tools.call(
+        "qbwc_entry_v1", "company-a", {"action": "status", "parameters": {"job_id": j}}
+    )["payload"]["ref_number"]
+
+    def find(company="company-a", reference=ref):
+        return tools.call(
+            "qbwc_entry_v1",
+            company,
+            {
+                "action": "find",
+                "parameters": {"operation": "journal.create", "ref_number": reference},
+            },
+        )
+
+    assert [x["id"] for x in find()["matches"]] == [j]
+    assert find(reference="MISSING")["matches"] == []
+    with pytest.raises(BridgeError):
+        find(company="unassigned-company")
+    with pytest.raises(BridgeError, match="exact transaction reference"):
+        find(reference="%")
+    raw = json.loads(b.config_path.read_text())
+    actor = b._context(t, "company-a", "read")[1]
+    raw["principals"]["different-owner"] = raw["principals"].pop(actor)
+    b.config_path.write_text(json.dumps(raw))
+    assert find()["matches"] == []
+    assert sim.writes == 0

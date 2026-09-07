@@ -217,10 +217,20 @@ def main(argv=None):
     check.add_argument("--connector", required=True)
     check.add_argument("--target", required=True, type=Path)
     check.add_argument("--credentials", type=Path)
+    channel = commands.add_parser(
+        "hermes", help="generate private disabled Hermes connection files"
+    )
+    channel.add_argument("--request", required=True, type=Path)
+    channel.add_argument("--destination", required=True, type=Path)
     args = parser.parse_args(argv)
     try:
         if args.command == "init":
             result = initialize(args.request, args.destination)
+            code = 0
+        elif args.command == "hermes":
+            from .hermes_setup import generate
+
+            result = generate(args.request, args.destination)
             code = 0
         else:
             result = inspect_setup(

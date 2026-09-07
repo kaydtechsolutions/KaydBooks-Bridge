@@ -46,6 +46,11 @@ as the capture namespace; never substitute the company ID or filename for a sour
 Capture the original uploaded bytes using a stable lowercase upload reference matching
 [a-z][a-z0-9_-]{0,63}. This internal upload ID is separate from the unchanged invoice ref_number.
 Reuse that upload reference on retries. Inspect the content and clarify missing or ambiguous fields.
+Before preparing any retry, call qbwc_entry_v1 find with operation and ref_number.
+It returns owned matching job IDs, payloads and states. Compare the exact source payload,
+then call status with the existing id. A verified match is already posted: report it,
+do not prepare it again or request another confirmation. Multiple matches need clarification.
+On duplicate-key/source/reference conflict, use find; never change identifiers to evade it.
 Use the catalog mappings; never invent QuickBooks IDs, amounts or extraction certainty.
 Use qbwc_entry_v1 check, wait for Web Connector evidence, then prepare and validate each entry.
 For check, parameters contain exactly operation, connector_id from catalog.connectors, and payload.

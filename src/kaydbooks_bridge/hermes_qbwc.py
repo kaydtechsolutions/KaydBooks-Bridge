@@ -20,6 +20,7 @@ OPERATIONS = frozenset(
 
 CONTRACTS = {
     "check": ({"operation", "connector_id", "payload"}, set()),
+    "find": ({"operation", "ref_number"}, set()),
     "prepare": (
         {"operation", "document_id", "idempotency_key", "payload", "confidence"},
         {"master_evidence"},
@@ -45,7 +46,7 @@ CONTRACTS = {
 
 def parameter_schema():
     variants = []
-    for action in ("check", "prepare", "revise", "status"):
+    for action in ("check", "find", "prepare", "revise", "status"):
         required, optional = CONTRACTS[action]
         properties = {
             field: {
@@ -98,6 +99,8 @@ def call(bridge, token, company, arguments):
             f"missing {', '.join(sorted(missing)) or 'none'}; "
             f"unsupported {', '.join(sorted(extra)) or 'none'}"
         )
+    if action == "find":
+        return find(bridge, token, company, **params)
     if action == "revise":
         parent = bridge.status(token, company, params["parent_id"])
         if parent["operation"] not in OPERATIONS:
@@ -120,3 +123,48 @@ def call(bridge, token, company, arguments):
     if action in ("validate", "submit"):
         return bridge.action(token, company, job["id"], action)
     return (enqueue if action == "dispatch" else recover)(bridge, token, company, job["id"])
+
+
+def find(bridge, token, company, operation, ref_number):
+    """Read owned jobs by exact operation/reference; never resolve a conflict by writing."""
+    import re
+
+    if not isinstance(operation, str) or operation not in OPERATIONS:
+        raise BridgeError("entry operation is outside the selected eight")
+    if not isinstance(ref_number, str) or not re.fullmatch(r"[A-Za-z0-9-]{1,64}", ref_number):
+        raise BridgeError("exact transaction reference required")
+    _, actor, _, store = bridge._context(token, company, "read")
+    with store.transaction() as db:
+        if not store.verify_audit(db):
+            raise BridgeError("audit integrity failed")
+        rows = db.execute(
+            "SELECT id FROM jobs WHERE submitter=? AND operation=? "
+            "AND json_extract(payload,'$.ref_number')=? COLLATE NOCASE ORDER BY rowid LIMIT 21",
+            (actor, operation, ref_number),
+        ).fetchall()
+        if len(rows) > 20:
+            raise BridgeError("too many matching references; inspect the company job register")
+        jobs = []
+        for row in rows:
+            job = store.job(db, row["id"])
+            jobs.append(
+                {
+                    k: job.get(k)
+                    for k in (
+                        "id",
+                        "operation",
+                        "state",
+                        "detail",
+                        "txn_id",
+                        "payload",
+                        "fingerprint",
+                    )
+                }
+            )
+    return {
+        "company": company,
+        "matches": jobs,
+        "ambiguous": len(jobs) > 1,
+        "posting_performed": False,
+        "next": "inspect matching job status and payload; never change reference to bypass a duplicate",
+    }

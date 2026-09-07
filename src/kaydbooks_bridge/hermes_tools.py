@@ -311,6 +311,7 @@ def server(config_path, token):
         company: str,
         action: Literal[
             "check",
+            "find",
             "prepare",
             "revise",
             "validate",
@@ -323,7 +324,7 @@ def server(config_path, token):
         parameters: Annotated[dict, Field(json_schema_extra=parameter_schema())],
     ) -> dict:
         """Eight-entry Web Connector workflow: check, prepare, revise, validate, preview, submit,
-        dispatch, recover or status. Capture source first. Check may return pending:
+        dispatch, recover, find or status. Capture source first. Check may return pending:
         let Web Connector run and check again. No direct SDK or approval capability.
         Dispatch requires prior independent approval, current permissions, an explicit
         sample gate and unpaused posting. Never retry an unknown accounting write.
@@ -337,6 +338,11 @@ def server(config_path, token):
         omit containers such as lines. A successful check is not extraction certainty.
         Expected Bridge rejections return ok=false with an error; they are not a
         broken transport or permission to bypass a gate.
+        Before preparing a retry, use find with exactly operation and ref_number to
+        locate owned existing jobs. Compare payloads; use their id for status. An empty
+        result is not proof that QuickBooks has no such transaction. Multiple matches
+        require clarification. A verified match is already posted: do not prepare,
+        confirm or dispatch it again, or invent a new reference to evade a conflict.
         """
         try:
             return tools.call(

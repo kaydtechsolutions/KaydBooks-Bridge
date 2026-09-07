@@ -134,3 +134,14 @@ The current adapter exposes 38 tools. Stdio discovery tests cover that full inve
 the expanded tools do not turn the earlier connection test into a full conversational
 or external-message qualification. [Master changes](MASTER_RECORDS.md) share the same
 source and preparation contracts.
+# Finding an existing transaction safely
+
+Before retrying preparation after a duplicate conflict, call `qbwc_entry_v1` with
+`action: "find"` and `parameters: {"operation": "invoice.create", "ref_number": "YOUR-REF"}`.
+The lookup returns owned matching jobs in the selected company, including job IDs,
+payloads, state and saved transaction IDs. It makes no accounting changes. Compare
+the source with the returned payload and call `status` using the returned ID.
+Multiple matches (for example bills for different vendors) require clarification;
+no match does not prove QuickBooks has no such transaction. Never change a reference
+or upload key to evade the duplicate guard. A `verified` match is already posted
+and does not require another preparation or confirmation.
