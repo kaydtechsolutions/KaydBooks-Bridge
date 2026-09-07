@@ -9,6 +9,22 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
+
+@pytest.mark.parametrize(
+    "header", ["September 1 - 7, 2026", "September 1, 2026 - September 7, 2026"]
+)
+def test_same_month_native_date_header_preserves_exact_period(header):
+    from kaydbooks_bridge.native_reports import date_evidence
+
+    check = {"specification": {"date_from": "2026-09-01", "date_to": "2026-09-07"}}
+    result = date_evidence(header, check)
+    assert result["native_start_date"] == "2026-09-01"
+    assert result["native_end_date"] == "2026-09-07"
+    check["specification"]["date_from"] = "2026-09-02"
+    with pytest.raises(ValueError, match="differs"):
+        date_evidence(header, check)
+
+
 from kaydbooks_bridge import native_reports as reports
 from kaydbooks_bridge.config import BridgeError, Config
 from kaydbooks_bridge.direct_sdk import discover

@@ -125,6 +125,10 @@ qualification are separate evidence; a passing mock does not establish native su
   through narrow MCP tools; installed Hermes discovery and a sample MCP preparation run.
 - [ ] **M4-02:** Manual forms use the shared service contracts for all release operations;
   explicit company, preview, errors and review are visible without technical commands.
+  Browser forms now cover the nine current contracts, corrections, source review,
+  spreadsheet mapping, reports and access controls. Synthetic browser tests and an
+  installed native invoice draft/report run pass. Complete release variants, master
+  forms and convenient original-transaction selection remain unfinished.
 - [ ] **M4-03:** PDF/photo/scan extraction is qualified against a retained test corpus;
   uncertain identities, numbers, dates and totals are held for review. Embedded
   instructions cannot change permissions or execution policy.
@@ -247,5 +251,5 @@ edition/version support and saved-record projections. Do not infer support from 
 request names in the inherited library. Current supported operation families are listed in the project status; each new
 family requires policy, evidence, durable dispatch and independent native readback.
 
-Current step: **native financial reports**, then broader adjustment variants and the
+Current step: **posting schedules and remaining input workflows**, then broader adjustment variants and the
 remaining non-tax acceptance gates. No real company details belong here.

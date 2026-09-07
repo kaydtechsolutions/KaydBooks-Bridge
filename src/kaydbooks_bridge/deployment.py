@@ -252,6 +252,9 @@ def create_staging_app(config_path: str | Path, endpoint_url: str, max_bytes: in
         return {"service": "KaydBooks Bridge", "mode": "read-only qualification"}
 
     service = DurableQBWCDiscoveryService.from_path(config_path)
+    from .web_ui import install
+
+    install(app, config_path, endpoint_url)
     return create_app(
         service,
         endpoint_url=endpoint_url,

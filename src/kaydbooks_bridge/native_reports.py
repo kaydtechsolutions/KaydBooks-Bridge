@@ -244,6 +244,15 @@ def date_evidence(subtitle, check):
         "December",
     ]
     pattern = r"(" + "|".join(months) + r") ([1-9][0-9]?)(?:, ([0-9]{4}))?"
+    # QuickBooks abbreviates the end month for a period within one month, e.g.
+    # September 1 - 7, 2026. Expand only this exact native header shape.
+    abbreviated = re.fullmatch(
+        r"(" + "|".join(months) + r") ([1-9][0-9]?) - ([1-9][0-9]?), ([0-9]{4})",
+        subtitle or "",
+    )
+    if abbreviated:
+        month, first_day, last_day, year = abbreviated.groups()
+        subtitle = f"{month} {first_day}, {year} - {month} {last_day}, {year}"
     matches = list(re.finditer(pattern, subtitle or ""))
     if not matches or not matches[-1].group(3):
         raise BridgeError("native report date header is unsupported or missing")

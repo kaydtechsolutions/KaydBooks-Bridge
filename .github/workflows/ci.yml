@@ -37,3 +37,17 @@ jobs:
       - run: uv run --frozen ruff check .
       - run: uv run --frozen ruff format --check .
       - run: uv build
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install uv==0.12.7
+      - run: uv sync --frozen --extra dev
+      - run: uv run playwright install --with-deps chromium
+      - run: uv run pytest tests/test_web_browser.py -q
+        env:
+          KAYDBOOKS_BROWSER_TESTS: "1"

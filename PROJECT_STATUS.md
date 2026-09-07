@@ -27,6 +27,18 @@ grants. Self-approval is explicit and rechecked on submit/dispatch. The test pri
 retained with no grants; other principals were preserved. No accounting writes occurred.
 The operator's new manage-users grant was an explicit local bootstrap under standing authorization.
 
+Browser workspace now ships in the wheel at `/app`, with company selection, nine current
+operation forms, immutable sources, draft correction/review, CSV/XLSX mapping and row
+preparation, native reports and company access controls. Its narrow authenticated API
+rechecks current permissions and retains existing approval/dispatch limits. Native sample
+qualification created one additional USD5 service draft and rendered a complete 16-row
+P&L over verified TLS. Desktop/mobile layouts passed, no browser errors occurred, and no
+accounting transactions were written. The service now starts from the installed wheel's
+private runtime instead of the repository checkout. Original startup settings were backed
+up privately. This is supporting M4-02 work; the complete release matrix remains partial.
+Signed installed-package restore preserved all 29 jobs and 1,539 files with valid audit,
+paused and without starting a restored service. See [browser workspace](docs/BROWSER_WORKSPACE.md).
+
 ## M3â€“M7 sample implementation and qualification
 
 ### Current release plan: complete M3â€“M6 before final M7
@@ -49,7 +61,7 @@ The operator's new manage-users grant was an explicit local bootstrap under stan
   amounts through the durable lifecycle. Native USD5 and USD10 receipts settled the USD15
   invoice; a third USD5 receipt remained unapplied. Signed AppliedAmount, related invoice
   payments and customer-wide unused credits are handled without double-counting.
-- Latest validation: 1,025 full-suite tests pass. Lint, 33-tool stdio checks and
+- Latest validation: 1,048 full-suite tests pass, including 14 real-browser cases. Lint, 33-tool stdio checks and
   source/wheel builds pass. Eighteen native single-currency report types returned
   complete rows/columns. Independent P&L/balance-sheet/trial-balance/ledger comparisons
   and customer/vendor statement/balance/aging reconciliation passed. Extra native reads
@@ -58,7 +70,7 @@ The operator's new manage-users grant was an explicit local bootstrap under stan
   completed a fresh native P&L read with zero accounting writes. Original read timestamps
   remain stable on cache/recovery. Signed isolated restore preserved 28 jobs and 1499
   files with valid integrity/audit, paused and without starting a restored service.
-  CI62 passed spreadsheet intake; report CI follows.
+  CI62 passed spreadsheet intake; native-report CI63 also passed.
 - Supplier payments now pass exact vendor/AP/Bank mapping, partial/full settlement,
   independent saved allocation/payable checks and missing-response recovery tests.
   Native sample readbacks verified the bill balance decreasing 10 -> 5 -> 0.
@@ -77,7 +89,7 @@ The operator's new manage-users grant was an explicit local bootstrap under stan
   CreditToApply unused amounts and net payable/vendor balance checks. Two native tests
   passed on the first attempt. Supplier-credit application and simple average-cost
   inventory returns are now sample-qualified. Broader currency/cost/settings remain partial.
-- Current step: native financial reports and broader adjustment variants, then remaining
+- Current step: browser workflow qualification, posting schedules and broader adjustment variants, then remaining
   M3–M6 acceptance gates. Sample posting is paused between bounded tests.
 - The [first-release checklist](docs/FIRST_RELEASE_SCOPE.md) is the release target;
   these qualified simple paths do not complete the wider currency/advanced variants.
@@ -787,7 +799,8 @@ statements are superseded by this current section and the operator's M3-M7 autho
   real-payload offline test, not an actual mismatched-company QBWC callback test.
 - Focused regression suite: 23 passed (synthetic discovery/deployment tests). No source
   changes in this milestone; changes are private configuration/evidence and documentation.
-- Remaining M2 blocker: real QBWC read-only registration/callback qualification. The
+- Historical M2 blocker (superseded by subsequent successful QBWC qualification): real
+  QBWC read-only registration/callback qualification. The
   direct SDK diagnostic is not a production transport. Do not repeat withdrawn QWC
   bootstrap/replacement workarounds or enable posting. Next implementation work should
   bring any chosen direct SDK transport through the same authenticated, company-scoped

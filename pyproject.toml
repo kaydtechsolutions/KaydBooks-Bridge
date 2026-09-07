@@ -30,7 +30,14 @@ dependencies = [
 
 [project.optional-dependencies]
 server = ["fastapi>=0.100", "uvicorn>=0.23"]
-dev = ["pytest>=7", "fastapi>=0.100", "httpx>=0.24", "ruff>=0.4", "uvicorn>=0.23"]
+dev = [
+    "pytest>=7",
+    "fastapi>=0.100",
+    "httpx>=0.24",
+    "ruff>=0.4",
+    "uvicorn>=0.23",
+    "playwright>=1.55,<2",
+]
 hermes = [
     "mcp>=1.10,<2",
 ]
@@ -52,7 +59,7 @@ kaydbooks-bridge-setup = "kaydbooks_bridge.onboarding:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-kaydbooks_bridge = ["*.ps1"]
+kaydbooks_bridge = ["*.ps1", "web/*.html", "web/*.css", "web/*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
