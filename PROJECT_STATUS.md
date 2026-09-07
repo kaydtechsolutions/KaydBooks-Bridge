@@ -5,8 +5,8 @@
 The operator narrowed active work to Hermes upload -> exact operator confirmation
 -> Web Connector data entry -> mini result in the operator's Hermes WhatsApp chat.
 Keep the eight selected entry types. Daily reports, customer statement delivery
-and broader roadmap expansion are deferred. The current score is **4/15 verified
-acceptance checks (26.7%, rounded 27%)**; four of eight entry types passed basic
+and broader roadmap expansion are deferred. The current score is **5/15 verified
+acceptance checks (33.3%, rounded 33%)**; five of eight entry types passed basic
 sample qualification, while seven workflow/setup checks remain open. Partial
 implementation is not counted as a passed end-to-end check. See the
 [milestone scorecard](docs/HERMES_DATA_ENTRY_PILOT.md) and
@@ -15,6 +15,23 @@ Every major progress update must include this version, milestone status and scor
 Linux Hermes host details and the operator's WhatsApp destination are needed for
 actual connection/delivery qualification. No new accounting writes or messages
 were sent for this scope update. Production posting remains disabled.
+
+## Latest data-entry qualification
+
+Sales receipt KB-SR-001 passed installed QBWC qualification in the authorized
+sample: USD10 mixed service/inventory sale, deposit 507 to 517, customer balance
+44 unchanged, stock 2 to 1, unchanged average cost 5. One attempt/write, matching
+saved lines, valid audit and duplicate-action refusal passed. Posting is paused.
+Data-entry milestone V01-5 is **5/8 (62.5%)**; journals, inventory transfers and
+checks remain. Web Connector auto-runs every minute per the operator.
+
+Implementation e3efa13 passed 28 focused sales-receipt tests and one actual browser
+form test. Full regression: 1,362 passed, 47 skipped, one legacy-shape fixture
+assertion failed; that outdated fixture was corrected and passed separately.
+A subsequent 29-check run covers sales receipts plus the corrected legacy test.
+The final query schema omits unsupported linked-transaction options. Lint,
+formatting and build passed. Isolated migration preserved all 56 prior tables and
+4,209 rows, adding only an empty evidence table with valid audit/integrity/FKs.
 
 ## Previous implementation evidence
 

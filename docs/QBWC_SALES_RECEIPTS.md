@@ -34,8 +34,10 @@ maps and requires their selected customer identities to agree.
 Automated qualification covers service/inventory sales, sold-out recovery after a
 lost reply, wrong saved values/balances/stock/cost, expired or changed evidence,
 revoked authority and unresolved outcomes. A real browser checks the sales-receipt
-form. Installed QuickBooks sample qualification is pending; do not count this entry
-as complete until actual saved-record and accounting-effect evidence passes.
+form. Installed sample qualification passed: one USD10 mixed receipt increased the deposit
+balance 507 to 517, left customer balance 44 unchanged, and reduced stock 2 to 1
+at unchanged average cost 5. Exact saved lines, one attempt/write, valid audit and
+repeat-action refusal passed; posting was paused again. Broader variants remain.
 
 The request and response shape was checked against Intuit's
 [SalesReceiptAdd reference](https://developer.intuit.com/app/developer/qbdesktop/docs/api-reference/qbdesktop/salesreceiptadd)

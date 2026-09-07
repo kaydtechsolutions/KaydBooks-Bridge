@@ -5,7 +5,7 @@ without waiting for the entire roadmap. The active KB v0.1.0 target is now
 **upload to Hermes -> exact operator confirmation -> Bridge/Web Connector entry
 -> mini result report in the operator's Hermes WhatsApp chat**, using the eight
 selected entry types. The [workflow specification and milestone scorecard](HERMES_DATA_ENTRY_PILOT.md)
-take priority over broader roadmap work. Current verified acceptance: **4/15 (27%)**.
+take priority over broader roadmap work. Current verified acceptance: **5/15 (33%)**.
 No release has been published by creating this plan.
 
 | Version | Proposed scope |
@@ -70,13 +70,13 @@ local candidate builds and authorized sample qualification may continue.
 | Credit memo | Basic installed Web Connector sample qualification passed |
 | Customer payment | Basic installed Web Connector sample qualification passed |
 | Bill | Basic installed Web Connector sample qualification passed |
-| Sales receipt | Implementation and qualification required |
+| Sales receipt | Basic installed Web Connector sample qualification passed |
 | Journal | Implementation and qualification required |
 | Inventory transfer | Implementation and qualification required |
 | Check | Implementation and qualification required |
 
-Four of eight selected entry types (50%) have a basic installed sample qualification.
+Five of eight selected entry types (62.5%) have a basic installed sample qualification.
 This measures entry types only, not feature variants, remaining pilot operational
 checks or total release readiness. Supplier payments and bill credits remain
-implemented and sample-qualified additional features. Prioritize the four missing
+implemented and sample-qualified additional features. Prioritize the three missing
 selected types before broader roadmap expansion.

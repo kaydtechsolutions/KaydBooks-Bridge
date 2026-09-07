@@ -69,12 +69,12 @@ recipient is the operator's configured chat, not customers or numbers in uploads
 | Review and exact human confirmation | Bridge reviews/approvals exist; trusted WhatsApp confirmation binding and batch approval are unfinished |
 | Hermes-to-Windows connection | Local stdio MCP tools exist; this Linux-to-Windows deployment is not qualified |
 | Web Connector master checks and dispatch from Hermes | Browser paths exist for six types; Hermes tools still contain native reads and expose no approval/posting tool |
-| All eight selected types | Four have basic sample QBWC qualification: invoice, bill, customer payment, credit memo; sales receipt, journal, inventory transfer and check remain |
+| All eight selected types | Five have basic sample QBWC qualification: sales receipt, invoice, bill, customer payment, credit memo; journal, inventory transfer and check remain |
 | Result generation and WhatsApp delivery | Job states/receipts exist; batch summary, delivery tracking and actual channel test remain |
 | Multiple company files | Company isolation/private onboarding exist; each actual file needs its own binding, mappings and qualification; automatic file switching is not claimed |
 | Installable pilot and recovery | Development package exists; final candidate install, walkthrough and end-to-end recovery qualification remain |
 
-Four of eight entry types (50%) have basic installed sample qualification. This
+Five of eight entry types (62.5%) have basic installed sample qualification. This
 is not the percentage of the complete Hermes workflow. The older 13/41 broad
 roadmap count is historical context, not this release's completion score. No
 complete upload-confirm-post-WhatsApp run has been verified yet.
@@ -92,11 +92,11 @@ estimate of time or effort.
 | V01-2 Exact operator confirmation | Bridge approval exists; trusted channel binding pending | 0/1 | 0% |
 | V01-3 Linux Hermes to Windows Bridge | Remote connection qualification pending | 0/1 | 0% |
 | V01-4 Hermes-driven QBWC dispatch | Browser foundation exists; Hermes migration pending | 0/1 | 0% |
-| V01-5 Eight selected entry types | Invoice, bill, customer payment, credit memo basic sample checks passed | 4/8 | 50% |
+| V01-5 Eight selected entry types | Sales receipt, invoice, bill, customer payment, credit memo basic sample checks passed | 5/8 | 62.5% |
 | V01-6 Mini report in operator WhatsApp | Summary/delivery workflow pending | 0/1 | 0% |
 | V01-7 Per-company onboarding/isolation walkthrough | Private setup exists; complete deployment walkthrough pending | 0/1 | 0% |
 | V01-8 Installable candidate and end-to-end recovery | Final candidate/walkthrough pending | 0/1 | 0% |
-| **Total** | **In development; not ready for production** | **4/15** | **26.7% (27% rounded)** |
+| **Total** | **In development; not ready for production** | **5/15** | **33.3% (33% rounded)** |
 
 Include this scorecard in major progress updates. Name the milestone changed and
 the evidence closing its check. Do not increase completion for a commit, documentation

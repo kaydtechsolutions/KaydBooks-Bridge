@@ -30,7 +30,7 @@ invoice path is only part of that release.
 The active **KB v0.1.0** target is **upload to Hermes -> confirm with the operator ->
 data entry through Web Connector -> mini result report in Hermes WhatsApp**.
 The [workflow and milestone scorecard](docs/HERMES_DATA_ENTRY_PILOT.md) records
-**4/15 verified acceptance checks (27%)**, including four of eight selected entry
+**5/15 verified acceptance checks (33%)**, including five of eight selected entry
 types. The complete conversational workflow is not ready yet. Follow the
 [multi-company development installation guide](docs/INSTALL_HERMES_DATA_ENTRY.md)
 and [incremental release plan](docs/RELEASE_PLAN.md); each company requires private
