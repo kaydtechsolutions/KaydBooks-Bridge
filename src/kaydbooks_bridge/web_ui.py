@@ -15,6 +15,7 @@ from .service import Bridge, validate_payload
 from .validation import canonical, digest
 
 OPERATIONS = {
+    "check.create": ("Check", "check_check"),
     "journal.create": ("Journal", "journal_check"),
     "sales-receipt.create": ("Sales receipt", "sales_receipt_check"),
     "master.change": ("Customer, supplier or item change", None),
@@ -123,6 +124,7 @@ def check_masters(bridge, token, company, operation, connector_id, payload):
         "bill.create",
         "customer-payment.create",
         "supplier-payment.create",
+        "check.create",
         "journal.create",
         "sales-receipt.create",
         "customer-credit.create",
@@ -400,6 +402,7 @@ def action(bridge, token, company, action, parameters):
         "bill.create",
         "customer-payment.create",
         "supplier-payment.create",
+        "check.create",
         "journal.create",
         "sales-receipt.create",
         "customer-credit.create",

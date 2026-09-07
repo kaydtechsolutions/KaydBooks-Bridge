@@ -226,7 +226,7 @@ def add_request(policy, payload, run):
         E.SubElement(root, "QBXMLMsgsRq", onError="stopOnError"), "JournalEntryAddRq", requestID=run
     )
     row = E.SubElement(rq, "JournalEntryAdd")
-    for tag, key in [("TxnDate", "txn_date"), ("RefNumber", "ref_number"), ("Memo", "memo")]:
+    for tag, key in [("TxnDate", "txn_date"), ("RefNumber", "ref_number")]:
         if key in payload:
             E.SubElement(row, tag).text = payload[key]
     E.SubElement(row, "IsAdjustment").text = "false"
@@ -236,8 +236,9 @@ def add_request(policy, payload, run):
         )
         ref(node, "AccountRef", check["accounts"][line["account_id"]])
         E.SubElement(node, "Amount").text = line["amount"]
-        if "memo" in line:
-            E.SubElement(node, "Memo").text = line["memo"]
+        line_memo = line.get("memo", payload.get("memo"))
+        if line_memo is not None:
+            E.SubElement(node, "Memo").text = line_memo
     return render(root)
 
 
@@ -298,7 +299,7 @@ def validate_receipt(xml, policy, payload, run, *, operation="JournalEntryQuery"
             raise BridgeError("saved journal header differs")
     if (
         len(row.findall("Memo")) > 1
-        or (row.findtext("Memo") or None) != payload.get("memo")
+        or row.find("Memo") is not None
         or row.find("CurrencyRef") is not None
     ):
         raise BridgeError("saved journal memo/currency differs")
@@ -335,7 +336,7 @@ def validate_receipt(xml, policy, payload, run, *, operation="JournalEntryQuery"
             "JournalDebitLine" if line["side"] == "debit" else "JournalCreditLine",
             check["accounts"][line["account_id"]],
             str(money(line["amount"])),
-            line.get("memo", ""),
+            line.get("memo", payload.get("memo", "")),
         )
         for line in payload["lines"]
     ]

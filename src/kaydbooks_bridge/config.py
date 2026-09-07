@@ -56,6 +56,7 @@ class Company:
     supplier_payment_masters: dict = field(default_factory=dict)
     sample_supplier_payment_posting: dict = field(default_factory=dict)
     journal_masters: dict = field(default_factory=dict)
+    sample_check_posting: dict = field(default_factory=dict)
     sample_journal_posting: dict = field(default_factory=dict)
     sample_sales_receipt_posting: dict = field(default_factory=dict)
     sample_credit_posting: dict = field(default_factory=dict)
@@ -92,6 +93,7 @@ def company_policy_context(policy):
         "supplier_payment_masters",
         "sample_supplier_payment_posting",
         "journal_masters",
+        "sample_check_posting",
         "sample_journal_posting",
         "sample_sales_receipt_posting",
         "sample_credit_posting",
@@ -159,6 +161,7 @@ class Config:
                     "supplier_payment_masters",
                     "sample_supplier_payment_posting",
                     "journal_masters",
+                    "sample_check_posting",
                     "sample_journal_posting",
                     "sample_sales_receipt_posting",
                     "sample_credit_posting",
@@ -291,6 +294,25 @@ class Config:
             from .journal_entries import validate_masters as validate_journal_masters
 
             validate_journal_masters(companies[name].journal_masters)
+            check_gate = companies[name].sample_check_posting
+            if not isinstance(check_gate, dict):
+                raise BridgeError("sample check posting gate must be an object")
+            if check_gate:
+                strict_keys(
+                    check_gate,
+                    {"connector", "authorization", "ref_prefix", "max_checks", "expires_at"},
+                )
+                identifier(check_gate["connector"])
+                if (
+                    not isinstance(check_gate["authorization"], str)
+                    or not 20 <= len(check_gate["authorization"]) <= 1000
+                    or not isinstance(check_gate["ref_prefix"], str)
+                    or not re.fullmatch(r"[A-Z0-9-]{3,8}", check_gate["ref_prefix"])
+                    or type(check_gate["max_checks"]) is not int
+                    or not 1 <= check_gate["max_checks"] <= 10
+                    or type(check_gate["expires_at"]) not in (int, float)
+                ):
+                    raise BridgeError("invalid controlled sample check posting gate")
             journal_gate = companies[name].sample_journal_posting
             if not isinstance(journal_gate, dict):
                 raise BridgeError("sample journal posting gate must be an object")
