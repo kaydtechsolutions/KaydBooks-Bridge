@@ -218,7 +218,7 @@ class Config:
                     or not isinstance(gate["ref_prefix"], str)
                     or not re.fullmatch(r"[A-Z0-9-]{3,8}", gate["ref_prefix"])
                     or type(gate["max_invoices"]) is not int
-                    or not 1 <= gate["max_invoices"] <= 10
+                    or not 1 <= gate["max_invoices"] <= 100
                     or type(gate["expires_at"]) not in (int, float)
                 ):
                     raise BridgeError("invalid controlled sample posting gate")

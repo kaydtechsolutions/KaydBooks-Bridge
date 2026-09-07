@@ -64,6 +64,7 @@ invoice passed preflight, single write handoff and exact saved-invoice readback.
 Duplicate dispatch was refused and posting was paused again. Actual service-invoice
 interruption/recovery also passed: after a deliberate process exit before accepting
 the successful add response, read-only recovery verified the same saved invoice
-with one total write handoff. Inventory variants still need installed QBWC
-qualification. Other contracts, reports and scheduling need migration.
+with one total write handoff. An installed mixed inventory/service invoice also
+verified both saved lines and stock quantity 2 -> 0, with one write handoff.
+Other inventory variants, contracts, reports and scheduling need migration.
 No native-only gate is relabeled Web Connector-qualified. Production remains disabled.

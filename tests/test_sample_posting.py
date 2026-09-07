@@ -45,6 +45,27 @@ def queued(saved_job):
     return bridge, token, job_id, envelope
 
 
+@pytest.mark.parametrize("limit", [1, 10, 11, 100])
+def test_cumulative_invoice_gate_accepts_explicit_bounded_limits(queued, limit):
+    bridge, _, _, _ = queued
+    path = Path(bridge.config_path)
+    raw = json.loads(path.read_text())
+    raw["companies"]["company-a"]["sample_posting"]["max_invoices"] = limit
+    path.write_text(json.dumps(raw))
+    assert Config.load(path).companies["company-a"].sample_posting["max_invoices"] == limit
+
+
+@pytest.mark.parametrize("limit", [0, -1, 101, True, 11.0, "11"])
+def test_cumulative_invoice_gate_rejects_invalid_limits(queued, limit):
+    bridge, _, _, _ = queued
+    path = Path(bridge.config_path)
+    raw = json.loads(path.read_text())
+    raw["companies"]["company-a"]["sample_posting"]["max_invoices"] = limit
+    path.write_text(json.dumps(raw))
+    with pytest.raises(BridgeError, match="invalid controlled sample posting gate"):
+        Config.load(path)
+
+
 class Session:
     def __init__(self, *, existing=False, crash=None, before=None):
         self.existing, self.crash, self.before = existing, crash, before

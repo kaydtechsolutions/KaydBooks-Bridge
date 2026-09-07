@@ -50,7 +50,11 @@ returns its stored progress result. A repeated write request, conflicting callba
 bad XML, processor error, changed context, early close or expiration holds the job
 for reconciliation. The shared company unresolved-write constraint prevents another
 accounting write while an outcome is uncertain. Native and QBWC invoice attempts
-consume the same cumulative sample quota.
+consume the same cumulative sample quota. The explicitly configured `max_invoices`
+may range from 1 to 100 cumulative attempts. This validation ceiling does not grant
+100 attempts: the private authorized limit remains enforced across both transports,
+including failed or uncertain attempts. A new qualification must explicitly extend
+that limit; neither restart nor recovery resets the counter.
 
 If the first callback arrives after its evidence or dispatch lease expires, the
 write is blocked. Recovery can close that held attempt as `qbwc_not_dispatched`
@@ -134,5 +138,23 @@ sessions remained. The bounded quota remains consumed. The six fault-selector
 checks passed, and implementation CI78 passed all 11 jobs. Fault code and raw
 company evidence are private and are not part of the distributed package.
 
-Next: qualify an inventory invoice and its stock effects through actual QBWC.
+### Installed mixed inventory/service invoice
+
+A separately approved USD15 non-tax invoice sold two inventory units at USD5 and
+one USD5 service through the normal Web Connector service. Fresh master checks,
+preflight, one write handoff and independent exact-TxnID readback passed. Both lines,
+subtotal and remaining balance matched. Inventory readback verified quantity 2 -> 0
+and reported average cost USD5. Exactly one attempt was retained. Repeat dispatch
+and recovery of the verified job were refused; response hashes and audit passed.
+Posting was paused again and all eleven cumulative invoice attempts remain counted.
+
+Preparation initially failed before job creation because the configuration parser
+limited lifetime invoice attempts to ten. The parser now permits explicit cumulative
+limits through 100; the private authorization increased only to eleven, authorizing
+one new attempt. Existing history was retained. All 78 affected invoice/receipt/
+recovery tests, lint, formatting and package build passed. Inventory interruption
+variants still have automated coverage only; the actual process-interruption result
+above exercised a service invoice.
+
+Next: migrate remaining transaction contracts, starting with supplier bills.
 Production posting and broader client release remain disabled.

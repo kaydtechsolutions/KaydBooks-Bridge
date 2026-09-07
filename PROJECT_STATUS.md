@@ -1,5 +1,19 @@
 # KaydBooks Bridge project status
 
+An actual QBWC mixed inventory/service invoice is now sample-qualified. The USD15
+invoice sold two stock units at USD5 and one USD5 service. Independent exact-TxnID
+readback matched both lines and the amount, and inventory evidence verified stock
+2 -> 0 with average cost USD5. One attempt and one write handoff were retained;
+repeat posting/recovery were refused, response hashes and audit passed, and company
+posting is paused again. The first preparation exposed a hardcoded ten-attempt
+lifetime ceiling; configuration now accepts explicit cumulative invoice limits
+1–100, while this private grant authorized only one additional attempt (11 total).
+No prior quota/history was reset. All 78 affected invoice, recovery and receipt tests
+passed, as did lint, formatting and package build. The normal installed service
+processed the invoice on the operator's one-minute Web Connector schedule.
+Next: migrate the remaining transaction contracts, starting with supplier bills.
+Broader acceptance gates remain 28: M3—9, M4—2, M5—2, M6—11, M7—4.
+
 Actual QBWC lost-write-response recovery is now qualified for a USD5 non-tax
 service invoice. A private one-job harness exited after QuickBooks returned a
 successful add response, before the Bridge accepted it. After restoring the normal
@@ -8,8 +22,8 @@ search and exact-TxnID readback independently verified the same saved invoice.
 One attempt and one write handoff remain; recovery sent zero writes. Repeat posting
 and recovery of the verified job were refused. Response hashes and audit integrity
 passed. Posting is paused, the bounded invoice quota is exhausted, and raw evidence
-and the fault harness remain private. CI78 passed all 11 jobs. Next: installed QBWC
-inventory invoice/stock-effect qualification, then remaining entry/report contracts.
+and the fault harness remain private. CI78 passed all 11 jobs. Installed QBWC
+inventory invoice/stock effects subsequently passed as described above.
 This closes the initial service-invoice interruption check, not a broader release
 gate: 28 gates remain (M3—9, M4—2, M5—2, M6—11, M7—4).
 
@@ -42,8 +56,8 @@ The operator now requires QuickBooks Web Connector (`.qwc`) as the primary clien
 connection. See [the connection decision](docs/WEB_CONNECTOR_DIRECTION.md).
 Existing Web Connector reads and native sample transactions remain as tested;
 transaction/report migration through Web Connector is not yet completed. Next:
-actual QBWC inventory invoice qualification, then the remaining required
-entry/report contracts. Native-only evidence must not close QBWC qualification gates.
+the remaining required entry/report contracts. Native-only evidence must not close
+QBWC qualification gates.
 This is a deployment-direction change; it does not enable accounting posting or
 complete any of the 28 unfinished gates recorded below. Tax remains excluded.
 
