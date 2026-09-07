@@ -11,8 +11,8 @@ evidence remain private. No production readiness is implied.
 | Sales receipt | Not implemented |
 | Bill | Expense/purchased-service/inventory sample bill verified, including payable balance and stock increase; actual bill interruption qualification remains |
 | Inventory transfer | Not implemented |
-| Credit memo | Native implementation exists; QBWC migration required |
-| Bill credit | Native implementation exists; QBWC migration required |
+| Credit memo | QBWC master checks, posting and query-only recovery implemented; automated balance/stock/cost checks pass; installed qualification remains |
+| Bill credit | QBWC master checks, posting and query-only recovery implemented; automated payable/stock checks pass; installed qualification remains |
 | Account transfer | Not implemented |
 | Customer payment | Basic partial payment sample-qualified through QBWC: USD5 payment, invoice outstanding USD15 → USD10, one write and valid audit; broader cases and actual interruption qualification remain |
 | Supplier payment | Basic partial payment sample-qualified through QBWC: USD5 payment, selected bill outstanding USD20 → USD15, one write and valid audit; broader cases and actual interruption qualification remain |

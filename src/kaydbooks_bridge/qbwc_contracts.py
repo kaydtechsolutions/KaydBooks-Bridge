@@ -45,6 +45,14 @@ class Contract:
             return self.module("receipt").inventory_specs(policy, payload)
         return self.module("posting").plan(policy, payload)["binding"].get("inventory_items", {})
 
+    def verify_balances(self, policy, payload, before, after):
+        module = self.module("receipt")
+        if self.name == "credit":
+            return module.verify_balance_effect(
+                payload, before, after, inventory=module.plan(policy, payload).get("inventory", {})
+            )
+        return module.verify_balance_effect(payload, before, after)
+
 
 CONTRACTS = {
     "invoice.create": Contract(
@@ -92,6 +100,30 @@ CONTRACTS = {
         "native_supplier_payment_attempts",
         "BillPaymentCheckAdd",
         "bill_balances",
+    ),
+    "customer-credit.create": Contract(
+        "credit",
+        "sample_credit_posting",
+        "customer_credits",
+        "credit_evidence",
+        "require",
+        "sample_credit_posting",
+        "max_credits",
+        "native_credit_attempts",
+        "CreditMemoAdd",
+        "balances",
+    ),
+    "supplier-credit.create": Contract(
+        "supplier_credit",
+        "sample_supplier_credit_posting",
+        "supplier_credits",
+        "supplier_credit_evidence",
+        "require",
+        "sample_supplier_credit_posting",
+        "max_credits",
+        "native_supplier_credit_attempts",
+        "VendorCreditAdd",
+        "balances",
     ),
 }
 

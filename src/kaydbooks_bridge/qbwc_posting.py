@@ -511,10 +511,8 @@ class DurableQBWCPostingService(DurableQBWCDiscoveryService):
                             )
                             if collision is not None:
                                 raise BridgeError("payment baseline must precede its write")
-                            receipt["balance_effects"] = adapter.module(
-                                "receipt"
-                            ).verify_balance_effect(
-                                job["payload"], balances, receipt[adapter.balance_key]
+                            receipt["balance_effects"] = adapter.verify_balances(
+                                policy, job["payload"], balances, receipt[adapter.balance_key]
                             )
                         if adapter.inventory(policy, job["payload"]):
                             baseline = db.execute(

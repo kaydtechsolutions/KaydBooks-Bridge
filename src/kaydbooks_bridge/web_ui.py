@@ -120,6 +120,8 @@ def check_masters(bridge, token, company, operation, connector_id, payload):
         "bill.create",
         "customer-payment.create",
         "supplier-payment.create",
+        "customer-credit.create",
+        "supplier-credit.create",
     ):
         from .qbwc_invoices import invoice_job, make_plan
         from .validation import canonical
@@ -393,6 +395,8 @@ def action(bridge, token, company, action, parameters):
         "bill.create",
         "customer-payment.create",
         "supplier-payment.create",
+        "customer-credit.create",
+        "supplier-credit.create",
     ) and (action == "post-sample" or job.get("posting_transport") == "qbwc"):
         from .qbwc_posting import enqueue, recover
 

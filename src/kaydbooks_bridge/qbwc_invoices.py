@@ -15,7 +15,12 @@ def make_plan(company, payload, txn_id=None, operation="invoice.create"):
     from .qbwc_contracts import contract
 
     contract(operation)
-    if operation in ("customer-payment.create", "supplier-payment.create"):
+    if operation in (
+        "customer-payment.create",
+        "supplier-payment.create",
+        "customer-credit.create",
+        "supplier-credit.create",
+    ):
         if txn_id is not None:
             raise BridgeError("standalone QBWC payment receipt checks are unavailable")
         return {
@@ -42,7 +47,12 @@ def make_plan(company, payload, txn_id=None, operation="invoice.create"):
 
 
 def append_request(request, correlation, check):
-    if check.get("operation") in ("customer-payment.create", "supplier-payment.create"):
+    if check.get("operation") in (
+        "customer-payment.create",
+        "supplier-payment.create",
+        "customer-credit.create",
+        "supplier-credit.create",
+    ):
         from .qbwc_contracts import contract
 
         return (
@@ -65,7 +75,12 @@ def append_request(request, correlation, check):
 
 
 def check_response(response, correlation, check):
-    if check.get("operation") in ("customer-payment.create", "supplier-payment.create"):
+    if check.get("operation") in (
+        "customer-payment.create",
+        "supplier-payment.create",
+        "customer-credit.create",
+        "supplier-credit.create",
+    ):
         from .qbwc_contracts import contract
 
         discovery, _ = (
@@ -191,7 +206,13 @@ def invoice_job(
                     db, time.time(), actor, None, "qbwc_invoice_receipt_read", {"job": job_id}
                 )
                 return result
-            if operation in ("bill.create", "customer-payment.create", "supplier-payment.create"):
+            if operation in (
+                "bill.create",
+                "customer-payment.create",
+                "supplier-payment.create",
+                "customer-credit.create",
+                "supplier-credit.create",
+            ):
                 result.update(
                     operation=operation.removesuffix(".create") + "-master-compatibility",
                     transport="qbwc",

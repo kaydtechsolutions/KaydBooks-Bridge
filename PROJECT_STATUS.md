@@ -1,5 +1,17 @@
 # KaydBooks Bridge project status
 
+Credit memos and bill credits now use Web Connector for browser master checks,
+controlled posting and query-only recovery. Original-record capacity, party/net
+payable effects and inventory stock/cost are verified from retained preflight
+evidence. The affected suite passed 226 tests and six browser waiting-state checks;
+lint, formatting, JavaScript syntax and package build passed. An isolated migration
+preserved identical contents in all 56 tables and 3,739 rows with valid audit,
+integrity and foreign keys. Installed credit qualification remains pending.
+See [credit transport](docs/QBWC_CREDITS.md).
+Checklist completion is 13/41 M3–M7 gates (31.7%); 28 remain. These gates retain
+their documented native/transport scope and do not measure the newer fourteen-entry
+Web Connector migration by themselves. Tax remains excluded.
+
 The installed Web Connector also verified a USD5 supplier payment: the selected
 bill's outstanding balance decreased from USD20 to USD15. Exact payment and
 BillToPay evidence matched; the operator's Vendor Balance Detail corroborated

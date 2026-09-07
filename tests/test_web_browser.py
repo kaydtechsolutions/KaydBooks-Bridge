@@ -667,3 +667,37 @@ def test_browser_invoice_adjustment_scope_and_review_invalidation(
     assert page.get_by_role("button", name="Save and review", exact=True).is_enabled()
     page.get_by_label("Adjustment amount", exact=True).fill("2.00")
     assert page.get_by_role("button", name="Save and review", exact=True).is_disabled()
+
+
+@pytest.mark.parametrize("supplier", [False, True])
+def test_credit_waits_for_web_connector_before_enabling_save(page, monkeypatch, supplier):
+    monkeypatch.setattr(
+        web_ui, "check_masters", lambda *a, **kw: {"evidence": None, "pending": True}
+    )
+    page.get_by_role("button", name="New document", exact=True).first.click()
+    page.get_by_label("Document type", exact=True).select_option(
+        "supplier-credit.create" if supplier else "customer-credit.create"
+    )
+    page.get_by_label("Source", exact=True).select_option("synthetic-intake")
+    form = page.locator("#document-form")
+    form.locator(
+        'select[data-field="vendor_id"]' if supplier else 'select[data-field="customer_id"]'
+    ).select_option("vendor-a" if supplier else "customer-a")
+    form.locator('input[data-field="txn_date"]').fill("2026-09-07")
+    form.locator('input[data-field="ref_number"]').fill("WEB-CR-1")
+    form.locator(
+        'input[data-field="bill_txn_id"]' if supplier else 'input[data-field="invoice_txn_id"]'
+    ).fill("ORIGINAL-1")
+    if supplier:
+        form.locator('#lines select[data-field="expense_id"]').select_option("office")
+        form.locator('#lines input[data-field="amount"]').fill("5.00")
+    else:
+        form.locator('#lines select[data-field="item_id"]').select_option("item-a")
+        form.locator('#lines input[data-field="unit_price"]').fill("5.00")
+    page.get_by_role("button", name="Check details", exact=True).click()
+    page.get_by_text(
+        ("Bill credit" if supplier else "Credit memo")
+        + " check queued. Run Update Selected in QuickBooks Web Connector, then click Check details again.",
+        exact=True,
+    ).wait_for()
+    assert page.get_by_role("button", name="Save and review", exact=True).is_disabled()

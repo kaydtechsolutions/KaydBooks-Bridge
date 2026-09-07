@@ -12,6 +12,22 @@ from .validation import digest
 
 def resolve(config, policy, store, db, actor, payload, reference, now, *, txn_id=None):
     strict_keys(reference, {"transport", "connector", "id"})
+    if reference["transport"] == "qbwc":
+        from .payment_evidence import resolve_qbwc
+
+        if txn_id is not None:
+            raise BridgeError("standalone QBWC credit receipt checks are unavailable")
+        return resolve_qbwc(
+            config,
+            policy,
+            store,
+            db,
+            actor,
+            payload,
+            reference,
+            now,
+            operation="customer-credit.create",
+        )
     if reference["transport"] != "direct-sdk":
         raise BridgeError("credit evidence currently requires direct-sdk")
     connector = config.connectors.get(identifier(reference["connector"]))
