@@ -427,7 +427,7 @@ function entry(existing = null, onTemplate = null, observed = null) {
     });
     if (evidence.pending) {
       save.disabled = true;
-      const label = {"invoice.create": "Invoice", "bill.create": "Bill", "customer-payment.create": "Customer payment"}[op.value] || "Details";
+      const label = {"invoice.create": "Invoice", "bill.create": "Bill", "customer-payment.create": "Customer payment", "supplier-payment.create": "Supplier payment"}[op.value] || "Details";
       notice(label + " check queued. Run Update Selected in QuickBooks Web Connector, then click Check details again.");
       return;
     }
@@ -950,7 +950,7 @@ async function openJob(id) {
   if (job.state === "queued" && permissions("post-sample"))
     actions.append(
       button(
-        ["invoice.create", "bill.create", "customer-payment.create"].includes(job.operation) ? "Queue in Web Connector" : "Post to sample company",
+        ["invoice.create", "bill.create", "customer-payment.create", "supplier-payment.create"].includes(job.operation) ? "Queue in Web Connector" : "Post to sample company",
         async () => {
           await api("post-sample", { job_id: id });
           await openJob(id);

@@ -153,19 +153,26 @@ def test_bill_waits_for_web_connector_before_enabling_save(page, monkeypatch):
     assert page.get_by_role("button", name="Save and review", exact=True).is_disabled()
 
 
-def test_payment_waits_for_web_connector_before_enabling_save(page, monkeypatch):
+@pytest.mark.parametrize("supplier", [False, True])
+def test_payment_waits_for_web_connector_before_enabling_save(page, monkeypatch, supplier):
     monkeypatch.setattr(
         web_ui, "check_masters", lambda *a, **kw: {"evidence": None, "pending": True}
     )
     page.get_by_role("button", name="New document", exact=True).first.click()
-    page.get_by_label("Document type", exact=True).select_option("customer-payment.create")
+    page.get_by_label("Document type", exact=True).select_option(
+        "supplier-payment.create" if supplier else "customer-payment.create"
+    )
     page.get_by_label("Source", exact=True).select_option("synthetic-intake")
     form = page.locator("#document-form")
-    for name, value in {
-        "customer_id": "customer-a",
-        "deposit_id": "cash",
-        "method_id": "cash",
-    }.items():
+    for name, value in (
+        {"vendor_id": "vendor-a", "bank_id": "cash"}
+        if supplier
+        else {
+            "customer_id": "customer-a",
+            "deposit_id": "cash",
+            "method_id": "cash",
+        }
+    ).items():
         form.locator(f'select[data-field="{name}"]').select_option(value)
     for name, value in {
         "ref_number": "WEB-PAY-1",
@@ -177,7 +184,8 @@ def test_payment_waits_for_web_connector_before_enabling_save(page, monkeypatch)
         form.locator(f'input[data-field="{name}"]').fill(value)
     page.get_by_role("button", name="Check details", exact=True).click()
     page.get_by_text(
-        "Customer payment check queued. Run Update Selected in QuickBooks Web Connector, then click Check details again.",
+        ("Supplier" if supplier else "Customer")
+        + " payment check queued. Run Update Selected in QuickBooks Web Connector, then click Check details again.",
         exact=True,
     ).wait_for()
     assert page.get_by_role("button", name="Save and review", exact=True).is_disabled()

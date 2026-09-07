@@ -492,7 +492,7 @@ class DurableQBWCPostingService(DurableQBWCDiscoveryService):
                             {"correlation": run["id"], "country": "US", "qbxml_version": "17.0"},
                             connector,
                         )
-                        if adapter.name == "payment":
+                        if adapter.balance_key:
                             baseline = db.execute(
                                 "SELECT p.response,r.id FROM qbwc_invoice_responses p "
                                 "JOIN qbwc_invoice_runs r ON r.id=p.run_id "
@@ -514,7 +514,7 @@ class DurableQBWCPostingService(DurableQBWCDiscoveryService):
                             receipt["balance_effects"] = adapter.module(
                                 "receipt"
                             ).verify_balance_effect(
-                                job["payload"], balances, receipt["invoice_balances"]
+                                job["payload"], balances, receipt[adapter.balance_key]
                             )
                         if adapter.inventory(policy, job["payload"]):
                             baseline = db.execute(

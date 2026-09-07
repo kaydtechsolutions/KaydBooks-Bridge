@@ -31,6 +31,11 @@ keys, and paused posting. The original database was not modified.
 
 Automated callback tests cover partial/full payments, discounts, unapplied funds,
 lost responses, wrong balance effects, absent recovery results, revoked write
-permission, never-started attempts, and owned/fresh browser evidence. Installed
-QuickBooks customer-payment qualification remains pending. These automated checks
-do not close an acceptance gate or enable production posting.
+permission, never-started attempts, and owned/fresh browser evidence.
+
+The installed sample company verified one USD5 partial customer payment through
+Web Connector. Independent saved-payment and allocated-invoice readback proved
+the invoice balance changed from USD15 to USD10. Exactly one attempt and one write
+were retained, response hashes and audit passed, repeat enqueue/recovery were
+refused, and posting was paused again. Broader cases and actual payment
+interruption qualification remain; production posting is not enabled.

@@ -105,9 +105,25 @@ def require(config, policy, store, db, job, now):
         raise BridgeError("fresh owned payment evidence required")
 
 
-def resolve_qbwc(config, policy, store, db, actor, payload, reference, now):
+def resolve_qbwc(
+    config,
+    policy,
+    store,
+    db,
+    actor,
+    payload,
+    reference,
+    now,
+    *,
+    operation="customer-payment.create",
+):
+    from .qbwc_contracts import contract
     from .validation import canonical
 
+    adapter = contract(operation)
+    if not adapter.balance_key:
+        raise BridgeError("payment evidence operation required")
+    module = adapter.module("posting")
     connector = config.connectors.get(identifier(reference["connector"]))
     if connector is None or connector.company != policy.id:
         raise BridgeError("payment evidence company or connector mismatch")
@@ -117,7 +133,7 @@ def resolve_qbwc(config, policy, store, db, actor, payload, reference, now):
     job = db.execute("SELECT * FROM qbwc_invoice_jobs WHERE id=?", (reference["id"],)).fetchone()
     if (
         job is None
-        or job["operation"] != "customer-payment.create"
+        or job["operation"] != operation
         or job["txn_id"] is not None
         or job["actor"] != actor
         or job["connector"] != connector.id
@@ -126,7 +142,7 @@ def resolve_qbwc(config, policy, store, db, actor, payload, reference, now):
     ):
         raise BridgeError("verified owned exact payment master evidence required")
     row = db.execute("SELECT * FROM qbwc_sessions WHERE ticket=?", (job["ticket"],)).fetchone()
-    check = plan(policy, payload)
+    check = module.plan(policy, payload)
     if (
         row is None
         or row["state"] not in ("verified", "closed")
@@ -143,14 +159,14 @@ def resolve_qbwc(config, policy, store, db, actor, payload, reference, now):
         or not 0 <= now - observed < policy.invoice_evidence_max_age_seconds
     ):
         raise BridgeError("payment evidence is stale; run a fresh exact check")
-    expected = append_check(
+    expected = module.append_check(
         DurableQBWCDiscoveryService._discovery_request(row["correlation"], "17.0"),
         row["correlation"],
         check,
     )
     if row["request_xml"] != expected:
         raise BridgeError("payment evidence request differs")
-    discovery, balances = validate_check(row["response_xml"], row["correlation"], check)
+    discovery, balances = module.validate_check(row["response_xml"], row["correlation"], check)
     identity, _ = DurableQBWCDiscoveryService._verify_discovery_response(discovery, row, connector)
     return {
         "reference": reference,

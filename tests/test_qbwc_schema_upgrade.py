@@ -8,13 +8,17 @@ from kaydbooks_bridge.qbwc_schema_upgrade import expand_read_operations
 
 
 @pytest.mark.parametrize("rollback", [False, True])
-def test_legacy_invoice_bill_read_upgrade_is_atomic(tmp_path, rollback):
+@pytest.mark.parametrize("has_customer", [False, True])
+def test_legacy_invoice_bill_read_upgrade_is_atomic(tmp_path, rollback, has_customer):
     with sqlite3.connect(tmp_path / "legacy.sqlite3", isolation_level=None) as db:
-        db.execute("""CREATE TABLE qbwc_invoice_jobs (
+        operations = "'invoice.create','bill.create'" + (
+            ",'customer-payment.create'" if has_customer else ""
+        )
+        db.execute(f"""CREATE TABLE qbwc_invoice_jobs (
             id TEXT PRIMARY KEY,actor TEXT NOT NULL,connector TEXT NOT NULL,
             payload TEXT NOT NULL,context_hash TEXT NOT NULL,ticket TEXT UNIQUE,
             txn_id TEXT,operation TEXT NOT NULL DEFAULT 'invoice.create'
-            CHECK(operation IN ('invoice.create','bill.create')))""")
+            CHECK(operation IN ({operations})))""")
         db.execute("""CREATE UNIQUE INDEX one_pending_invoice_job
             ON qbwc_invoice_jobs(connector) WHERE ticket IS NULL""")
         db.executemany(
@@ -67,7 +71,7 @@ def test_legacy_invoice_bill_read_upgrade_is_atomic(tmp_path, rollback):
             db.execute(insertion, ("arbitrary.write",))
         if rollback:
             with pytest.raises(sqlite3.IntegrityError, match="CHECK"):
-                db.execute(insertion, ("customer-payment.create",))
+                db.execute(insertion, ("supplier-payment.create",))
         else:
-            db.execute(insertion, ("customer-payment.create",))
+            db.execute(insertion, ("supplier-payment.create",))
         assert db.execute("PRAGMA integrity_check").fetchone()[0] == "ok"

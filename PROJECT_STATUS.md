@@ -1,5 +1,25 @@
 # KaydBooks Bridge project status
 
+The installed Web Connector verified a USD5 partial customer payment and the
+allocated invoice's balance reduction from USD15 to USD10. One attempt and one
+write were retained; response hashes and audit passed, repeat dispatch/recovery
+were refused, and posting was paused again. This qualifies the basic QBWC partial
+payment path, not all customer-payment variants or actual interruption recovery.
+
+Supplier-payment browser checks, controlled posting and query-only recovery are
+implemented through the shared Web Connector lifecycle. Saved payment allocation
+and per-bill BillToPay effects are verified against the retained original baseline.
+Tests cover partial/full payments, discounts, lost responses, wrong balances,
+revocation, missing outcomes and owned fresh evidence. The affected suite passed
+65 tests and four browser waiting-state checks. The full regression suite passed
+1,312 tests (44 optional checks skipped); lint, formatting, JavaScript syntax and
+package build passed. A separate database-copy upgrade
+preserved all 56 tables and 3,454 rows with identical contents, valid audit,
+integrity and foreign keys. The live database was not modified by that check.
+Installed supplier-payment qualification remains pending. See
+[supplier payments](docs/QBWC_SUPPLIER_PAYMENTS.md).
+The 28 broader acceptance gates remain unchanged.
+
 Customer-payment browser checks, sample posting and query-only recovery now use
 Web Connector. Partial/full payments, explicit discounts and unapplied funds have
 automated coverage. Exact saved-payment readback must also prove invoice balance

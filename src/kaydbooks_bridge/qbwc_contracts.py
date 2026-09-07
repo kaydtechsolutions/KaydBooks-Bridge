@@ -17,6 +17,7 @@ class Contract:
     limit: str
     native_table: str
     add_operation: str
+    balance_key: str | None = None
 
     def module(self, kind):
         return import_module("kaydbooks_bridge." + getattr(self, kind))
@@ -26,19 +27,19 @@ class Contract:
 
     def check_preflight(self, *args, recovering=False):
         module = self.module("posting")
-        if self.name in ("invoice", "payment"):
+        if self.name == "invoice" or self.balance_key:
             result = module.check_preflight(*args, recovering=recovering)
-            return result[0] if self.name == "payment" else result
+            return result[0] if self.balance_key else result
         return module.check_preflight(*args)
 
     def append_lookup(self, discovery, run, txn_id, policy, payload):
         module = self.module("receipt")
-        if self.name == "payment":
+        if self.balance_key:
             return module.append_lookup(discovery, run, policy, payload, txn_id)
         return module.append_lookup(discovery, run, txn_id, policy, payload)
 
     def inventory(self, policy, payload):
-        if self.name == "payment":
+        if self.balance_key:
             return {}
         if self.name == "invoice":
             return self.module("receipt").inventory_specs(policy, payload)
@@ -78,6 +79,19 @@ CONTRACTS = {
         "max_payments",
         "native_payment_attempts",
         "ReceivePaymentAdd",
+        "invoice_balances",
+    ),
+    "supplier-payment.create": Contract(
+        "supplier_payment",
+        "sample_supplier_payment_posting",
+        "supplier_payment_receipt",
+        "supplier_payment_evidence",
+        "require",
+        "sample_supplier_payment_posting",
+        "max_payments",
+        "native_supplier_payment_attempts",
+        "BillPaymentCheckAdd",
+        "bill_balances",
     ),
 }
 
