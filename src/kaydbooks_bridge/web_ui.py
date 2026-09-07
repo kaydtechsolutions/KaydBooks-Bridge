@@ -52,7 +52,20 @@ def catalog(config_path, token, company=None):
         operations={k: v[0] for k, v in OPERATIONS.items()},
         choices={
             "customers": list(policy.customers),
-            "items": list(policy.items),
+            "items": [
+                a
+                for a in policy.items
+                if policy.invoice_masters.get("items", {}).get(a, {}).get("kind")
+                not in ("Discount", "OtherCharge")
+            ],
+            "adjustment_items": {
+                kind: [
+                    a
+                    for a, item in policy.invoice_masters.get("items", {}).items()
+                    if item.get("kind") == native
+                ]
+                for kind, native in (("discount", "Discount"), ("charge", "OtherCharge"))
+            },
             "bill_vendors": list(policy.bill_masters.get("vendors", {})),
             "bill_items": list(policy.bill_masters.get("items", {})),
             "expenses": list(policy.bill_masters.get("expenses", {})),

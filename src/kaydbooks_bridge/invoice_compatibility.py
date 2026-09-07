@@ -48,8 +48,8 @@ def validate_masters(value, customers, items):
                     {"kind", "cogs_account_id", "asset_account_id"},
                 )
                 kind = entry.get("kind", "Service")
-                if kind not in ("Service", "Inventory"):
-                    raise BridgeError("only service and inventory items are supported")
+                if kind not in ("Service", "Inventory", "Discount", "OtherCharge"):
+                    raise BridgeError("unsupported invoice item kind")
                 if kind == "Inventory":
                     if "commercial" not in value:
                         raise BridgeError("inventory requires commercial compatibility policy")
@@ -75,13 +75,31 @@ def plan(company, payload):
     if not masters or ar is None:
         raise BridgeError("invoice masters and receivables role must be configured")
     required_id(ar)
-    aliases = sorted({line["item_id"] for line in invoice["lines"]})
+    aliases = sorted(
+        {line["item_id"] for line in invoice["lines"] + invoice.get("adjustments", [])}
+    )
     if len(aliases) > 20:
         raise BridgeError("compatibility check supports at most 20 distinct service items")
     if invoice["customer_id"] not in masters["customers"] or any(
         alias not in masters["items"] for alias in aliases
     ):
         raise BridgeError("invoice master alias has no exact mapping")
+    if any(
+        masters["items"][line["item_id"]].get("kind", "Service") not in ("Service", "Inventory")
+        for line in invoice["lines"]
+    ):
+        raise BridgeError("discount and charge items require explicit invoice adjustments")
+    for adjustment in invoice.get("adjustments", []):
+        kind = "Discount" if adjustment["kind"] == "discount" else "OtherCharge"
+        if masters["items"][adjustment["item_id"]].get("kind") != kind:
+            raise BridgeError("adjustment kind differs from mapped item type")
+    if invoice.get("adjustments") and (
+        "commercial" not in masters
+        or masters["currency_id"] is not None
+        or masters["commercial"]["tax_item_id"] is not None
+        or masters["commercial"]["tax_rate"] not in ("0", "0.00")
+    ):
+        raise BridgeError("adjustments require non-tax single-currency commercial policy")
     queries = [("Preferences", None)]
     if masters["currency_id"] is not None:
         queries.append(("Currency", masters["currency_id"]))
@@ -266,6 +284,16 @@ def validate_response(payload, correlation, check):
     for spec in check["item_specs"]:
         offset = spec["offset"]
         item, income = records[offset : offset + 2]
+        if spec.get("kind") == "OtherCharge" and "CurrencyRef" in income:
+            raise BridgeError("charge income account currency is not qualified")
+        if spec.get("kind") == "Discount":
+            if (
+                ref(item, "AccountRef") != income["ListID"]
+                or income.get("AccountType") != "Income"
+                or "CurrencyRef" in income
+            ):
+                raise BridgeError("discount income account mapping or type mismatch")
+            continue
         if spec.get("kind") == "Inventory":
             if (
                 ref(item, "IncomeAccountRef") != income["ListID"]

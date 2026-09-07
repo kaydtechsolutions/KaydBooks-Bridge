@@ -113,9 +113,12 @@ qualification are separate evidence; a passing mock does not establish native su
   independent balance verification. USD6+1 and USD7+1 settled the original USD7/USD8
   balances. A supplier reference-length rejection was independently confirmed absent
   and retained without resend before a separately approved corrected job. Document/line
-  discounts and additional charges remain unfinished; see [settlement discounts](SETTLEMENT_DISCOUNTS.md).
+  discounts and additional charges use explicit per-operation contracts; see [settlement discounts](SETTLEMENT_DISCOUNTS.md).
   Fixed-discount and sales/purchase charge master creation/update also pass six native
-  attempts and independent recovery/restore checks; their transaction use remains open.
+  attempts and independent recovery/restore checks. Two installed non-tax service invoices
+  independently verified line/document discounts and charges, including cent-exact
+  proportional allocation. Supplier-document and credit/refund adjustment variants remain
+  unfinished; see [invoice adjustments](INVOICE_ADJUSTMENTS.md).
 - **M3-09 — EXCLUDED:** Tax-enabled transaction qualification is outside this release.
   Non-tax validation remains enforced; taxable requests must not silently lose tax.
 - [ ] **M3-10:** Single- and multi-currency behavior: transaction/base amounts,

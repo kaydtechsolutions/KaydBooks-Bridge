@@ -1,5 +1,19 @@
 # KaydBooks Bridge project status
 
+Explicit line/document invoice discounts and additional charges are installed-sample
+qualified. Two separately approved invoices verified USD17 and USD12 net, including
+exact signed item lines, cent-exact document allocation and non-tax codes. Reposting
+was refused. Customer Balance Summary now reports USD54; vendor balance remains USD15.
+The absent charge-default-code case was fixed from retained read-only evidence before
+any accounting write. The original failed read remains retained.
+Installed desktop/mobile review shows requested scope and saved allocations. Signed
+isolated restore preserved 53 jobs and 2,198 files with valid integrity/audit, paused,
+without starting a restored service. The sample invoice quota is exhausted.
+The final suite passed 1,217 tests with browser and offline OCR enabled; lint and
+package builds passed. Previous adjustment-master CI70 passed all 11 jobs.
+See [invoice adjustments](docs/INVOICE_ADJUSTMENTS.md). Supplier-document and broader
+credit/refund/currency variants remain open; the 28-gate count is unchanged.
+
 Fixed-discount and additional-charge masters now use the reviewed master lifecycle.
 Installed sample qualification created and updated three isolated items (discount,
 sales charge and purchased charge); all six attempts independently verified. The

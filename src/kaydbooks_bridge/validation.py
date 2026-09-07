@@ -32,7 +32,9 @@ def money(value: str) -> Decimal:
 
 def validate_invoice(payload: dict, company: Company) -> dict:
     strict_keys(
-        payload, {"customer_id", "txn_date", "ref_number", "currency", "lines"}, {"tax_amount"}
+        payload,
+        {"customer_id", "txn_date", "ref_number", "currency", "lines"},
+        {"tax_amount", "adjustments"},
     )
     identifier(payload["customer_id"])
     if payload["customer_id"] not in company.customers:
@@ -74,6 +76,9 @@ def validate_invoice(payload: dict, company: Company) -> dict:
         total += Decimal(tax)
     if total > money(company.max_total):
         raise BridgeError("company total limit exceeded")
+    from .invoice_adjustments import validate as validate_adjustments
+
+    validate_adjustments(payload, company)
     return json.loads(canonical(payload))
 
 

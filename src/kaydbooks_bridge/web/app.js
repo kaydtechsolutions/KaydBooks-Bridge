@@ -478,6 +478,30 @@ function entry(existing = null, onTemplate = null, observed = null) {
     save.disabled = true;
   });
   let collection = "lines";
+  const adjustmentRows = el("div", { id: "adjustments" });
+  const adjustmentSection = el("section", { class: "form-section" },
+    el("h3", {}, "Discounts and charges"),
+    el("p", {}, "Fixed amounts only. Document discounts are shared across item lines in exact cents. Charges are excluded from the discount."),
+    adjustmentRows,
+    button("Add adjustment", () => { addAdjustment(); evidence = null; save.disabled = true; }),
+  );
+  function addAdjustment(data = {}) {
+    const row = el("div", { class: "line" });
+    const kind = field("kind", ["discount", "charge"], data.kind || "discount", false, "Adjustment type");
+    const scope = field("scope", ["document", "line"], data.scope || "document", false, "Applies to");
+    const item = field("item_id", [], "", false, "Adjustment item");
+    const line = field("line_number", null, data.line_number || "", true, "Item line number");
+    function selected() {
+      const previous = value(item, "item_id");
+      options(item.querySelector("select"), catalog.choices.adjustment_items?.[value(kind, "kind")] || [], "Choose…", previous || data.item_id || "");
+      line.classList.toggle("hidden", value(scope, "scope") !== "line");
+      line.querySelector("input").required = value(scope, "scope") === "line";
+    }
+    kind.onchange = selected; scope.onchange = selected; selected();
+    row.append(kind, scope, item, line, field("amount", null, data.amount || "", false, "Adjustment amount"),
+      button("Remove adjustment", () => { row.remove(); evidence = null; save.disabled = true; }));
+    adjustmentRows.append(row);
+  }
   function addLine(data = {}, kind = null) {
     const operation = op.value,
       isBill = ["bill.create", "supplier-credit.create"].includes(operation),
@@ -579,6 +603,8 @@ function entry(existing = null, onTemplate = null, observed = null) {
     extras.replaceChildren();
     lines.replaceChildren();
     lineSection.replaceChildren();
+    adjustmentRows.replaceChildren();
+    adjustmentSection.classList.toggle("hidden", op.value !== "invoice.create");
     const operation = op.value,
       isCustomer =
         operation.startsWith("customer") || operation === "invoice.create",
@@ -657,6 +683,7 @@ function entry(existing = null, onTemplate = null, observed = null) {
         if (!Array.isArray(v)) setValue(basics, k, v);
       lines.replaceChildren();
       for (const data of existing.payload[collection] || []) addLine(data);
+      for (const data of existing.payload.adjustments || []) addAdjustment(data);
     }
   }
   function collect() {
@@ -689,6 +716,15 @@ function entry(existing = null, onTemplate = null, observed = null) {
       });
     if (["invoice.create", "customer-credit.create"].includes(op.value))
       payload.tax_amount = "0.00";
+    if (op.value === "invoice.create" && adjustmentRows.children.length)
+      payload.adjustments = [...adjustmentRows.children].map((row) => {
+        const out = {kind: value(row, "kind"), scope: value(row, "scope"), item_id: value(row, "item_id"), amount: money(value(row, "amount"))};
+        if (out.scope === "line") {
+          if (!/^[1-9][0-9]{0,2}$/.test(value(row, "line_number"))) throw Error("Enter an existing item line number.");
+          out.line_number = Number(value(row, "line_number"));
+        }
+        return out;
+      });
     return payload;
   }
   op.onchange = () => {
@@ -701,6 +737,7 @@ function entry(existing = null, onTemplate = null, observed = null) {
     settings,
     el("section", { class: "form-section" }, el("h3", {}, "Details"), basics),
     lineSection,
+    adjustmentSection,
   );
   if (existing)
     form.append(
@@ -914,7 +951,7 @@ async function openJob(id) {
         el("strong", {}, catalog.currency + " " + preview.total),
       ),
     );
-  if (preview?.discount_total)
+  if (preview?.discount_total && preview.cash_total !== undefined)
     p.append(
       el(
         "p",
@@ -933,6 +970,15 @@ async function openJob(id) {
           preview.settlement_total,
       ),
     );
+  if (job.payload.adjustments?.length) {
+    p.append(el("h3", {}, "Reviewed discounts and charges"),
+      table(["Type", "Scope", "Item line", "Item", "Amount"], job.payload.adjustments.map(a =>
+        [title(a.kind), title(a.scope), a.line_number || "All item lines", a.item_id, catalog.currency + " " + a.amount])));
+    const allocation = preview?.native_lines || job.transaction_receipt?.receipt?.native_lines;
+    if (allocation) p.append(el("h3", {}, "Discount allocation and charges"),
+      table(["Type", "Item line", "Amount"], allocation.filter(a => a.adjustment).map(a =>
+        [title(a.kind), a.line_number || "Document", a.amount])));
+  }
   if (job.approval_by)
     p.append(el("p", { class: "small" }, "Approved by " + job.approval_by));
   if (job.txn_id)

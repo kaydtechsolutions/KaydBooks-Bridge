@@ -78,7 +78,9 @@ def register(bridge, token, company, date_from, date_to):
                 continue
             connector = config.connectors.get(proof["reference"]["connector"])
             receipt = proof["receipt"]
-            expected_subtotal = sum(Decimal(line["amount"]) for line in job["payload"]["lines"])
+            from .invoice_adjustments import subtotal
+
+            expected_subtotal = subtotal(job["payload"])
             if (
                 connector is None
                 or connector.company != company

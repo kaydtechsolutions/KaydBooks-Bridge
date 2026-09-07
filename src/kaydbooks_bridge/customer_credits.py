@@ -45,6 +45,8 @@ def invoice_payload(payload):
 
 def validate_payload(payload, policy):
     base = validate_invoice(invoice_payload(payload), policy)
+    if "adjustments" in base:
+        raise BridgeError("credit-note invoice adjustments are not yet qualified")
     check = _check(policy, base)
     if any(s.get("kind", "Service") != "Service" for s in check["item_specs"]):
         raise BridgeError("credit qualification currently supports service items only")

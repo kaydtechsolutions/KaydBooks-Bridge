@@ -51,6 +51,18 @@ FIELDS = {
     "ItemSalesTax": ("ListID", "IsActive", "TaxRate"),
 }
 
+ADJUSTMENT_FIELDS = {
+    "ItemDiscount": (
+        "ListID",
+        "IsActive",
+        "AccountRef",
+        "DiscountRate",
+        "DiscountRatePercent",
+        "SalesTaxCodeRef",
+    ),
+    "ItemOtherCharge": (*FIELDS["ItemService"], "SpecialItemType"),
+}
+
 
 def decimal_evidence(value):
     if not isinstance(value, str) or not re.fullmatch(
@@ -90,7 +102,10 @@ def extend_plan(check, policy, invoice):
     if Decimal(invoice["tax_amount"]) != expected:
         raise BridgeError("invoice tax differs from configured subtotal tax calculation")
     check.update(
-        fields=FIELDS, commercial=policy, invoice=invoice, tax_offset=len(check["queries"]) + 2
+        fields={**FIELDS, **ADJUSTMENT_FIELDS} if invoice.get("adjustments") else FIELDS,
+        commercial=policy,
+        invoice=invoice,
+        tax_offset=len(check["queries"]) + 2,
     )
     check["queries"].append(("SalesTaxCode", policy["sales_tax_code_id"]))
     if policy["tax_item_id"] is not None:
@@ -127,9 +142,25 @@ def validate_commercial(records, ar_index, check):
             raise BridgeError("sales-tax rate differs from configured rate")
     for spec in check["item_specs"]:
         item = records[spec["offset"]]
+        if spec.get("kind") == "Discount":
+            if "DiscountRatePercent" in item or decimal_evidence(item.get("DiscountRate")) < 0:
+                raise BridgeError("only fixed discount masters are qualified")
+            if (
+                "SalesTaxCodeRef" in item
+                and ref(item, "SalesTaxCodeRef") != policy["sales_tax_code_id"]
+            ):
+                raise BridgeError("discount tax code differs from non-tax policy")
+            continue
+        if spec.get("kind") == "OtherCharge" and "SpecialItemType" in item:
+            raise BridgeError("special charge item is not qualified")
         if "UnitOfMeasureSetRef" in item or item.get("IsTaxIncluded") not in (None, "false"):
             raise BridgeError("units of measure or inclusive item pricing are not qualified")
-        if ref(item, "SalesTaxCodeRef") != policy["sales_tax_code_id"]:
+        # US charge masters may omit their default code. The invoice explicitly supplies
+        # the independently verified non-tax code, and saved lines must retain it.
+        omitted_charge_code = (
+            spec.get("kind") == "OtherCharge" and not taxable and "SalesTaxCodeRef" not in item
+        )
+        if not omitted_charge_code and ref(item, "SalesTaxCodeRef") != policy["sales_tax_code_id"]:
             raise BridgeError("item sales-tax code differs from invoice policy")
         lines = [line for line in invoice["lines"] if line["item_id"] == spec["alias"]]
         if spec.get("kind") == "Inventory":

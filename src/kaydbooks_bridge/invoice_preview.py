@@ -3,6 +3,8 @@
 from decimal import Decimal
 
 from .config import BridgeError
+from .invoice_adjustments import native_lines
+from .invoice_adjustments import subtotal as invoice_subtotal
 from .invoice_compatibility import plan
 from .validation import digest, validate_source
 
@@ -20,7 +22,7 @@ def build(policy, job):
     for line in invoice["lines"]:
         mapping = masters["items"][line["item_id"]]
         lines.append({**line, "master": mapping.copy()})
-    subtotal = sum(Decimal(line["amount"]) for line in lines)
+    subtotal = invoice_subtotal(invoice)
     tax = Decimal(invoice["tax_amount"])
     evidence = job["master_evidence"]
     review = {
@@ -50,5 +52,36 @@ def build(policy, job):
         "source": {key: source[key] for key in ("namespace", "reference", "sha256")},
         "master_evidence": evidence,
         "evidence_expires_at": evidence["observed_at"] + policy.invoice_evidence_max_age_seconds,
+        **(
+            {
+                "adjustments": invoice["adjustments"],
+                "native_lines": native_lines(invoice),
+                "gross_subtotal": format(sum(Decimal(line["amount"]) for line in lines), ".2f"),
+                "discount_total": format(
+                    sum(
+                        (
+                            Decimal(a["amount"])
+                            for a in invoice["adjustments"]
+                            if a["kind"] == "discount"
+                        ),
+                        Decimal(0),
+                    ),
+                    ".2f",
+                ),
+                "charge_total": format(
+                    sum(
+                        (
+                            Decimal(a["amount"])
+                            for a in invoice["adjustments"]
+                            if a["kind"] == "charge"
+                        ),
+                        Decimal(0),
+                    ),
+                    ".2f",
+                ),
+            }
+            if invoice.get("adjustments")
+            else {}
+        ),
     }
     return {**review, "preview_sha256": digest(review)}

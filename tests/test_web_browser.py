@@ -481,3 +481,54 @@ def test_browser_adjustment_item_master_fields(page, monkeypatch, kind, mode):
     assert page.get_by_role("button", name="Save master draft", exact=True).is_enabled()
     page.get_by_label("Name", exact=True).fill("Changed Adjustment")
     assert page.get_by_role("button", name="Save master draft", exact=True).is_disabled()
+
+
+@pytest.mark.parametrize("scope", ["document", "line"])
+def test_browser_invoice_adjustment_scope_and_review_invalidation(page, monkeypatch, scope):
+    original = web_ui.catalog
+
+    def catalog(*args, **kwargs):
+        result = original(*args, **kwargs)
+        if "choices" in result:
+            result["choices"]["adjustment_items"] = {"discount": ["discount"], "charge": ["charge"]}
+        return result
+
+    monkeypatch.setattr(web_ui, "catalog", catalog)
+    observed = []
+
+    def check(*args, **kwargs):
+        observed.append(kwargs["payload"])
+        return {"evidence": None}
+
+    monkeypatch.setattr(web_ui, "check_masters", check)
+    page.get_by_label("Company", exact=True).select_option("")
+    page.get_by_label("Company", exact=True).select_option("company-a")
+    page.get_by_role("heading", name="Documents", exact=True).wait_for()
+    page.get_by_role("button", name="New document", exact=True).last.click()
+    form = page.locator("#document-form")
+    page.get_by_label("Source", exact=True).select_option("synthetic-intake")
+    form.locator('select[data-field="customer_id"]').select_option("customer-a")
+    form.locator('input[data-field="txn_date"]').fill("2026-09-07")
+    form.locator('input[data-field="ref_number"]').fill("ADJ-1")
+    form.locator('#lines select[data-field="item_id"]').select_option("item-a")
+    form.locator('#lines input[data-field="unit_price"]').fill("5.00")
+    page.get_by_role("button", name="Add adjustment", exact=True).click()
+    page.get_by_label("Applies to", exact=True).select_option(scope)
+    page.get_by_label("Adjustment item", exact=True).select_option("discount")
+    page.get_by_label("Adjustment amount", exact=True).fill("1.00")
+    if scope == "line":
+        page.get_by_label("Item line number", exact=True).fill("1")
+    page.get_by_role("button", name="Check details", exact=True).click()
+    page.locator("body:not([aria-busy])").wait_for()
+    assert observed[-1]["adjustments"] == [
+        {
+            "kind": "discount",
+            "scope": scope,
+            "item_id": "discount",
+            "amount": "1.00",
+            **({"line_number": 1} if scope == "line" else {}),
+        }
+    ]
+    assert page.get_by_role("button", name="Save and review", exact=True).is_enabled()
+    page.get_by_label("Adjustment amount", exact=True).fill("2.00")
+    assert page.get_by_role("button", name="Save and review", exact=True).is_disabled()

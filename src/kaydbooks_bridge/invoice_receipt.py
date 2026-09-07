@@ -8,6 +8,8 @@ from qbwc_kit._xml import fromstring
 
 from .bill_lookup import INVENTORY_FIELDS, validate_inventory_item
 from .config import BridgeError
+from .invoice_adjustments import native_lines
+from .invoice_adjustments import subtotal as invoice_subtotal
 from .invoice_commercial import decimal_evidence
 from .invoice_compatibility import plan, required_id
 from .validation import digest
@@ -168,11 +170,14 @@ def add_request(policy, payload, request_id):
         ET.SubElement(add, name).text = value
     code = check["commercial"]["sales_tax_code_id"]
     ref(add, "CustomerSalesTaxCodeRef", code)
-    for line in invoice["lines"]:
+    for line in native_lines(invoice):
         node = ET.SubElement(add, "InvoiceLineAdd")
         ref(node, "ItemRef", masters["items"][line["item_id"]]["list_id"])
-        ET.SubElement(node, "Quantity").text = line["quantity"]
-        ET.SubElement(node, "Rate").text = line["unit_price"]
+        if line.get("adjustment"):
+            ET.SubElement(node, "Amount").text = line["amount"]
+        else:
+            ET.SubElement(node, "Quantity").text = line["quantity"]
+            ET.SubElement(node, "Rate").text = line["unit_price"]
         ref(node, "SalesTaxCodeRef", code)
     return '<?xml version="1.0"?><?qbxml version="17.0"?>' + ET.tostring(root, encoding="unicode")
 
@@ -255,24 +260,30 @@ def validate_receipt(xml, policy, payload, request_id, *, operation="InvoiceQuer
             equals(row, "IsTaxIncluded", "false")
         code = check["commercial"]["sales_tax_code_id"]
         equals(row, "CustomerSalesTaxCodeRef/ListID", code)
-        subtotal = sum(Decimal(line["amount"]) for line in invoice["lines"])
+        subtotal = invoice_subtotal(invoice)
         number(row, "Subtotal", subtotal)
         number(row, "SalesTaxTotal", "0")
         number(row, "AppliedAmount", "0")
         number(row, "BalanceRemaining", subtotal)
         lines = row.findall("InvoiceLineRet")
-        if len(lines) != len(invoice["lines"]):
+        expected_lines = native_lines(invoice)
+        if len(lines) != len(expected_lines):
             raise BridgeError("saved invoice line count differs")
         line_ids = []
-        for saved, expected in zip(lines, invoice["lines"], strict=True):
+        for saved, expected in zip(lines, expected_lines, strict=True):
             line_ids.append(required_id(value(saved, "TxnLineID")))
             equals(saved, "ItemRef/ListID", masters["items"][expected["item_id"]]["list_id"])
             equals(saved, "SalesTaxCodeRef/ListID", code)
-            for field, key in (
-                ("Quantity", "quantity"),
-                ("Rate", "unit_price"),
-                ("Amount", "amount"),
-            ):
+            fields = (
+                (("Amount", "amount"),)
+                if expected.get("adjustment")
+                else (
+                    ("Quantity", "quantity"),
+                    ("Rate", "unit_price"),
+                    ("Amount", "amount"),
+                )
+            )
+            for field, key in fields:
                 number(saved, field, expected[key])
             if any(
                 saved.find(tag) is not None
@@ -299,6 +310,11 @@ def validate_receipt(xml, policy, payload, request_id, *, operation="InvoiceQuer
             "line_ids": line_ids,
             "verification": "matched-saved-invoice",
             "scope": "receipt-only",
+            **(
+                {"adjustments": invoice["adjustments"], "native_lines": expected_lines}
+                if invoice.get("adjustments")
+                else {}
+            ),
         }
     except BridgeError:
         raise

@@ -33,8 +33,14 @@ public static class ControlledSampleInvoice {
   foreach(XmlNode n in invoice.ChildNodes) {
    if(Array.IndexOf(new string[]{"CustomerRef","ARAccountRef","TxnDate","RefNumber","IsPending","IsFinanceCharge","IsToBePrinted","IsToBeEmailed","CustomerSalesTaxCodeRef","InvoiceLineAdd"},n.Name)<0)throw new Exception("Unsupported invoice field");
    if(n.Name.StartsWith("Is")&&n.InnerText!="false")throw new Exception("Unsupported invoice flag");
-   if(n.Name=="InvoiceLineAdd")foreach(XmlNode field in n.ChildNodes)
-    if(Array.IndexOf(new string[]{"ItemRef","Quantity","Rate","SalesTaxCodeRef"},field.Name)<0)throw new Exception("Unsupported invoice line");
+   if(n.Name=="InvoiceLineAdd") {
+    foreach(XmlNode field in n.ChildNodes)
+     if(Array.IndexOf(new string[]{"ItemRef","Quantity","Rate","Amount","SalesTaxCodeRef"},field.Name)<0)throw new Exception("Unsupported invoice line");
+    var amount=n.SelectSingleNode("Amount");
+    if(amount!=null) {
+     if(n.ChildNodes.Count!=3||n.ChildNodes[0].Name!="ItemRef"||n.ChildNodes[1].Name!="Amount"||n.ChildNodes[2].Name!="SalesTaxCodeRef"||amount.SelectSingleNode("*")!=null||!System.Text.RegularExpressions.Regex.IsMatch(amount.InnerText,@"\A-?(?:0|[1-9][0-9]{0,11})\.[0-9]{2}\z")||Decimal.Parse(amount.InnerText,System.Globalization.CultureInfo.InvariantCulture)==0)throw new Exception("Exact fixed adjustment fields required");
+    }
+   }
   }
  }
  public static void Run(string root,string hash,bool readOnly) {
@@ -44,7 +50,7 @@ public static class ControlledSampleInvoice {
    var batch=Parse(request).SelectSingleNode("/QBXML/QBXMLMsgsRq");
    if(batch==null||batch.ChildNodes.Count<3)throw new Exception("Preflight required");
    foreach(XmlNode q in batch.ChildNodes)
-    if(Array.IndexOf(new string[]{"HostQueryRq","CompanyQueryRq","PreferencesQueryRq","AccountQueryRq","CustomerQueryRq","ItemServiceQueryRq","ItemInventoryQueryRq","SalesTaxCodeQueryRq","InvoiceQueryRq"},q.Name)<0)throw new Exception("Unsupported preflight request");
+    if(Array.IndexOf(new string[]{"HostQueryRq","CompanyQueryRq","PreferencesQueryRq","AccountQueryRq","CustomerQueryRq","ItemServiceQueryRq","ItemInventoryQueryRq","ItemDiscountQueryRq","ItemOtherChargeQueryRq","SalesTaxCodeQueryRq","InvoiceQueryRq"},q.Name)<0)throw new Exception("Unsupported preflight request");
    string write=readOnly?null:File.ReadAllText(Path.Combine(root,"write.request.xml"));
    if(!readOnly)CheckWrite(write,hash);
    rp=(IRequestProcessor4)new RequestProcessor2Class();var auth=rp.AuthPreferences;
