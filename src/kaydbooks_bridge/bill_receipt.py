@@ -6,6 +6,7 @@ from xml.etree import ElementTree as ET
 
 from qbwc_kit._xml import fromstring
 
+from .bill_adjustments import expense_lines, subtotal
 from .bill_lookup import INVENTORY_FIELDS, plan, validate_inventory_item
 from .config import BridgeError
 from .invoice_commercial import decimal_evidence
@@ -69,6 +70,13 @@ def add_request(policy, payload, request_id):
         node = ET.SubElement(add, "ExpenseLineAdd")
         ET.SubElement(ET.SubElement(node, "AccountRef"), "ListID").text = list_id
         ET.SubElement(node, "Amount").text = line["amount"]
+    for line, list_id in zip(
+        expense_lines(payload), binding.get("adjustment_expense_list_ids", []), strict=True
+    ):
+        node = ET.SubElement(add, "ExpenseLineAdd")
+        ET.SubElement(ET.SubElement(node, "AccountRef"), "ListID").text = list_id
+        ET.SubElement(node, "Amount").text = line["amount"]
+        ET.SubElement(node, "Memo").text = line["memo"]
     for line, item_id in zip(
         payload["lines"], binding.get("item_list_ids", [None] * len(payload["lines"])), strict=True
     ):
@@ -209,7 +217,7 @@ def validate_payable(rs, policy, payload, request_id, txn_id):
         nodes = row.findall(path)
         if len(nodes) != 1 or len(nodes[0]) or nodes[0].text != value:
             raise BridgeError("bill payable identity or dates differ")
-    total = sum(Decimal(line["amount"]) for line in payload["lines"])
+    total = subtotal(payload)
     for field, amount in (
         ("AmountDue", total),
         ("ExchangeRate", Decimal(1)),
@@ -297,7 +305,7 @@ def validate_receipt(xml, policy, payload, request_id, *, operation="BillQuery",
         equals(row, "IsTaxIncluded", "false")
     if row.find("ExchangeRate") is not None:
         number(row, "ExchangeRate", "1")
-    total = sum(Decimal(line["amount"]) for line in payload["lines"])
+    total = subtotal(payload)
     number(row, "AmountDue", total)
     # BillRet.OpenAmount can reflect the vendor balance in the qualified Desktop
     # version. Preserve it as an observation, never as this bill's outstanding
@@ -313,6 +321,9 @@ def validate_receipt(xml, policy, payload, request_id, *, operation="BillQuery",
         for line, list_id in zip(payload["lines"], binding["expense_list_ids"], strict=True)
         if "expense_id" in line
     ]
+    expense_pairs.extend(
+        zip(expense_lines(payload), binding.get("adjustment_expense_list_ids", []), strict=True)
+    )
     if len(lines) != len(expense_pairs):
         raise BridgeError("saved bill line count differs")
     ids = []
@@ -320,6 +331,8 @@ def validate_receipt(xml, policy, payload, request_id, *, operation="BillQuery",
         ids.append(required_id(value(saved, "TxnLineID")))
         equals(saved, "AccountRef/ListID", list_id)
         number(saved, "Amount", line["amount"])
+        if "memo" in line:
+            equals(saved, "Memo", line["memo"])
         if saved.find("BillableStatus") is not None:
             equals(saved, "BillableStatus", "NotBillable")
         if any(
@@ -381,4 +394,12 @@ def validate_receipt(xml, policy, payload, request_id, *, operation="BillQuery",
         "scope": "expense-bill-fields",
         "observed_billret_open_amount": observed_open,
         "balance_verification": "requires-bill-to-pay",
+        **(
+            {
+                "adjustments": payload["adjustments"],
+                "adjustment_expense_lines": expense_lines(payload),
+            }
+            if payload.get("adjustments")
+            else {}
+        ),
     }

@@ -117,8 +117,11 @@ qualification are separate evidence; a passing mock does not establish native su
   Fixed-discount and sales/purchase charge master creation/update also pass six native
   attempts and independent recovery/restore checks. Two installed non-tax service invoices
   independently verified line/document discounts and charges, including cent-exact
-  proportional allocation. Supplier-document and credit/refund adjustment variants remain
-  unfinished; see [invoice adjustments](INVOICE_ADJUSTMENTS.md).
+  proportional allocation. Two installed supplier bills also verified document/line
+  discounts and charges, signed expense accounts/memos and independent outstanding
+  balances. Inventory cost allocation and credit/refund adjustment variants remain
+  unfinished; see [invoice adjustments](INVOICE_ADJUSTMENTS.md) and
+  [bill adjustments](BILL_ADJUSTMENTS.md).
 - **M3-09 — EXCLUDED:** Tax-enabled transaction qualification is outside this release.
   Non-tax validation remains enforced; taxable requests must not silently lose tax.
 - [ ] **M3-10:** Single- and multi-currency behavior: transaction/base amounts,

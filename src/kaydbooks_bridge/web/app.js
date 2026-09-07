@@ -481,7 +481,7 @@ function entry(existing = null, onTemplate = null, observed = null) {
   const adjustmentRows = el("div", { id: "adjustments" });
   const adjustmentSection = el("section", { class: "form-section" },
     el("h3", {}, "Discounts and charges"),
-    el("p", {}, "Fixed amounts only. Document discounts are shared across item lines in exact cents. Charges are excluded from the discount."),
+    el("p", {}, "Fixed amounts only. Invoice document discounts are shared across item lines in exact cents. Bill adjustments use explicit expense accounts. Charges are excluded from the discount."),
     adjustmentRows,
     button("Add adjustment", () => { addAdjustment(); evidence = null; save.disabled = true; }),
   );
@@ -489,11 +489,12 @@ function entry(existing = null, onTemplate = null, observed = null) {
     const row = el("div", { class: "line" });
     const kind = field("kind", ["discount", "charge"], data.kind || "discount", false, "Adjustment type");
     const scope = field("scope", ["document", "line"], data.scope || "document", false, "Applies to");
-    const item = field("item_id", [], "", false, "Adjustment item");
+    const bill = op.value === "bill.create", itemKey = bill ? "expense_id" : "item_id";
+    const item = field(itemKey, [], "", false, bill ? "Adjustment account" : "Adjustment item");
     const line = field("line_number", null, data.line_number || "", true, "Item line number");
     function selected() {
-      const previous = value(item, "item_id");
-      options(item.querySelector("select"), catalog.choices.adjustment_items?.[value(kind, "kind")] || [], "Choose…", previous || data.item_id || "");
+      const previous = value(item, itemKey);
+      options(item.querySelector("select"), bill ? catalog.choices.expenses : catalog.choices.adjustment_items?.[value(kind, "kind")] || [], "Choose…", previous || data[itemKey] || "");
       line.classList.toggle("hidden", value(scope, "scope") !== "line");
       line.querySelector("input").required = value(scope, "scope") === "line";
     }
@@ -604,7 +605,7 @@ function entry(existing = null, onTemplate = null, observed = null) {
     lines.replaceChildren();
     lineSection.replaceChildren();
     adjustmentRows.replaceChildren();
-    adjustmentSection.classList.toggle("hidden", op.value !== "invoice.create");
+    adjustmentSection.classList.toggle("hidden", !["invoice.create", "bill.create"].includes(op.value));
     const operation = op.value,
       isCustomer =
         operation.startsWith("customer") || operation === "invoice.create",
@@ -716,9 +717,10 @@ function entry(existing = null, onTemplate = null, observed = null) {
       });
     if (["invoice.create", "customer-credit.create"].includes(op.value))
       payload.tax_amount = "0.00";
-    if (op.value === "invoice.create" && adjustmentRows.children.length)
+    if (["invoice.create", "bill.create"].includes(op.value) && adjustmentRows.children.length)
       payload.adjustments = [...adjustmentRows.children].map((row) => {
-        const out = {kind: value(row, "kind"), scope: value(row, "scope"), item_id: value(row, "item_id"), amount: money(value(row, "amount"))};
+        const itemKey = op.value === "bill.create" ? "expense_id" : "item_id";
+        const out = {kind: value(row, "kind"), scope: value(row, "scope"), [itemKey]: value(row, itemKey), amount: money(value(row, "amount"))};
         if (out.scope === "line") {
           if (!/^[1-9][0-9]{0,2}$/.test(value(row, "line_number"))) throw Error("Enter an existing item line number.");
           out.line_number = Number(value(row, "line_number"));
@@ -972,12 +974,15 @@ async function openJob(id) {
     );
   if (job.payload.adjustments?.length) {
     p.append(el("h3", {}, "Reviewed discounts and charges"),
-      table(["Type", "Scope", "Item line", "Item", "Amount"], job.payload.adjustments.map(a =>
-        [title(a.kind), title(a.scope), a.line_number || "All item lines", a.item_id, catalog.currency + " " + a.amount])));
+      table(["Type", "Scope", "Original line", "Item / account", "Amount"], job.payload.adjustments.map(a =>
+        [title(a.kind), title(a.scope), a.line_number || "Document", a.item_id || a.expense_id, catalog.currency + " " + a.amount])));
     const allocation = preview?.native_lines || job.transaction_receipt?.receipt?.native_lines;
     if (allocation) p.append(el("h3", {}, "Discount allocation and charges"),
       table(["Type", "Item line", "Amount"], allocation.filter(a => a.adjustment).map(a =>
         [title(a.kind), a.line_number || "Document", a.amount])));
+    const expenseAdjustments = preview?.adjustment_expense_lines || job.transaction_receipt?.receipt?.adjustment_expense_lines;
+    if (expenseAdjustments) p.append(el("h3", {}, "Bill adjustment entries"),
+      table(["Scope", "Expense account", "Amount"], expenseAdjustments.map(a => [a.memo, a.expense_id, a.amount])));
   }
   if (job.approval_by)
     p.append(el("p", { class: "small" }, "Approved by " + job.approval_by));

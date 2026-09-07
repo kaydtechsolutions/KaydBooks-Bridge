@@ -484,7 +484,10 @@ def test_browser_adjustment_item_master_fields(page, monkeypatch, kind, mode):
 
 
 @pytest.mark.parametrize("scope", ["document", "line"])
-def test_browser_invoice_adjustment_scope_and_review_invalidation(page, monkeypatch, scope):
+@pytest.mark.parametrize("operation", ["invoice.create", "bill.create"])
+def test_browser_invoice_adjustment_scope_and_review_invalidation(
+    page, monkeypatch, scope, operation
+):
     original = web_ui.catalog
 
     def catalog(*args, **kwargs):
@@ -505,16 +508,28 @@ def test_browser_invoice_adjustment_scope_and_review_invalidation(page, monkeypa
     page.get_by_label("Company", exact=True).select_option("company-a")
     page.get_by_role("heading", name="Documents", exact=True).wait_for()
     page.get_by_role("button", name="New document", exact=True).last.click()
+    page.get_by_label("Document type", exact=True).select_option(operation)
     form = page.locator("#document-form")
     page.get_by_label("Source", exact=True).select_option("synthetic-intake")
-    form.locator('select[data-field="customer_id"]').select_option("customer-a")
+    if operation == "bill.create":
+        form.locator('select[data-field="vendor_id"]').select_option("vendor-a")
+        form.locator('input[data-field="due_date"]').fill("2026-10-07")
+    else:
+        form.locator('select[data-field="customer_id"]').select_option("customer-a")
     form.locator('input[data-field="txn_date"]').fill("2026-09-07")
     form.locator('input[data-field="ref_number"]').fill("ADJ-1")
-    form.locator('#lines select[data-field="item_id"]').select_option("item-a")
-    form.locator('#lines input[data-field="unit_price"]').fill("5.00")
+    if operation == "bill.create":
+        form.locator('#lines select[data-field="expense_id"]').select_option("office")
+        form.locator('#lines input[data-field="amount"]').fill("5.00")
+    else:
+        form.locator('#lines select[data-field="item_id"]').select_option("item-a")
+        form.locator('#lines input[data-field="unit_price"]').fill("5.00")
     page.get_by_role("button", name="Add adjustment", exact=True).click()
     page.get_by_label("Applies to", exact=True).select_option(scope)
-    page.get_by_label("Adjustment item", exact=True).select_option("discount")
+    if operation == "bill.create":
+        page.get_by_label("Adjustment account", exact=True).select_option("office")
+    else:
+        page.get_by_label("Adjustment item", exact=True).select_option("discount")
     page.get_by_label("Adjustment amount", exact=True).fill("1.00")
     if scope == "line":
         page.get_by_label("Item line number", exact=True).fill("1")
@@ -524,7 +539,7 @@ def test_browser_invoice_adjustment_scope_and_review_invalidation(page, monkeypa
         {
             "kind": "discount",
             "scope": scope,
-            "item_id": "discount",
+            **({"expense_id": "office"} if operation == "bill.create" else {"item_id": "discount"}),
             "amount": "1.00",
             **({"line_number": 1} if scope == "line" else {}),
         }

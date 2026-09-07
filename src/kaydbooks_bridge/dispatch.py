@@ -238,7 +238,7 @@ def amount(job):
         from .settlement_discounts import amount as discount_amount
 
         result += sum(discount_amount(a) for a in payload["allocations"])
-    if job["operation"] == "invoice.create":
+    if job["operation"] in ("invoice.create", "bill.create"):
         # Reserve gross item/charge exposure; a discount never frees dispatch budget.
         result += sum(
             (money(a["amount"]) for a in payload.get("adjustments", []) if a["kind"] == "charge"),

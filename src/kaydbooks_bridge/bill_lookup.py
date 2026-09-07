@@ -114,7 +114,9 @@ def plan(policy, payload):
         ("Vendor", binding["vendor_list_id"]),
         ("Account", binding["payable_list_id"]),
     ]
-    expense_ids = set(binding["expense_list_ids"]) - {None}
+    expense_ids = set(
+        binding["expense_list_ids"] + binding.get("adjustment_expense_list_ids", [])
+    ) - {None}
     inventory = binding.get("inventory_items", {})
     inventory_accounts = {
         item[k]
@@ -202,7 +204,10 @@ def validate_check(payload, run, check):
         for (entity, key), record in zip(expected[5:], records[5:], strict=True)
         if entity == "Account"
     }
-    for key in set(check["binding"]["expense_list_ids"]) - {None}:
+    for key in set(
+        check["binding"]["expense_list_ids"]
+        + check["binding"].get("adjustment_expense_list_ids", [])
+    ) - {None}:
         if account_records[key].get("AccountType") not in ("Expense", "OtherExpense"):
             raise BridgeError("bill expense account type mismatch")
     for spec in inventory.values():

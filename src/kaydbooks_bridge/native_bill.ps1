@@ -66,10 +66,15 @@ public static class ControlledSampleBill {
     continue;
    }
    if(seenItem)throw new Exception("Expense lines must precede items");
-   if(line.Name!="ExpenseLineAdd"||line.Attributes.Count!=0||line.ChildNodes.Count!=2||line.ChildNodes[0].Name!="AccountRef"||line.ChildNodes[1].Name!="Amount")throw new Exception("Only expense lines permitted");
+   if(line.Name!="ExpenseLineAdd"||line.Attributes.Count!=0||(line.ChildNodes.Count!=2&&line.ChildNodes.Count!=3)||line.ChildNodes[0].Name!="AccountRef"||line.ChildNodes[1].Name!="Amount")throw new Exception("Only expense lines permitted");
    Ref(line.ChildNodes[0]);decimal amount;
    string value=Text(line.ChildNodes[1]);
-   if(!System.Text.RegularExpressions.Regex.IsMatch(value,@"\A[0-9]+\.[0-9]{2}\z")||!decimal.TryParse(value,System.Globalization.NumberStyles.AllowDecimalPoint,System.Globalization.CultureInfo.InvariantCulture,out amount)||amount<=0)throw new Exception("Invalid expense line");
+   if(!System.Text.RegularExpressions.Regex.IsMatch(value,@"\A-?(?:0|[1-9][0-9]{0,11})\.[0-9]{2}\z")||!decimal.TryParse(value,System.Globalization.NumberStyles.AllowDecimalPoint|System.Globalization.NumberStyles.AllowLeadingSign,System.Globalization.CultureInfo.InvariantCulture,out amount)||amount==0)throw new Exception("Invalid expense line");
+   if(line.ChildNodes.Count==3) {
+    if(line.ChildNodes[2].Name!="Memo")throw new Exception("Adjustment memo required");
+    string memo=Text(line.ChildNodes[2]);
+    if(!System.Text.RegularExpressions.Regex.IsMatch(memo,@"\A(?:Document|Line (?:[1-9][0-9]?|100)) (?:discount|charge)\z")||(memo.EndsWith("discount")!=(amount<0)))throw new Exception("Adjustment scope or sign differs");
+   } else if(amount<0)throw new Exception("Negative expense requires explicit reviewed discount");
   }
  }
  public static void Run(string root,string hash,bool readOnly) {

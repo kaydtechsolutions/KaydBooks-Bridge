@@ -68,7 +68,7 @@ def validate_payload(payload, policy):
     strict_keys(
         payload,
         {"vendor_id", "txn_date", "due_date", "ref_number", "currency", "lines"},
-        {"terms_id"},
+        {"terms_id", "adjustments"},
     )
     masters = validate_masters(policy.bill_masters)
     if not masters:
@@ -127,6 +127,9 @@ def validate_payload(payload, policy):
         total += money(line["amount"])
     if total > money(policy.max_total):
         raise BridgeError("company total limit exceeded")
+    from .bill_adjustments import validate as validate_adjustments
+
+    validate_adjustments(payload, policy)
     import json
 
     return json.loads(canonical(payload))
@@ -169,6 +172,15 @@ def context(policy, payload):
             else {}
         ),
         "currency": policy.currency,
+        **(
+            {
+                "adjustment_expense_list_ids": [
+                    policy.bill_masters["expenses"][a["expense_id"]] for a in bill["adjustments"]
+                ]
+            }
+            if bill.get("adjustments")
+            else {}
+        ),
         **({"inventory_items": inventory} if inventory else {}),
         **(
             {"terms_list_id": policy.bill_masters["terms"][bill["terms_id"]]}
@@ -197,6 +209,8 @@ def require_context(config, policy, store, db, job, now):
 
 
 def preview(policy, job):
+    from .bill_adjustments import expense_lines, subtotal
+
     binding = context(policy, job["payload"])
     result = {
         "schema": "bill-review-v1",
@@ -214,6 +228,11 @@ def preview(policy, job):
         "controlled_sample_gate_configured": bool(policy.sample_bill_posting),
         "posting_authorized_by_preview": False,
         "live_posting": False,
-        "total": format(sum(Decimal(line["amount"]) for line in job["payload"]["lines"]), ".2f"),
+        "total": format(subtotal(job["payload"]), ".2f"),
+        **(
+            {"adjustment_expense_lines": expense_lines(job["payload"])}
+            if job["payload"].get("adjustments")
+            else {}
+        ),
     }
     return {**result, "preview_sha256": digest(result)}

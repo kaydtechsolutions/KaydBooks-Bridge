@@ -1,5 +1,19 @@
 # KaydBooks Bridge project status
 
+Supplier-bill document/line discounts and charges are installed-sample qualified.
+Two separately approved USD12 bills preserved original expense/service lines and
+verified signed adjustment accounts, scope memos and independent BillToPay balances.
+Vendor Balance Summary reports USD39; customer balance remains USD54. Both writes
+verified on their first attempts, and duplicate posting was refused. Inventory cost
+allocation and credit/refund adjustments remain unfinished.
+Installed desktop/mobile review passed with zero additional writes. Signed isolated
+restore preserved 55 jobs and 2,282 files, including every master attempt/evidence
+link, with valid audit/integrity, paused and no restored service started. The bill
+quota is exhausted. The full suite passed 1,240 tests with browser/OCR enabled;
+lint and builds passed. Invoice-adjustment CI71 passed all 11 jobs.
+See [bill adjustments](docs/BILL_ADJUSTMENTS.md). Next: original-transaction selection
+in the payment/credit forms. The 28-gate count remains unchanged.
+
 Explicit line/document invoice discounts and additional charges are installed-sample
 qualified. Two separately approved invoices verified USD17 and USD12 net, including
 exact signed item lines, cent-exact document allocation and non-tax codes. Reposting

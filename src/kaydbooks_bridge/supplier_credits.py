@@ -52,6 +52,8 @@ def bill_payload(payload):
 
 def validate_payload(payload, policy):
     base = bills.validate_payload(bill_payload(payload), policy)
+    if "adjustments" in base:
+        raise BridgeError("supplier-credit document adjustments are not yet qualified")
     base.pop("due_date")
     return {**base, "bill_txn_id": payload["bill_txn_id"]}
 
