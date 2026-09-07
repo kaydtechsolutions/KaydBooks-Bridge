@@ -51,15 +51,28 @@ def inventory() -> dict:
             "live_adapter": "disabled",
         },
         "bridge": {
-            "invoice.create": "simulation_tested",
-            "controlled_sample_invoice": "explicit_private_gate_required",
-            "bill.create": "base_currency_expense_bill",
-            "controlled_sample_bill": "explicit_private_gate_required",
+            "selected_transactions": {
+                operation: "controlled_sample_qualified"
+                for operation in (
+                    "sales-receipt.create",
+                    "invoice.create",
+                    "customer-credit.create",
+                    "customer-payment.create",
+                    "bill.create",
+                    "journal.create",
+                    "inventory-transfer.create",
+                    "check.create",
+                )
+            },
+            "selected_transaction_gate": "explicit_private_gate_required",
+            "tax": "excluded_from_v0.1.0",
             "document_intake": "implemented",
-            "hermes_mcp_tools": "optional_stdio_adapter",
+            "hermes_mcp_tools": "implemented_optional_stdio_adapter",
+            "hermes_confirmation_channel": "implemented_private_configuration_required",
             "local_workflows": "implemented_no_external_deliveries",
             "receipt_register": "historical_receipts_only",
             "backup_restore": "signed_snapshot_and_isolated_drill",
-            "other_transactions": "planned",
+            "production_posting": "disabled",
+            "other_transactions": "outside_v0.1.0_scope",
         },
     }
