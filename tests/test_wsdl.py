@@ -63,9 +63,34 @@ def test_qwc_file_is_well_formed_and_carries_the_ids():
         owner_id="{57F3B9B0-86F1-4fcc-B1EE-566DE1813D20}",
         file_id="{57F3B9B0-86F1-4fcc-B1EE-566DE1813D21}",
         run_every_n_seconds=300,
+        is_read_only=True,
+        unattended_mode_pref="umpOptional",
+        personal_data_pref="pdpNotNeeded",
+        app_display_name="Books Bridge Display",
+        app_unique_name="Books Bridge Stable",
     )
     root = ET.fromstring(qwc)
     assert root.tag == "QBWCXML"
     assert root.findtext("OwnerID").startswith("{57F3B9B0")
     assert root.findtext("QBType") == "QBFS"
+    assert root.findtext("AuthFlags") == "0x0"
+    assert root.findtext("IsReadOnly") == "true"
+    assert root.findtext("UnattendedModePref") == "umpOptional"
+    assert root.findtext("PersonalDataPref") == "pdpNotNeeded"
+    assert root.findtext("AppDisplayName") == "Books Bridge Display"
+    assert root.findtext("AppUniqueName") == "Books Bridge Stable"
     assert root.find("Scheduler").findtext("RunEveryNSeconds") == "300"
+
+
+def test_qwc_rejects_invalid_auth_flags():
+    with pytest.raises(ValueError, match="auth_flags"):
+        build_qwc(
+            app_name="Books Bridge",
+            app_id="",
+            app_url="https://books.example.com/qbwc",
+            app_description="Read only",
+            username="qbwc",
+            owner_id="{57F3B9B0-86F1-4fcc-B1EE-566DE1813D20}",
+            file_id="{57F3B9B0-86F1-4fcc-B1EE-566DE1813D21}",
+            auth_flags=16,
+        )

@@ -1,0 +1,541 @@
+"""Private configuration is operator-controlled, never supplied by document content."""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import secrets
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+
+
+class BridgeError(ValueError):
+    """A safe, non-sensitive error suitable for a client response."""
+
+
+def strict_keys(value, required: set[str], optional: set[str] | None = None):
+    if not isinstance(value, dict) or not required <= value.keys():
+        raise BridgeError("missing required fields")
+    if value.keys() - required - (optional or set()):
+        raise BridgeError("unsupported fields")
+
+
+def identifier(value):
+    if not isinstance(value, str) or not re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", value):
+        raise BridgeError("invalid identifier")
+    return value
+
+
+def outside_repository(path: Path) -> Path:
+    path = path.expanduser().resolve()
+    if any((parent / ".git").exists() for parent in (path, *path.parents)):
+        raise BridgeError("private configuration and state must be outside any Git checkout")
+    return path
+
+
+@dataclass(frozen=True)
+class Company:
+    id: str
+    simulation_identity: str
+    currency: str
+    max_total: str
+    customers: tuple[str, ...]
+    items: tuple[str, ...]
+    sources: tuple[str, ...]
+    approval_required: bool
+    allow_self_approval: bool = False
+    account_roles: dict[str, str] = field(default_factory=dict)
+    invoice_masters: dict = field(default_factory=dict)
+    invoice_evidence_max_age_seconds: int = 900
+    sample_posting: dict = field(default_factory=dict)
+    bill_masters: dict = field(default_factory=dict)
+    sample_bill_posting: dict = field(default_factory=dict)
+    payment_masters: dict = field(default_factory=dict)
+    sample_payment_posting: dict = field(default_factory=dict)
+    supplier_payment_masters: dict = field(default_factory=dict)
+    sample_supplier_payment_posting: dict = field(default_factory=dict)
+    sample_credit_posting: dict = field(default_factory=dict)
+    sample_application_posting: dict = field(default_factory=dict)
+    sample_supplier_application_posting: dict = field(default_factory=dict)
+    sample_refund_posting: dict = field(default_factory=dict)
+    sample_master_posting: dict = field(default_factory=dict)
+    sample_supplier_credit_posting: dict = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class Connector:
+    id: str
+    company: str
+    password_env: str
+    company_file_env: str | None
+    identity_fields: tuple[str, ...]
+    identity_sha256: str
+
+
+def company_policy_context(policy):
+    """Keep legacy policy hashes stable when newly added bill policy is absent."""
+    value = asdict(policy)
+    if not value.get("bill_masters"):
+        value.pop("bill_masters", None)
+    if not value.get("sample_bill_posting"):
+        value.pop("sample_bill_posting", None)
+    if not value.get("payment_masters"):
+        value.pop("payment_masters", None)
+    if not value.get("sample_payment_posting"):
+        value.pop("sample_payment_posting", None)
+    for name in (
+        "allow_self_approval",
+        "supplier_payment_masters",
+        "sample_supplier_payment_posting",
+        "sample_credit_posting",
+        "sample_refund_posting",
+        "sample_supplier_credit_posting",
+        "sample_application_posting",
+        "sample_supplier_application_posting",
+        "sample_master_posting",
+    ):
+        if not value.get(name):
+            value.pop(name, None)
+    return value
+
+
+@dataclass(frozen=True)
+class Config:
+    root: Path
+    companies: dict[str, Company]
+    principals: dict[str, dict]
+    connectors: dict[str, Connector]
+
+    @classmethod
+    def load(cls, path: str | Path) -> Config:
+        source = outside_repository(Path(path))
+        data = json.loads(source.read_text(encoding="utf-8"))
+        strict_keys(
+            data,
+            {"schema_version", "mode", "state_root", "companies", "principals"},
+            {"connectors"},
+        )
+        if type(data["schema_version"]) is not int or data["schema_version"] != 1:
+            raise BridgeError("unsupported configuration version")
+        if data["mode"] != "simulation":
+            raise BridgeError("live posting is disabled in this build")
+        root = Path(data["state_root"]).expanduser()
+        if not root.is_absolute():
+            raise BridgeError("state_root must be absolute")
+        root = outside_repository(root)
+        if not isinstance(data["companies"], dict) or not data["companies"]:
+            raise BridgeError("at least one explicit company is required")
+        companies = {}
+        for name, raw in data["companies"].items():
+            identifier(name)
+            strict_keys(
+                raw,
+                {
+                    "simulation_identity",
+                    "currency",
+                    "max_total",
+                    "customers",
+                    "items",
+                    "sources",
+                    "approval_required",
+                },
+                {
+                    "allow_self_approval",
+                    "account_roles",
+                    "invoice_masters",
+                    "invoice_evidence_max_age_seconds",
+                    "sample_posting",
+                    "bill_masters",
+                    "sample_bill_posting",
+                    "payment_masters",
+                    "sample_payment_posting",
+                    "supplier_payment_masters",
+                    "sample_supplier_payment_posting",
+                    "sample_credit_posting",
+                    "sample_refund_posting",
+                    "sample_supplier_credit_posting",
+                    "sample_application_posting",
+                    "sample_supplier_application_posting",
+                    "sample_master_posting",
+                },
+            )
+            identifier(raw["simulation_identity"])
+            if not isinstance(raw["currency"], str) or not re.fullmatch(
+                r"[A-Z]{3}", raw["currency"]
+            ):
+                raise BridgeError("invalid base currency")
+            from .validation import money
+
+            money(raw["max_total"])
+            for key in ("customers", "items", "sources"):
+                if not isinstance(raw[key], list) or not raw[key]:
+                    raise BridgeError("nonempty company allowlists required")
+                for entry in raw[key]:
+                    identifier(entry)
+                raw[key] = tuple(raw[key])
+            if type(raw["approval_required"]) is not bool:
+                raise BridgeError("approval_required must be boolean")
+            if type(raw.get("allow_self_approval", False)) is not bool:
+                raise BridgeError("allow_self_approval must be boolean")
+            from .account_roles import validate_roles
+
+            raw["account_roles"] = validate_roles(raw.get("account_roles", {}))
+            from .invoice_compatibility import validate_masters
+
+            raw["invoice_masters"] = validate_masters(
+                raw.get("invoice_masters", {}), raw["customers"], raw["items"]
+            )
+            from .bills import validate_masters as validate_bill_masters
+
+            raw["bill_masters"] = validate_bill_masters(raw.get("bill_masters", {}))
+            from .customer_payments import validate_masters as validate_payment_masters
+
+            raw["payment_masters"] = validate_payment_masters(raw.get("payment_masters", {}))
+            from .supplier_payments import validate_masters as validate_supplier_masters
+
+            raw["supplier_payment_masters"] = validate_supplier_masters(
+                raw.get("supplier_payment_masters", {})
+            )
+            age = raw.get("invoice_evidence_max_age_seconds", 900)
+            if type(age) is not int or not 60 <= age <= 86400:
+                raise BridgeError("invoice evidence age must be 60-86400 seconds")
+            companies[name] = Company(id=name, **raw)
+            from .master_posting import validate_gate as validate_master_gate
+
+            validate_master_gate(companies[name].sample_master_posting)
+            gate = companies[name].sample_posting
+            if not isinstance(gate, dict):
+                raise BridgeError("sample posting gate must be an object")
+            if gate:
+                strict_keys(
+                    gate, {"connector", "authorization", "ref_prefix", "max_invoices", "expires_at"}
+                )
+                identifier(gate["connector"])
+                if (
+                    not isinstance(gate["authorization"], str)
+                    or not 20 <= len(gate["authorization"]) <= 1000
+                    or not isinstance(gate["ref_prefix"], str)
+                    or not re.fullmatch(r"[A-Z0-9-]{3,8}", gate["ref_prefix"])
+                    or type(gate["max_invoices"]) is not int
+                    or not 1 <= gate["max_invoices"] <= 10
+                    or type(gate["expires_at"]) not in (int, float)
+                ):
+                    raise BridgeError("invalid controlled sample posting gate")
+            bill_gate = companies[name].sample_bill_posting
+            if not isinstance(bill_gate, dict):
+                raise BridgeError("sample bill posting gate must be an object")
+            if bill_gate:
+                strict_keys(
+                    bill_gate,
+                    {"connector", "authorization", "ref_prefix", "max_bills", "expires_at"},
+                )
+                identifier(bill_gate["connector"])
+                if (
+                    not isinstance(bill_gate["authorization"], str)
+                    or not 20 <= len(bill_gate["authorization"]) <= 1000
+                    or not isinstance(bill_gate["ref_prefix"], str)
+                    or not re.fullmatch(r"[A-Z0-9-]{3,8}", bill_gate["ref_prefix"])
+                    or type(bill_gate["max_bills"]) is not int
+                    or not 1 <= bill_gate["max_bills"] <= 10
+                    or type(bill_gate["expires_at"]) not in (int, float)
+                ):
+                    raise BridgeError("invalid controlled sample bill posting gate")
+            payment_gate = companies[name].sample_payment_posting
+            if not isinstance(payment_gate, dict):
+                raise BridgeError("sample payment posting gate must be an object")
+            if payment_gate:
+                strict_keys(
+                    payment_gate,
+                    {"connector", "authorization", "ref_prefix", "max_payments", "expires_at"},
+                )
+                identifier(payment_gate["connector"])
+                if (
+                    not isinstance(payment_gate["authorization"], str)
+                    or not 20 <= len(payment_gate["authorization"]) <= 1000
+                    or not isinstance(payment_gate["ref_prefix"], str)
+                    or not re.fullmatch(r"[A-Z0-9-]{3,8}", payment_gate["ref_prefix"])
+                    or type(payment_gate["max_payments"]) is not int
+                    or not 1 <= payment_gate["max_payments"] <= 10
+                    or type(payment_gate["expires_at"]) not in (int, float)
+                ):
+                    raise BridgeError("invalid controlled sample payment posting gate")
+            supplier_gate = companies[name].sample_supplier_payment_posting
+            if not isinstance(supplier_gate, dict):
+                raise BridgeError("sample supplier payment posting gate must be an object")
+            if supplier_gate:
+                strict_keys(
+                    supplier_gate,
+                    {"connector", "authorization", "ref_prefix", "max_payments", "expires_at"},
+                )
+                identifier(supplier_gate["connector"])
+                if (
+                    not isinstance(supplier_gate["authorization"], str)
+                    or not 20 <= len(supplier_gate["authorization"]) <= 1000
+                    or not isinstance(supplier_gate["ref_prefix"], str)
+                    or not re.fullmatch(r"[A-Z0-9-]{3,8}", supplier_gate["ref_prefix"])
+                    or type(supplier_gate["max_payments"]) is not int
+                    or not 1 <= supplier_gate["max_payments"] <= 10
+                    or type(supplier_gate["expires_at"]) not in (int, float)
+                ):
+                    raise BridgeError("invalid controlled sample supplier payment posting gate")
+            credit_gate = companies[name].sample_credit_posting
+            if not isinstance(credit_gate, dict):
+                raise BridgeError("sample credit posting gate must be an object")
+            if credit_gate:
+                strict_keys(
+                    credit_gate,
+                    {"connector", "authorization", "ref_prefix", "max_credits", "expires_at"},
+                )
+                identifier(credit_gate["connector"])
+                if (
+                    not isinstance(credit_gate["authorization"], str)
+                    or not 20 <= len(credit_gate["authorization"]) <= 1000
+                    or not isinstance(credit_gate["ref_prefix"], str)
+                    or not re.fullmatch(r"[A-Z0-9-]{3,8}", credit_gate["ref_prefix"])
+                    or type(credit_gate["max_credits"]) is not int
+                    or not 1 <= credit_gate["max_credits"] <= 10
+                    or type(credit_gate["expires_at"]) not in (int, float)
+                ):
+                    raise BridgeError("invalid controlled sample credit posting gate")
+            supplier_credit_gate = companies[name].sample_supplier_credit_posting
+            if not isinstance(supplier_credit_gate, dict):
+                raise BridgeError("sample credit posting gate must be an object")
+            if supplier_credit_gate:
+                strict_keys(
+                    supplier_credit_gate,
+                    {"connector", "authorization", "ref_prefix", "max_credits", "expires_at"},
+                )
+                identifier(supplier_credit_gate["connector"])
+                if (
+                    not isinstance(supplier_credit_gate["authorization"], str)
+                    or not 20 <= len(supplier_credit_gate["authorization"]) <= 1000
+                    or not isinstance(supplier_credit_gate["ref_prefix"], str)
+                    or not re.fullmatch(r"[A-Z0-9-]{3,8}", supplier_credit_gate["ref_prefix"])
+                    or type(supplier_credit_gate["max_credits"]) is not int
+                    or not 1 <= supplier_credit_gate["max_credits"] <= 10
+                    or type(supplier_credit_gate["expires_at"]) not in (int, float)
+                ):
+                    raise BridgeError("invalid controlled sample credit posting gate")
+            refund_gate = companies[name].sample_refund_posting
+            if not isinstance(refund_gate, dict):
+                raise BridgeError("sample credit posting gate must be an object")
+            if refund_gate:
+                strict_keys(
+                    refund_gate,
+                    {"connector", "authorization", "ref_prefix", "max_refunds", "expires_at"},
+                )
+                identifier(refund_gate["connector"])
+                if (
+                    not isinstance(refund_gate["authorization"], str)
+                    or not 20 <= len(refund_gate["authorization"]) <= 1000
+                    or not isinstance(refund_gate["ref_prefix"], str)
+                    or not re.fullmatch(r"[A-Z0-9-]{3,8}", refund_gate["ref_prefix"])
+                    or type(refund_gate["max_refunds"]) is not int
+                    or not 1 <= refund_gate["max_refunds"] <= 10
+                    or type(refund_gate["expires_at"]) not in (int, float)
+                ):
+                    raise BridgeError("invalid controlled sample credit posting gate")
+            application_gate = companies[name].sample_application_posting
+            if not isinstance(application_gate, dict):
+                raise BridgeError("sample credit posting gate must be an object")
+            if application_gate:
+                strict_keys(
+                    application_gate,
+                    {"connector", "authorization", "ref_prefix", "max_applications", "expires_at"},
+                )
+                identifier(application_gate["connector"])
+                if (
+                    not isinstance(application_gate["authorization"], str)
+                    or not 20 <= len(application_gate["authorization"]) <= 1000
+                    or not isinstance(application_gate["ref_prefix"], str)
+                    or not re.fullmatch(r"[A-Z0-9-]{3,8}", application_gate["ref_prefix"])
+                    or type(application_gate["max_applications"]) is not int
+                    or not 1 <= application_gate["max_applications"] <= 10
+                    or type(application_gate["expires_at"]) not in (int, float)
+                ):
+                    raise BridgeError("invalid controlled sample credit posting gate")
+            supplier_application_gate = companies[name].sample_supplier_application_posting
+            if not isinstance(supplier_application_gate, dict):
+                raise BridgeError("sample credit posting gate must be an object")
+            if supplier_application_gate:
+                strict_keys(
+                    supplier_application_gate,
+                    {"connector", "authorization", "ref_prefix", "max_applications", "expires_at"},
+                )
+                identifier(supplier_application_gate["connector"])
+                if (
+                    not isinstance(supplier_application_gate["authorization"], str)
+                    or not 20 <= len(supplier_application_gate["authorization"]) <= 1000
+                    or not isinstance(supplier_application_gate["ref_prefix"], str)
+                    or not re.fullmatch(r"[A-Z0-9-]{3,8}", supplier_application_gate["ref_prefix"])
+                    or type(supplier_application_gate["max_applications"]) is not int
+                    or not 1 <= supplier_application_gate["max_applications"] <= 10
+                    or type(supplier_application_gate["expires_at"]) not in (int, float)
+                ):
+                    raise BridgeError("invalid controlled sample credit posting gate")
+        principals = data["principals"]
+        if not isinstance(principals, dict) or not principals:
+            raise BridgeError("principals required")
+        env_names = set()
+        for name, principal in principals.items():
+            identifier(name)
+            strict_keys(principal, {"token_env", "companies"})
+            env = principal["token_env"]
+            if not isinstance(env, str) or not re.fullmatch(r"KAYDBOOKS_[A-Z0-9_]+", env):
+                raise BridgeError("use a KAYDBOOKS_ environment secret reference")
+            if env in env_names:
+                raise BridgeError("principal secret references must be unique")
+            env_names.add(env)
+            grants = principal["companies"]
+            if not isinstance(grants, dict):
+                raise BridgeError("invalid permission grants")
+            for company, permissions in grants.items():
+                if company not in companies or not isinstance(permissions, list):
+                    raise BridgeError("invalid company permission grants")
+                if any(p not in PERMISSIONS for p in permissions):
+                    raise BridgeError("unsupported permission")
+        connectors = {}
+        identity_companies: dict[str, str] = {}
+        company_identities: dict[str, tuple[tuple[str, ...], str]] = {}
+        for name, raw in data.get("connectors", {}).items():
+            identifier(name)
+            strict_keys(
+                raw,
+                {"company", "password_env", "identity_fields", "identity_sha256"},
+                {"company_file_env"},
+            )
+            company = raw["company"]
+            if company not in companies:
+                raise BridgeError("connector references an unknown company")
+            password_env = _secret_env(raw["password_env"])
+            if password_env in env_names:
+                raise BridgeError("secret references must be unique")
+            env_names.add(password_env)
+            company_file_env = raw.get("company_file_env")
+            if company_file_env is not None:
+                company_file_env = _secret_env(company_file_env)
+                if company_file_env in env_names:
+                    raise BridgeError("secret references must be unique")
+                env_names.add(company_file_env)
+            fields = raw["identity_fields"]
+            if (
+                not isinstance(fields, list)
+                or len(fields) < 3
+                or len(fields) != len(set(fields))
+                or any(field not in COMPANY_IDENTITY_FIELDS for field in fields)
+                or not set(fields) & STRONG_COMPANY_IDENTITY_FIELDS
+            ):
+                raise BridgeError("company identity requires distinct supported claims")
+            expected = raw["identity_sha256"]
+            if not isinstance(expected, str) or not re.fullmatch(r"[a-f0-9]{64}", expected):
+                raise BridgeError("company identity SHA-256 is invalid")
+            other_company = identity_companies.get(expected)
+            if other_company is not None and other_company != company:
+                raise BridgeError("company identity binding is ambiguous")
+            company_identity = (tuple(fields), expected)
+            if company in company_identities and company_identities[company] != company_identity:
+                raise BridgeError("configured company has inconsistent identity bindings")
+            identity_companies[expected] = company
+            company_identities[company] = company_identity
+            connectors[name] = Connector(
+                id=name,
+                company=company,
+                password_env=password_env,
+                company_file_env=company_file_env,
+                identity_fields=tuple(fields),
+                identity_sha256=expected,
+            )
+        return cls(root, companies, principals, connectors)
+
+    def authenticate(self, token: str) -> str:
+        matches = []
+        for name, principal in self.principals.items():
+            expected = os.environ.get(principal["token_env"], "")
+            if len(expected) >= 32 and secrets.compare_digest(token.encode(), expected.encode()):
+                matches.append(name)
+        if len(matches) != 1:
+            raise BridgeError("authentication failed")
+        return matches[0]
+
+    def authorize(self, actor: str, company: str, permission: str) -> Company:
+        principal = self.principals.get(actor, {})
+        if company not in self.companies or permission not in principal.get("companies", {}).get(
+            company, []
+        ):
+            raise BridgeError("permission denied")
+        return self.companies[company]
+
+    def authenticate_connector(self, username: str, password: str) -> Connector:
+        connector = self.connectors.get(username)
+        if connector is None:
+            raise BridgeError("authentication failed")
+        expected = os.environ.get(connector.password_env, "")
+        if len(expected) < 32 or not secrets.compare_digest(password.encode(), expected.encode()):
+            raise BridgeError("authentication failed")
+        return connector
+
+    @staticmethod
+    def connector_company_file(connector: Connector) -> str:
+        if connector.company_file_env is None:
+            return ""
+        value = os.environ.get(connector.company_file_env, "")
+        if not value or len(value) > 1024 or any(char in value for char in "\r\n\0"):
+            raise BridgeError("configured company file is unavailable")
+        return value
+
+
+def _secret_env(value: object) -> str:
+    if not isinstance(value, str) or not re.fullmatch(r"KAYDBOOKS_[A-Z0-9_]+", value):
+        raise BridgeError("use a KAYDBOOKS_ environment secret reference")
+    return value
+
+
+COMPANY_IDENTITY_FIELDS = frozenset(
+    {
+        "CompanyName",
+        "LegalCompanyName",
+        "EIN",
+        "SSN",
+        "Phone",
+        "Email",
+        "TaxForm",
+        "FirstMonthFiscalYear",
+        "FirstMonthIncomeTaxYear",
+        "Address.Addr1",
+        "Address.City",
+        "Address.State",
+        "Address.PostalCode",
+        "LegalAddress.Addr1",
+        "LegalAddress.City",
+        "LegalAddress.State",
+        "LegalAddress.PostalCode",
+    }
+)
+STRONG_COMPANY_IDENTITY_FIELDS = COMPANY_IDENTITY_FIELDS - {
+    "CompanyName",
+    "LegalCompanyName",
+    "FirstMonthFiscalYear",
+    "FirstMonthIncomeTaxYear",
+}
+
+
+PERMISSIONS = frozenset(
+    {
+        "prepare",
+        "read",
+        "validate",
+        "approve",
+        "submit",
+        "simulate",
+        "recover",
+        "pause",
+        "post-sample",
+        "review-source",
+        "manage-workflows",
+        "manage-users",
+        "report",
+        "export",
+        "backup",
+    }
+)

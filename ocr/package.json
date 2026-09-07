@@ -1,0 +1,10 @@
+{
+  "name": "kaydbooks-local-ocr",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Optional offline OCR runtime; no document uploads or model API calls",
+  "dependencies": {
+    "tesseract.js": "7.0.0",
+    "@tesseract.js-data/eng": "1.0.0"
+  }
+}

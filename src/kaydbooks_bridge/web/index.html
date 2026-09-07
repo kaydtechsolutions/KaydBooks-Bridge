@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>KaydBooks Bridge</title>
+    <link rel="stylesheet" href="/app/app.css" />
+    <script src="/app/app.js" defer></script>
+  </head>
+  <body>
+    <section id="login" class="login">
+      <div class="login-card">
+        <div class="brand-mark">KB</div>
+        <p class="eyebrow">KAYDBOOKS BRIDGE</p>
+        <h1>Your accounting workspace.</h1>
+        <p>Prepare, review and verify your QuickBooks work in one place.</p>
+        <form id="login-form">
+          <label
+            >Bridge access key<input
+              id="access-key"
+              type="password"
+              autocomplete="off"
+              required /></label
+          ><button type="submit" class="primary">
+            Open workspace <span>→</span>
+          </button>
+        </form>
+        <p class="small">Access is limited to your assigned companies.</p>
+        <div id="login-error" role="alert"></div>
+      </div>
+    </section>
+    <div id="workspace" class="workspace hidden">
+      <aside>
+        <div class="brand">
+          <div class="brand-mark">KB</div>
+          <strong>KaydBooks<span>BRIDGE</span></strong>
+        </div>
+        <p class="nav-label">WORKSPACE</p>
+        <nav id="navigation">
+          <button data-view="overview" class="active">Overview</button
+          ><button data-view="entry">New document</button
+          ><button data-view="upload">Upload document</button
+          ><button data-view="reports">Reports</button
+          ><button data-view="imports">Import spreadsheet</button
+          ><button data-view="access">User access</button
+          ><button data-view="dispatch">Posting schedules</button
+          ><button data-view="masters">Customers, suppliers &amp; items</button>
+        </nav>
+        <div class="aside-bottom">
+          <span class="status-dot"></span> Sample qualification
+          <p>Production posting disabled</p>
+          <button id="logout" class="quiet">Sign out</button>
+        </div>
+      </aside>
+      <main>
+        <header>
+          <div>
+            <p class="eyebrow">ACCOUNTING OPERATIONS</p>
+            <h1 id="page-title">Overview</h1>
+          </div>
+          <div class="company-picker">
+            <label for="company">Company</label
+            ><select id="company">
+              <option value="">Choose a company</option>
+            </select>
+          </div>
+        </header>
+        <div
+          id="notice"
+          class="notice hidden"
+          role="status"
+          aria-live="polite"
+        ></div>
+        <div id="content">
+          <div class="empty">
+            <h2>Choose your company</h2>
+            <p>
+              Your documents, settings and permissions stay separate for each
+              company.
+            </p>
+          </div>
+        </div>
+        <footer>
+          <span id="principal"></span
+          ><span>Verified evidence. Clear history.</span>
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>

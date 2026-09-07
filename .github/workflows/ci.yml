@@ -5,20 +5,25 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install -e '.[dev]'
-      - run: pytest -q
+      - run: pip install uv==0.12.7
+      - run: uv sync --frozen --extra dev --extra hermes --python ${{ matrix.python-version }}
+      - run: uv run --frozen --extra dev --extra hermes pytest -q
 
   lint:
     runs-on: ubuntu-latest
@@ -27,6 +32,46 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install ruff
-      - run: ruff check .
-      - run: ruff format --check .
+      - run: pip install uv==0.12.7
+      - run: uv sync --frozen --extra dev --python 3.12
+      - run: uv run --frozen ruff check .
+      - run: uv run --frozen ruff format --check .
+      - run: uv build
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install uv==0.12.7
+      - run: uv sync --frozen --extra dev
+      - run: uv run playwright install --with-deps chromium
+      - run: uv run pytest tests/test_web_browser.py -q
+        env:
+          KAYDBOOKS_BROWSER_TESTS: "1"
+
+  offline-intake:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: pip install uv==0.12.7
+      - run: uv sync --frozen --extra dev --extra intake
+      - run: npm ci --ignore-scripts
+        working-directory: ocr
+      - run: uv run playwright install --with-deps chromium
+      - name: Qualify local corpus and source review
+        run: |
+          export KAYDBOOKS_OCR_NODE="$(command -v node)"
+          export KAYDBOOKS_OCR_MODULES="$PWD/ocr/node_modules"
+          uv run pytest tests/test_extraction.py tests/test_web_browser.py -q
+        env:
+          KAYDBOOKS_OCR_TESTS: "1"
+          KAYDBOOKS_BROWSER_TESTS: "1"

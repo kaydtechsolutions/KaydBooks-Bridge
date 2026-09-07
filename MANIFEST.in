@@ -1,0 +1,4 @@
+include README.md LICENSE docs-upstream-qbwc-kit.md
+include HERMES_INTEGRATION_SCOPE.md PROJECT_STATUS.md uv.lock
+recursive-include docs *.md
+recursive-include examples *.py *.json

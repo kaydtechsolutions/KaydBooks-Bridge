@@ -35,6 +35,7 @@ def create_app(
     path: str = "/qbwc",
     app: FastAPI | None = None,
     service_name: str = "QBWebConnectorSvc",
+    max_request_bytes: int | None = None,
 ) -> FastAPI:
     """Mount ``service`` on a FastAPI app.
 
@@ -54,7 +55,26 @@ def create_app(
 
     @app.post(path)
     async def handle_soap(request: Request) -> Response:
-        body = await request.body()
+        if max_request_bytes is None:
+            body = await request.body()
+        else:
+            raw_length = request.headers.get("content-length")
+            try:
+                declared_too_large = raw_length is not None and int(raw_length) > max_request_bytes
+            except ValueError:
+                declared_too_large = True
+            if declared_too_large:
+                return Response(
+                    content="callback too large", status_code=413, media_type="text/plain"
+                )
+            collected = bytearray()
+            async for chunk in request.stream():
+                collected.extend(chunk)
+                if len(collected) > max_request_bytes:
+                    return Response(
+                        content="callback too large", status_code=413, media_type="text/plain"
+                    )
+            body = bytes(collected)
         # Tasks are ordinary blocking code - they hit databases and HTTP APIs -
         # and a multi-megabyte qbXML response is not free to parse either.
         # Running dispatch on the event loop would stall every other request

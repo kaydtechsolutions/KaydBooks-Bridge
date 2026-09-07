@@ -1,20 +1,20 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "qbwc-kit"
-version = "0.1.2"
-description = "Talk to QuickBooks Desktop over the Web Connector: SOAP callbacks, qbXML, and test doubles."
+name = "kaydbooks-bridge"
+version = "0.1.0.dev1"
+description = "Company-scoped QuickBooks Desktop bridge with verified receipts and controlled sample qualification."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
-authors = [{ name = "Eren Altuntas" }]
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "KaydTech Solutions" }]
 keywords = ["quickbooks", "qbxml", "web-connector", "qbwc", "soap", "accounting", "erp"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -22,18 +22,50 @@ classifiers = [
     "Topic :: Office/Business :: Financial :: Accounting",
     "Topic :: Software Development :: Libraries",
 ]
-dependencies = []
+dependencies = [
+    "defusedxml>=0.7.1,<1",
+    "openpyxl>=3.1.5,<4",
+    "tzdata; sys_platform == 'win32'",
+]
 
 [project.optional-dependencies]
-server = ["fastapi>=0.100"]
-dev = ["pytest>=7", "fastapi>=0.100", "httpx>=0.24", "ruff>=0.4"]
+server = ["fastapi>=0.100", "uvicorn>=0.23"]
+dev = [
+    "pytest>=7",
+    "fastapi>=0.100",
+    "httpx>=0.24",
+    "ruff>=0.4",
+    "uvicorn>=0.23",
+    "playwright>=1.55,<2",
+    "reportlab>=4,<5",
+]
+hermes = [
+    "mcp>=1.10,<2",
+]
+intake = [
+    "pillow>=12,<13",
+    "pypdfium2>=5,<6",
+]
 
 [project.urls]
-Homepage = "https://github.com/meister5/qbwc-kit"
-Issues = "https://github.com/meister5/qbwc-kit/issues"
+Homepage = "https://github.com/kaydtechsolutions/KaydBooks-Bridge"
+Issues = "https://github.com/kaydtechsolutions/KaydBooks-Bridge/issues"
+
+[project.scripts]
+kaydbooks-bridge = "kaydbooks_bridge.cli:main"
+kaydbooks-bridge-qbwc = "kaydbooks_bridge.deployment:serve"
+kaydbooks-bridge-qbwc-config = "kaydbooks_bridge.deployment:profile_cli"
+kaydbooks-bridge-tools = "kaydbooks_bridge.hermes_tools:main"
+kaydbooks-bridge-operations = "kaydbooks_bridge.operations:main"
+kaydbooks-bridge-qualification = "kaydbooks_bridge.qualification:main"
+kaydbooks-bridge-setup = "kaydbooks_bridge.onboarding:main"
+kaydbooks-bridge-dispatch = "kaydbooks_bridge.dispatch:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+kaydbooks_bridge = ["*.ps1", "*.cjs", "web/*.html", "web/*.css", "web/*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
