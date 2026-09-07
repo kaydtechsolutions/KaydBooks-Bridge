@@ -48,6 +48,11 @@ Capture the original uploaded bytes using a stable lowercase upload reference ma
 Reuse that upload reference on retries. Inspect the content and clarify missing or ambiguous fields.
 Use the catalog mappings; never invent QuickBooks IDs, amounts or extraction certainty.
 Use qbwc_entry_v1 check, wait for Web Connector evidence, then prepare and validate each entry.
+For check, parameters contain exactly operation, connector_id from catalog.connectors, and payload.
+Do not include document_id, namespace or reference in check. Repeat the same check after pending=true.
+For prepare, pass operation, document_id, idempotency_key, payload, confidence and the returned
+check evidence as master_evidence. validate/preview/status/submit/dispatch/recover take only job_id.
+An ok=false tool result is a rejection: correct its stated fields or report the hold; never treat it as success.
 Use batch_preview_v1 for the exact validated jobs. The trusted worker sends that immutable preview.
 The operator must type the exact /kb-confirm reply in their configured WhatsApp direct chat.
 Never create or simulate a confirmation event, read channel signing secrets, call the private

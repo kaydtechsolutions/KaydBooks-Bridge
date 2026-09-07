@@ -176,7 +176,36 @@ def test_real_mcp_stdio_transport_without_model_calls(setup):
         ) as (read, write):
             async with ClientSession(read, write) as session:
                 await session.initialize()
-                names = {tool.name for tool in (await session.list_tools()).tools}
+                listed = (await session.list_tools()).tools
+                names = {tool.name for tool in listed}
+                entry_schema = next(t.inputSchema for t in listed if t.name == "qbwc_entry_v1")
+                import jsonschema
+
+                check_args = {
+                    "company": "company-a",
+                    "action": "check",
+                    "parameters": {
+                        "operation": "invoice.create",
+                        "connector_id": "connector-a",
+                        "payload": {},
+                    },
+                }
+                jsonschema.validate(check_args, entry_schema)
+                for bad in (
+                    {"operation": "invoice.create", "payload": {}},
+                    {**check_args["parameters"], "document_id": "unrelated-upload-field"},
+                ):
+                    with pytest.raises(jsonschema.ValidationError):
+                        jsonschema.validate({**check_args, "parameters": bad}, entry_schema)
+                    rejection = await session.call_tool(
+                        "qbwc_entry_v1", {**check_args, "parameters": bad}
+                    )
+                    assert not rejection.isError
+                    rejected = json.loads(rejection.content[0].text)
+                    assert rejected["ok"] is False and "check parameters:" in rejected["error"]
+                # Input mistakes do not break the transport or convert into success.
+                catalog = await session.call_tool("company_catalog_v1", {"company": "company-a"})
+                assert not catalog.isError
                 assert (
                     len(names) == 42
                     and {

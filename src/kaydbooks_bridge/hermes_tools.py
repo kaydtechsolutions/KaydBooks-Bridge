@@ -4,6 +4,7 @@ import argparse
 import os
 import sys
 import time
+from typing import Annotated, Literal
 
 from .config import BridgeError, Config, strict_keys
 from .direct_sdk import discover
@@ -277,6 +278,9 @@ class Tools:
 def server(config_path, token):
     # Optional dependency; importing the independent core never requires MCP/Hermes.
     from mcp.server.fastmcp import FastMCP
+    from pydantic import Field
+
+    from .hermes_qbwc import parameter_schema
 
     tools = Tools(config_path, token)
     app = FastMCP(
@@ -303,14 +307,40 @@ def server(config_path, token):
         return tools.call("batch_status_v1", company, {"batch_id": batch_id})
 
     @app.tool()
-    def qbwc_entry_v1(company: str, action: str, parameters: dict) -> dict:
+    def qbwc_entry_v1(
+        company: str,
+        action: Literal[
+            "check",
+            "prepare",
+            "revise",
+            "validate",
+            "preview",
+            "submit",
+            "dispatch",
+            "recover",
+            "status",
+        ],
+        parameters: Annotated[dict, Field(json_schema_extra=parameter_schema())],
+    ) -> dict:
         """Eight-entry Web Connector workflow: check, prepare, revise, validate, preview, submit,
         dispatch, recover or status. Capture source first. Check may return pending:
         let Web Connector run and check again. No direct SDK or approval capability.
         Dispatch requires prior independent approval, current permissions, an explicit
         sample gate and unpaused posting. Never retry an unknown accounting write.
+        check parameters are exactly operation, connector_id (from catalog.connectors),
+        payload. Do not include document_id, namespace or reference in check.
+        Repeat that same check after pending=true until evidence is returned.
+        prepare requires operation, document_id, idempotency_key, payload, confidence;
+        pass the check's evidence as master_evidence. Each other job action takes job_id.
+        Expected Bridge rejections return ok=false with an error; they are not a
+        broken transport or permission to bypass a gate.
         """
-        return tools.call("qbwc_entry_v1", company, {"action": action, "parameters": parameters})
+        try:
+            return tools.call(
+                "qbwc_entry_v1", company, {"action": action, "parameters": parameters}
+            )
+        except BridgeError as exc:
+            return {"ok": False, "error": str(exc), "action": action}
 
     @app.tool()
     def native_report_v1(

@@ -18,45 +18,91 @@ OPERATIONS = frozenset(
     }
 )
 
+CONTRACTS = {
+    "check": ({"operation", "connector_id", "payload"}, set()),
+    "prepare": (
+        {"operation", "document_id", "idempotency_key", "payload", "confidence"},
+        {"master_evidence"},
+    ),
+    "revise": (
+        {
+            "parent_id",
+            "parent_fingerprint",
+            "reason",
+            "document_id",
+            "idempotency_key",
+            "payload",
+            "confidence",
+        },
+        {"master_evidence"},
+    ),
+    **{
+        a: ({"job_id"}, set())
+        for a in ("validate", "preview", "submit", "dispatch", "recover", "status")
+    },
+}
+
+
+def parameter_schema():
+    variants = []
+    for action in ("check", "prepare", "revise", "status"):
+        required, optional = CONTRACTS[action]
+        properties = {
+            field: {
+                "type": "object"
+                if field in ("payload", "confidence", "master_evidence")
+                else "string"
+            }
+            for field in sorted(required | optional)
+        }
+        if "operation" in properties:
+            properties["operation"]["enum"] = sorted(OPERATIONS)
+        if "connector_id" in properties:
+            properties["connector_id"]["description"] = (
+                "Exact connector from company_catalog_v1.connectors"
+            )
+        variants.append(
+            {
+                "title": action
+                if action != "status"
+                else "validate/preview/submit/dispatch/recover/status",
+                "type": "object",
+                "properties": properties,
+                "required": sorted(required),
+                "additionalProperties": False,
+            }
+        )
+    return {"oneOf": variants}
+
 
 def call(bridge, token, company, arguments):
     strict_keys(arguments, {"action", "parameters"})
     action, params = arguments["action"], arguments["parameters"]
     if not isinstance(params, dict):
         raise BridgeError("entry parameters must be an object")
-    if action == "revise":
-        strict_keys(
-            params,
-            {
-                "parent_id",
-                "parent_fingerprint",
-                "reason",
-                "document_id",
-                "idempotency_key",
-                "payload",
-                "confidence",
-            },
-            {"master_evidence"},
+    if not isinstance(action, str) or action not in CONTRACTS:
+        raise BridgeError("entry action unavailable; human approval is separate")
+    required, optional = CONTRACTS[action]
+    missing = required - params.keys()
+    extra = params.keys() - required - optional
+    if missing or extra:
+        raise BridgeError(
+            f"{action} parameters: required {', '.join(sorted(required))}; "
+            f"optional {', '.join(sorted(optional)) or 'none'}; "
+            f"missing {', '.join(sorted(missing)) or 'none'}; "
+            f"unsupported {', '.join(sorted(extra)) or 'none'}"
         )
+    if action == "revise":
         parent = bridge.status(token, company, params["parent_id"])
         if parent["operation"] not in OPERATIONS:
             raise BridgeError("entry operation is outside the selected eight")
         return revise(bridge, token, company, **params)
     if action in ("check", "prepare"):
-        required = (
-            {"operation", "connector_id", "payload"}
-            if action == "check"
-            else {"operation", "document_id", "idempotency_key", "payload", "confidence"}
-        )
-        strict_keys(params, required, {"master_evidence"} if action == "prepare" else set())
         if not isinstance(params["operation"], str) or params["operation"] not in OPERATIONS:
             raise BridgeError("entry operation is outside the selected eight")
         if action == "check":
             return check_masters(bridge, token, company, **params)
         return prepare(bridge, token, company, **params)
-    if action not in ("validate", "preview", "submit", "dispatch", "recover", "status"):
-        raise BridgeError("entry action unavailable; human approval is separate")
-    strict_keys(params, {"job_id"})
     job = bridge.status(token, company, params["job_id"])
     if job["operation"] not in OPERATIONS:
         raise BridgeError("entry operation is outside the selected eight")

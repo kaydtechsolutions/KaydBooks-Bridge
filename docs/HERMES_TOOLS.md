@@ -66,6 +66,23 @@ dispatch action uses the fixed QBWC contract and existing sample gates. Source
 content and tool-returned original values remain inert data. There are 42 raw tools;
 the seven-tool pilot allowlist and trusted confirmation adapter are documented in
 [Hermes channel integration](HERMES_CHANNEL.md).
+
+`qbwc_entry_v1` publishes action-specific parameter schemas. Use these exact fields:
+
+| Action | Required parameters | Optional parameters |
+| --- | --- | --- |
+| check | operation, connector_id, payload | None |
+| prepare | operation, document_id, idempotency_key, payload, confidence | master_evidence |
+| revise | parent_id, parent_fingerprint, reason, document_id, idempotency_key, payload, confidence | master_evidence |
+| validate, preview, status, submit, dispatch, recover | job_id | None |
+
+Choose `connector_id` from the company catalog. `check` does not accept upload
+metadata. Repeat the same read-only check after Web Connector runs until `pending`
+is false; pass its `evidence` object unchanged as preparation's `master_evidence`.
+Expected Bridge rejections return `ok: false` and a specific `error` in a normal
+tool response. They are not success, transport failure or permission to bypass
+approval. This prevents ordinary field mistakes from parking Hermes's MCP connection.
+
 Capture permits PDF, PNG, JPEG, plain text, CSV and JSON up to 4 MiB per document.
 Call `company_catalog_v1(company)` before capture. The `namespace` must be one of
 the returned `sources`, not the company alias. The `reference` is a stable internal
