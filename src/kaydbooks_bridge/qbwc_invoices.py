@@ -18,6 +18,7 @@ def make_plan(company, payload, txn_id=None, operation="invoice.create"):
     if operation in (
         "customer-payment.create",
         "supplier-payment.create",
+        "journal.create",
         "sales-receipt.create",
         "customer-credit.create",
         "supplier-credit.create",
@@ -51,6 +52,7 @@ def append_request(request, correlation, check):
     if check.get("operation") in (
         "customer-payment.create",
         "supplier-payment.create",
+        "journal.create",
         "sales-receipt.create",
         "customer-credit.create",
         "supplier-credit.create",
@@ -80,6 +82,7 @@ def check_response(response, correlation, check):
     if check.get("operation") in (
         "customer-payment.create",
         "supplier-payment.create",
+        "journal.create",
         "sales-receipt.create",
         "customer-credit.create",
         "supplier-credit.create",
@@ -213,6 +216,7 @@ def invoice_job(
                 "bill.create",
                 "customer-payment.create",
                 "supplier-payment.create",
+                "journal.create",
                 "sales-receipt.create",
                 "customer-credit.create",
                 "supplier-credit.create",

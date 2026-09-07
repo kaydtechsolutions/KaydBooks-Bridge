@@ -22,6 +22,10 @@ SURFACES = frozenset(
 
 
 def validate_payload(operation, payload, policy):
+    if operation == "journal.create":
+        from .journal_entries import validate_payload as validate_journal
+
+        return validate_journal(payload, policy)
     if operation == "sales-receipt.create":
         from .sales_receipts import validate_payload as validate_receipt
 
@@ -68,6 +72,10 @@ def validate_payload(operation, payload, policy):
 
 
 def require_evidence(config, policy, store, db, job, now):
+    if job["operation"] == "journal.create":
+        from .journal_evidence import require
+
+        return require(config, policy, store, db, job, now)
     if job["operation"] == "sales-receipt.create":
         from .sales_receipt_evidence import require
 
@@ -166,6 +174,7 @@ class Bridge:
             "bill.create",
             "customer-payment.create",
             "supplier-payment.create",
+            "journal.create",
             "sales-receipt.create",
             "customer-credit.create",
             "supplier-credit.create",
@@ -238,6 +247,8 @@ class Bridge:
             evidence = None
             if "master_evidence" in envelope:
                 resolver = resolve_evidence
+                if envelope["operation"] == "journal.create":
+                    from .journal_evidence import resolve as resolver
                 if envelope["operation"] == "sales-receipt.create":
                     from .sales_receipt_evidence import resolve as resolver
                 if envelope["operation"] == "master.change":
@@ -272,6 +283,7 @@ class Bridge:
                 "master.change",
                 "customer-payment.create",
                 "supplier-payment.create",
+                "journal.create",
                 "sales-receipt.create",
                 "customer-credit.create",
                 "supplier-credit.create",
@@ -384,6 +396,8 @@ class Bridge:
         master = store.job(db, job_id)["operation"] == "master.change"
         if master:
             table = "master_evidence_links"
+        if store.job(db, job_id)["operation"] == "journal.create":
+            table = "journal_evidence_links"
         if store.job(db, job_id)["operation"] == "sales-receipt.create":
             table = "sales_receipt_evidence_links"
         db.execute(
@@ -494,6 +508,7 @@ class Bridge:
             if job["operation"] in (
                 "customer-payment.create",
                 "supplier-payment.create",
+                "journal.create",
                 "sales-receipt.create",
                 "customer-credit.create",
                 "supplier-credit.create",
@@ -577,6 +592,7 @@ class Bridge:
             if job["operation"] in (
                 "customer-payment.create",
                 "supplier-payment.create",
+                "journal.create",
                 "sales-receipt.create",
                 "customer-credit.create",
                 "supplier-credit.create",
@@ -593,9 +609,19 @@ class Bridge:
                     "company": company,
                     "payload": job["payload"],
                     "balances": job["master_evidence"]["balances"],
-                    "total": job["payload"]["total_amount"]
+                    "total": format(
+                        sum(
+                            Decimal(line["amount"])
+                            for line in job["payload"]["lines"]
+                            if line["side"] == "debit"
+                        ),
+                        ".2f",
+                    )
+                    if job["operation"] == "journal.create"
+                    else job["payload"]["total_amount"]
                     if job["operation"]
                     not in (
+                        "journal.create",
                         "sales-receipt.create",
                         "customer-credit.create",
                         "supplier-credit.create",
@@ -735,6 +761,7 @@ class Bridge:
                 "master.change",
                 "customer-payment.create",
                 "supplier-payment.create",
+                "journal.create",
                 "sales-receipt.create",
                 "customer-credit.create",
                 "supplier-credit.create",
@@ -888,6 +915,7 @@ class Bridge:
             if job["operation"] in (
                 "customer-payment.create",
                 "supplier-payment.create",
+                "journal.create",
                 "sales-receipt.create",
                 "customer-credit.create",
                 "supplier-credit.create",

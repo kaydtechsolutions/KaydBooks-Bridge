@@ -55,6 +55,8 @@ class Company:
     sample_payment_posting: dict = field(default_factory=dict)
     supplier_payment_masters: dict = field(default_factory=dict)
     sample_supplier_payment_posting: dict = field(default_factory=dict)
+    journal_masters: dict = field(default_factory=dict)
+    sample_journal_posting: dict = field(default_factory=dict)
     sample_sales_receipt_posting: dict = field(default_factory=dict)
     sample_credit_posting: dict = field(default_factory=dict)
     sample_application_posting: dict = field(default_factory=dict)
@@ -89,6 +91,8 @@ def company_policy_context(policy):
         "allow_self_approval",
         "supplier_payment_masters",
         "sample_supplier_payment_posting",
+        "journal_masters",
+        "sample_journal_posting",
         "sample_sales_receipt_posting",
         "sample_credit_posting",
         "sample_refund_posting",
@@ -154,6 +158,8 @@ class Config:
                     "sample_payment_posting",
                     "supplier_payment_masters",
                     "sample_supplier_payment_posting",
+                    "journal_masters",
+                    "sample_journal_posting",
                     "sample_sales_receipt_posting",
                     "sample_credit_posting",
                     "sample_refund_posting",
@@ -282,6 +288,28 @@ class Config:
                     or type(supplier_gate["expires_at"]) not in (int, float)
                 ):
                     raise BridgeError("invalid controlled sample supplier payment posting gate")
+            from .journal_entries import validate_masters as validate_journal_masters
+
+            validate_journal_masters(companies[name].journal_masters)
+            journal_gate = companies[name].sample_journal_posting
+            if not isinstance(journal_gate, dict):
+                raise BridgeError("sample journal posting gate must be an object")
+            if journal_gate:
+                strict_keys(
+                    journal_gate,
+                    {"connector", "authorization", "ref_prefix", "max_entries", "expires_at"},
+                )
+                identifier(journal_gate["connector"])
+                if (
+                    not isinstance(journal_gate["authorization"], str)
+                    or not 20 <= len(journal_gate["authorization"]) <= 1000
+                    or not isinstance(journal_gate["ref_prefix"], str)
+                    or not re.fullmatch(r"[A-Z0-9-]{3,8}", journal_gate["ref_prefix"])
+                    or type(journal_gate["max_entries"]) is not int
+                    or not 1 <= journal_gate["max_entries"] <= 10
+                    or type(journal_gate["expires_at"]) not in (int, float)
+                ):
+                    raise BridgeError("invalid controlled sample journal posting gate")
             receipt_gate = companies[name].sample_sales_receipt_posting
             if not isinstance(receipt_gate, dict):
                 raise BridgeError("sample sales receipt posting gate must be an object")

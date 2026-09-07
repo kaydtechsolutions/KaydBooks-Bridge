@@ -427,7 +427,7 @@ function entry(existing = null, onTemplate = null, observed = null) {
     });
     if (evidence.pending) {
       save.disabled = true;
-      const label = {"sales-receipt.create": "Sales receipt", "invoice.create": "Invoice", "bill.create": "Bill", "customer-payment.create": "Customer payment", "supplier-payment.create": "Supplier payment", "customer-credit.create": "Credit memo", "supplier-credit.create": "Bill credit"}[op.value] || "Details";
+      const label = {"journal.create": "Journal", "sales-receipt.create": "Sales receipt", "invoice.create": "Invoice", "bill.create": "Bill", "customer-payment.create": "Customer payment", "supplier-payment.create": "Supplier payment", "customer-credit.create": "Credit memo", "supplier-credit.create": "Bill credit"}[op.value] || "Details";
       notice(label + " check queued. Run Update Selected in QuickBooks Web Connector, then click Check details again.");
       return;
     }
@@ -582,7 +582,9 @@ function entry(existing = null, onTemplate = null, observed = null) {
       [...row.children]
         .filter((x) => !type || !x.contains(type))
         .forEach((x) => x.remove());
-      if (isAllocation) {
+      if (operation === "journal.create") {
+        row.append(field("account_id", catalog.choices.journal_accounts, data.account_id || "", false, "Account"), field("side", ["debit", "credit"], data.side || "debit", false, "Debit or credit"), field("amount", null, data.amount || ""), field("memo", null, data.memo || "", true, "Line memo"));
+      } else if (isAllocation) {
         row.append(
           transactionField("txn_id", data.txn_id || "",
             operation === "customer-payment.create" ? "invoice" : operation === "supplier-payment.create" ? "bill" : "customer-credit"),
@@ -664,6 +666,15 @@ function entry(existing = null, onTemplate = null, observed = null) {
     lineSection.replaceChildren();
     adjustmentRows.replaceChildren();
     adjustmentSection.classList.toggle("hidden", !["invoice.create", "bill.create"].includes(op.value));
+    if (op.value === "journal.create") {
+      collection = "lines";
+      basics.append(field("ref_number"), field("txn_date"), field("currency", [catalog.currency], catalog.currency), field("memo", null, "", true, "Memo"));
+      basics.querySelector('[data-field="ref_number"]').maxLength = 11;
+      lineSection.append(el("h3", {}, "Debits and credits"), lines, button("Add line", () => addLine()));
+      if (existing) { for (const [k,v] of Object.entries(existing.payload)) if (!Array.isArray(v)) setValue(basics,k,v); for (const row of existing.payload.lines) addLine(row); }
+      else { addLine({side:"debit"}); addLine({side:"credit"}); }
+      return;
+    }
     const operation = op.value,
       isCustomer =
         operation.startsWith("customer") || ["invoice.create", "sales-receipt.create"].includes(operation),
@@ -762,7 +773,7 @@ function entry(existing = null, onTemplate = null, observed = null) {
         const out = {};
         for (const input of row.querySelectorAll("[data-field]")) {
           if (
-            ["discount_amount", "discount_account"].includes(
+            ["memo", "discount_amount", "discount_account"].includes(
               input.dataset.field,
             ) &&
             !input.value
@@ -951,7 +962,7 @@ async function openJob(id) {
   if (job.state === "queued" && permissions("post-sample"))
     actions.append(
       button(
-        ["sales-receipt.create", "invoice.create", "bill.create", "customer-payment.create", "supplier-payment.create", "customer-credit.create", "supplier-credit.create"].includes(job.operation) ? "Queue in Web Connector" : "Post to sample company",
+        ["journal.create", "sales-receipt.create", "invoice.create", "bill.create", "customer-payment.create", "supplier-payment.create", "customer-credit.create", "supplier-credit.create"].includes(job.operation) ? "Queue in Web Connector" : "Post to sample company",
         async () => {
           await api("post-sample", { job_id: id });
           await openJob(id);

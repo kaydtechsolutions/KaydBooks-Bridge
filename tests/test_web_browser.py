@@ -38,6 +38,7 @@ def page(setup, monkeypatch):
             "master_income": "INCOME",
             "master_expense": "EXPENSE",
         },
+        journal_masters={"accounts": {"cash": "B-A", "office": "E-A"}},
         bill_masters={
             "vendors": {"vendor-a": "V-A"},
             "payable": "AP-A",
@@ -455,6 +456,10 @@ def test_browser_all_operation_forms_use_exact_shared_payload_fields(page, opera
     }.items():
         for element in form.locator(f'input[data-field="{name}"]:not([readonly])').all():
             element.fill(value)
+    if operation == "journal.create":
+        accounts = form.locator('select[data-field="account_id"]')
+        accounts.nth(0).select_option("office")
+        accounts.nth(1).select_option("cash")
     page.get_by_label("Source", exact=True).select_option("synthetic-intake")
     with page.expect_request(
         lambda r: r.method == "POST" and r.post_data_json.get("action") == "check"
@@ -464,7 +469,12 @@ def test_browser_all_operation_forms_use_exact_shared_payload_fields(page, opera
     assert request["company"] == "company-a" and request["parameters"]["operation"] == operation
     payload = request["parameters"]["payload"]
     assert payload["ref_number"] == "FORM-1" and payload["currency"] == "USD"
-    if operation.endswith(".apply"):
+    if operation == "journal.create":
+        assert payload["lines"] == [
+            {"account_id": "office", "side": "debit", "amount": "5.00"},
+            {"account_id": "cash", "side": "credit", "amount": "5.00"},
+        ]
+    elif operation.endswith(".apply"):
         assert "txn_date" not in payload and "lines" not in payload and "allocations" not in payload
         assert payload["credit_txn_id"] == "CR-1"
     elif "payment" in operation or operation == "customer-refund.create":

@@ -47,7 +47,7 @@ class Contract:
 
     def verify_balances(self, policy, payload, before, after):
         module = self.module("receipt")
-        if self.name == "sales_receipt":
+        if self.name in ("sales_receipt", "journal"):
             return module.verify_balance_effect(payload, before, after, policy=policy)
         if self.name == "credit":
             return module.verify_balance_effect(
@@ -57,6 +57,18 @@ class Contract:
 
 
 CONTRACTS = {
+    "journal.create": Contract(
+        "journal",
+        "sample_journal_posting",
+        "journal_entries",
+        "journal_evidence",
+        "require",
+        "sample_journal_posting",
+        "max_entries",
+        None,
+        "JournalEntryAdd",
+        "balances",
+    ),
     "sales-receipt.create": Contract(
         "sales_receipt",
         "sample_sales_receipt_posting",

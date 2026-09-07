@@ -15,6 +15,7 @@ from .service import Bridge, validate_payload
 from .validation import canonical, digest
 
 OPERATIONS = {
+    "journal.create": ("Journal", "journal_check"),
     "sales-receipt.create": ("Sales receipt", "sales_receipt_check"),
     "master.change": ("Customer, supplier or item change", None),
     "invoice.create": ("Sales invoice", "invoice_check"),
@@ -71,6 +72,7 @@ def catalog(config_path, token, company=None):
             "bill_items": list(policy.bill_masters.get("items", {})),
             "expenses": list(policy.bill_masters.get("expenses", {})),
             "terms": list(policy.bill_masters.get("terms", {})),
+            "journal_accounts": list(policy.journal_masters.get("accounts", {})),
             "payment_customers": list(policy.payment_masters.get("customers", {})),
             "deposits": list(policy.payment_masters.get("deposits", {})),
             "methods": list(policy.payment_masters.get("methods", {})),
@@ -121,6 +123,7 @@ def check_masters(bridge, token, company, operation, connector_id, payload):
         "bill.create",
         "customer-payment.create",
         "supplier-payment.create",
+        "journal.create",
         "sales-receipt.create",
         "customer-credit.create",
         "supplier-credit.create",
@@ -397,6 +400,7 @@ def action(bridge, token, company, action, parameters):
         "bill.create",
         "customer-payment.create",
         "supplier-payment.create",
+        "journal.create",
         "sales-receipt.create",
         "customer-credit.create",
         "supplier-credit.create",
