@@ -341,6 +341,16 @@ class Store:
                 (SELECT 1 FROM jobs WHERE id=NEW.job_id AND operation='customer-credit.create' AND state='queued'
                  AND submitter=NEW.actor AND attempt IS NULL)
                 BEGIN SELECT RAISE(ABORT,'native payment dispatch requires owned queued payment'); END""")
+            db.execute("""CREATE TABLE IF NOT EXISTS sales_receipt_evidence_links (
+                sequence INTEGER PRIMARY KEY AUTOINCREMENT, job_id TEXT NOT NULL REFERENCES jobs(id), evidence TEXT NOT NULL)""")
+            for action in ("UPDATE", "DELETE"):
+                db.execute(f"""CREATE TRIGGER IF NOT EXISTS sales_receipt_evidence_no_{action.lower()}
+                    BEFORE {action} ON sales_receipt_evidence_links
+                    BEGIN SELECT RAISE(ABORT,'payment evidence is append-only'); END""")
+            db.execute("""CREATE TRIGGER IF NOT EXISTS sales_receipt_evidence_insert_guard
+                BEFORE INSERT ON sales_receipt_evidence_links WHEN NOT EXISTS
+                (SELECT 1 FROM jobs WHERE id=NEW.job_id AND state='draft' AND operation='sales-receipt.create')
+                BEGIN SELECT RAISE(ABORT,'payment evidence requires draft payment'); END""")
             db.execute("""CREATE TABLE IF NOT EXISTS credit_evidence_links (
                 sequence INTEGER PRIMARY KEY AUTOINCREMENT, job_id TEXT NOT NULL REFERENCES jobs(id), evidence TEXT NOT NULL)""")
             for action in ("UPDATE", "DELETE"):
@@ -778,7 +788,9 @@ class Store:
         if binding:
             result["bill_context"] = json.loads(binding[0])
         evidence_table = (
-            "master_evidence_links"
+            "sales_receipt_evidence_links"
+            if result["operation"] == "sales-receipt.create"
+            else "master_evidence_links"
             if result["operation"] == "master.change"
             else "supplier_application_evidence_links"
             if result["operation"] == "supplier-credit.apply"

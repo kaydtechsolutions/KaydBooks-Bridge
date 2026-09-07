@@ -15,7 +15,7 @@ class Contract:
     require_name: str
     settings: str
     limit: str
-    native_table: str
+    native_table: str | None
     add_operation: str
     balance_key: str | None = None
 
@@ -47,6 +47,8 @@ class Contract:
 
     def verify_balances(self, policy, payload, before, after):
         module = self.module("receipt")
+        if self.name == "sales_receipt":
+            return module.verify_balance_effect(payload, before, after, policy=policy)
         if self.name == "credit":
             return module.verify_balance_effect(
                 payload, before, after, inventory=module.plan(policy, payload).get("inventory", {})
@@ -55,6 +57,18 @@ class Contract:
 
 
 CONTRACTS = {
+    "sales-receipt.create": Contract(
+        "sales_receipt",
+        "sample_sales_receipt_posting",
+        "sales_receipts",
+        "sales_receipt_evidence",
+        "require",
+        "sample_sales_receipt_posting",
+        "max_receipts",
+        None,
+        "SalesReceiptAdd",
+        "balances",
+    ),
     "invoice.create": Contract(
         "invoice",
         "sample_posting",
@@ -139,8 +153,9 @@ def contract(operation):
 
 def attempt_count(db, operation):
     adapter = contract(operation)
+    native = f"(SELECT COUNT(*) FROM {adapter.native_table})" if adapter.native_table else "0"
     return db.execute(
-        f"SELECT (SELECT COUNT(*) FROM {adapter.native_table}) + "
+        f"SELECT {native} + "
         "(SELECT COUNT(*) FROM qbwc_invoice_attempts a JOIN jobs j ON j.id=a.job_id "
         "WHERE j.operation=?)",
         (operation,),

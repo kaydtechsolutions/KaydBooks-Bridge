@@ -55,6 +55,7 @@ class Company:
     sample_payment_posting: dict = field(default_factory=dict)
     supplier_payment_masters: dict = field(default_factory=dict)
     sample_supplier_payment_posting: dict = field(default_factory=dict)
+    sample_sales_receipt_posting: dict = field(default_factory=dict)
     sample_credit_posting: dict = field(default_factory=dict)
     sample_application_posting: dict = field(default_factory=dict)
     sample_supplier_application_posting: dict = field(default_factory=dict)
@@ -88,6 +89,7 @@ def company_policy_context(policy):
         "allow_self_approval",
         "supplier_payment_masters",
         "sample_supplier_payment_posting",
+        "sample_sales_receipt_posting",
         "sample_credit_posting",
         "sample_refund_posting",
         "sample_supplier_credit_posting",
@@ -152,6 +154,7 @@ class Config:
                     "sample_payment_posting",
                     "supplier_payment_masters",
                     "sample_supplier_payment_posting",
+                    "sample_sales_receipt_posting",
                     "sample_credit_posting",
                     "sample_refund_posting",
                     "sample_supplier_credit_posting",
@@ -279,6 +282,25 @@ class Config:
                     or type(supplier_gate["expires_at"]) not in (int, float)
                 ):
                     raise BridgeError("invalid controlled sample supplier payment posting gate")
+            receipt_gate = companies[name].sample_sales_receipt_posting
+            if not isinstance(receipt_gate, dict):
+                raise BridgeError("sample sales receipt posting gate must be an object")
+            if receipt_gate:
+                strict_keys(
+                    receipt_gate,
+                    {"connector", "authorization", "ref_prefix", "max_receipts", "expires_at"},
+                )
+                identifier(receipt_gate["connector"])
+                if (
+                    not isinstance(receipt_gate["authorization"], str)
+                    or not 20 <= len(receipt_gate["authorization"]) <= 1000
+                    or not isinstance(receipt_gate["ref_prefix"], str)
+                    or not re.fullmatch(r"[A-Z0-9-]{3,8}", receipt_gate["ref_prefix"])
+                    or type(receipt_gate["max_receipts"]) is not int
+                    or not 1 <= receipt_gate["max_receipts"] <= 10
+                    or type(receipt_gate["expires_at"]) not in (int, float)
+                ):
+                    raise BridgeError("invalid controlled sample sales receipt posting gate")
             credit_gate = companies[name].sample_credit_posting
             if not isinstance(credit_gate, dict):
                 raise BridgeError("sample credit posting gate must be an object")

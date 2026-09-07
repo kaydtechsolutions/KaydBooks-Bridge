@@ -22,6 +22,10 @@ SURFACES = frozenset(
 
 
 def validate_payload(operation, payload, policy):
+    if operation == "sales-receipt.create":
+        from .sales_receipts import validate_payload as validate_receipt
+
+        return validate_receipt(payload, policy)
     if operation == "master.change":
         from .master_records import validate
 
@@ -64,6 +68,10 @@ def validate_payload(operation, payload, policy):
 
 
 def require_evidence(config, policy, store, db, job, now):
+    if job["operation"] == "sales-receipt.create":
+        from .sales_receipt_evidence import require
+
+        return require(config, policy, store, db, job, now)
     if job["operation"] == "master.change":
         from .master_checks import require
 
@@ -158,6 +166,7 @@ class Bridge:
             "bill.create",
             "customer-payment.create",
             "supplier-payment.create",
+            "sales-receipt.create",
             "customer-credit.create",
             "supplier-credit.create",
             "customer-refund.create",
@@ -229,6 +238,8 @@ class Bridge:
             evidence = None
             if "master_evidence" in envelope:
                 resolver = resolve_evidence
+                if envelope["operation"] == "sales-receipt.create":
+                    from .sales_receipt_evidence import resolve as resolver
                 if envelope["operation"] == "master.change":
                     from .master_checks import resolve as resolver
                 if bill_context is not None:
@@ -261,6 +272,7 @@ class Bridge:
                 "master.change",
                 "customer-payment.create",
                 "supplier-payment.create",
+                "sales-receipt.create",
                 "customer-credit.create",
                 "supplier-credit.create",
                 "customer-refund.create",
@@ -372,6 +384,8 @@ class Bridge:
         master = store.job(db, job_id)["operation"] == "master.change"
         if master:
             table = "master_evidence_links"
+        if store.job(db, job_id)["operation"] == "sales-receipt.create":
+            table = "sales_receipt_evidence_links"
         db.execute(
             f"INSERT INTO {table}(job_id,evidence) VALUES (?,?)",
             (job_id, canonical(evidence)),
@@ -480,6 +494,7 @@ class Bridge:
             if job["operation"] in (
                 "customer-payment.create",
                 "supplier-payment.create",
+                "sales-receipt.create",
                 "customer-credit.create",
                 "supplier-credit.create",
                 "customer-refund.create",
@@ -562,6 +577,7 @@ class Bridge:
             if job["operation"] in (
                 "customer-payment.create",
                 "supplier-payment.create",
+                "sales-receipt.create",
                 "customer-credit.create",
                 "supplier-credit.create",
                 "customer-refund.create",
@@ -578,7 +594,12 @@ class Bridge:
                     "payload": job["payload"],
                     "balances": job["master_evidence"]["balances"],
                     "total": job["payload"]["total_amount"]
-                    if job["operation"] not in ("customer-credit.create", "supplier-credit.create")
+                    if job["operation"]
+                    not in (
+                        "sales-receipt.create",
+                        "customer-credit.create",
+                        "supplier-credit.create",
+                    )
                     else format(
                         sum(Decimal(line["amount"]) for line in job["payload"]["lines"]), ".2f"
                     ),
@@ -714,6 +735,7 @@ class Bridge:
                 "master.change",
                 "customer-payment.create",
                 "supplier-payment.create",
+                "sales-receipt.create",
                 "customer-credit.create",
                 "supplier-credit.create",
                 "customer-refund.create",
@@ -866,6 +888,7 @@ class Bridge:
             if job["operation"] in (
                 "customer-payment.create",
                 "supplier-payment.create",
+                "sales-receipt.create",
                 "customer-credit.create",
                 "supplier-credit.create",
                 "customer-refund.create",

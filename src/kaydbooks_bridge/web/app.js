@@ -427,7 +427,7 @@ function entry(existing = null, onTemplate = null, observed = null) {
     });
     if (evidence.pending) {
       save.disabled = true;
-      const label = {"invoice.create": "Invoice", "bill.create": "Bill", "customer-payment.create": "Customer payment", "supplier-payment.create": "Supplier payment", "customer-credit.create": "Credit memo", "supplier-credit.create": "Bill credit"}[op.value] || "Details";
+      const label = {"sales-receipt.create": "Sales receipt", "invoice.create": "Invoice", "bill.create": "Bill", "customer-payment.create": "Customer payment", "supplier-payment.create": "Supplier payment", "customer-credit.create": "Credit memo", "supplier-credit.create": "Bill credit"}[op.value] || "Details";
       notice(label + " check queued. Run Update Selected in QuickBooks Web Connector, then click Check details again.");
       return;
     }
@@ -666,10 +666,10 @@ function entry(existing = null, onTemplate = null, observed = null) {
     adjustmentSection.classList.toggle("hidden", !["invoice.create", "bill.create"].includes(op.value));
     const operation = op.value,
       isCustomer =
-        operation.startsWith("customer") || operation === "invoice.create",
+        operation.startsWith("customer") || ["invoice.create", "sales-receipt.create"].includes(operation),
       isCreditApply = operation.endsWith(".apply");
     const accountChoices = isCustomer
-      ? operation === "invoice.create" ||
+      ? ["invoice.create", "sales-receipt.create"].includes(operation) ||
         operation === "customer-credit.create" ||
         isCreditApply
         ? catalog.choices.customers
@@ -711,12 +711,13 @@ function entry(existing = null, onTemplate = null, observed = null) {
       basics.append(field("bank_id", catalog.choices.banks));
     if (
       operation === "customer-payment.create" ||
-      operation === "customer-refund.create"
+      operation === "customer-refund.create" || operation === "sales-receipt.create"
     )
       basics.append(
         field("deposit_id", catalog.choices.deposits),
         field("method_id", catalog.choices.methods),
       );
+    if (operation === "sales-receipt.create") basics.append(field("check_number", null, "", true, "Check number (check payments only)"));
     collection =
       operation.includes("payment") || operation === "customer-refund.create"
         ? "allocations"
@@ -775,7 +776,7 @@ function entry(existing = null, onTemplate = null, observed = null) {
         }
         return out;
       });
-    if (["invoice.create", "customer-credit.create"].includes(op.value))
+    if (["sales-receipt.create", "invoice.create", "customer-credit.create"].includes(op.value))
       payload.tax_amount = "0.00";
     if (["invoice.create", "bill.create"].includes(op.value) && adjustmentRows.children.length)
       payload.adjustments = [...adjustmentRows.children].map((row) => {
@@ -950,7 +951,7 @@ async function openJob(id) {
   if (job.state === "queued" && permissions("post-sample"))
     actions.append(
       button(
-        ["invoice.create", "bill.create", "customer-payment.create", "supplier-payment.create", "customer-credit.create", "supplier-credit.create"].includes(job.operation) ? "Queue in Web Connector" : "Post to sample company",
+        ["sales-receipt.create", "invoice.create", "bill.create", "customer-payment.create", "supplier-payment.create", "customer-credit.create", "supplier-credit.create"].includes(job.operation) ? "Queue in Web Connector" : "Post to sample company",
         async () => {
           await api("post-sample", { job_id: id });
           await openJob(id);
