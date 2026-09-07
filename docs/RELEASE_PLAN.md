@@ -5,7 +5,7 @@ without waiting for the entire roadmap. The active KB v0.1.0 target is now
 **upload to Hermes -> exact operator confirmation -> Bridge/Web Connector entry
 -> mini result report in the operator's Hermes WhatsApp chat**, using the eight
 selected entry types. The [workflow specification and milestone scorecard](HERMES_DATA_ENTRY_PILOT.md)
-take priority over broader roadmap work. Current verified acceptance: **12/15 (80%)**.
+take priority over broader roadmap work. Current verified acceptance: **13/15 (87%)**.
 No release has been published by creating this plan.
 
 | Version | Proposed scope |

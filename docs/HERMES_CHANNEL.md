@@ -1,8 +1,8 @@
 # Hermes reviewed-batch channel (development candidate)
 
-Current verified v0.1.0 acceptance is **12/15 (80%)**. The eight basic entry types,
+Current verified v0.1.0 acceptance is **13/15 (87%)**. The eight basic entry types,
 real Linux-to-Windows connection, exact native operator confirmation, sample invoice
-dispatch/readback and WhatsApp batch result passed. The actual upload conversation,
+dispatch/readback, native upload/preparation and WhatsApp batch result passed. The
 per-company walkthrough and final installation/recovery qualification remain open.
 This document describes the implementation; it does not certify production readiness.
 

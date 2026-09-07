@@ -65,7 +65,7 @@ recipient is the operator's configured chat, not customers or numbers in uploads
 
 | Requirement | Current evidence / remaining work |
 | --- | --- |
-| Capture and extract uploads, prepare rows | Local tools exist; the actual Hermes WhatsApp upload-to-batch conversation is not qualified |
+| Capture and extract uploads, prepare rows | Actual Hermes WhatsApp JSON upload was captured, automatically prepared, validated and returned as an unposted review batch |
 | Review and exact human confirmation | Actual operator DM confirmed the exact immutable sample invoice batch; separate reviewer approval recorded |
 | Hermes-to-Windows connection | Actual Linux SSH/MCP uses the same durable Windows state as Web Connector |
 | Web Connector master checks and dispatch from Hermes | Confirmed sample invoice dispatched once and saved invoice fields verified through QBWC readback |
@@ -77,8 +77,8 @@ recipient is the operator's configured chat, not customers or numbers in uploads
 All eight entry types (100%) have basic installed sample qualification. This
 is not the percentage of the complete Hermes workflow. The older 13/41 broad
 roadmap count is historical context, not this release's completion score. No
-complete operator-upload conversation has been verified yet. The controlled-source
-preview-confirm-post-result path has passed in the sample company.
+complete operator-upload preparation conversation is now verified. The controlled-source
+preview-confirm-post-result path has also passed in the sample company.
 
 ## v0.1.0 milestone scorecard
 
@@ -89,7 +89,7 @@ estimate of time or effort.
 
 | Milestone | Status | Verified checks | Completion |
 | --- | --- | --- | --- |
-| V01-1 Upload and prepare through Hermes | Remote source capture verified; full upload/prepare conversation pending | 0/1 | 0% |
+| V01-1 Upload and prepare through Hermes | Native operator attachment produced an exact validated, unposted WhatsApp review | 1/1 | 100% |
 | V01-2 Exact operator confirmation | Real native operator reply accepted for the exact sample batch | 1/1 | 100% |
 | V01-3 Linux Hermes to Windows Bridge | Same-state SSH/MCP read and repeatable source capture verified | 1/1 | 100% |
 | V01-4 Hermes-driven QBWC dispatch | One confirmed sample invoice dispatched and matched to saved QBWC readback | 1/1 | 100% |
@@ -97,7 +97,7 @@ estimate of time or effort.
 | V01-6 Mini report in operator WhatsApp | Verified batch result has durable provider acknowledgment | 1/1 | 100% |
 | V01-7 Per-company onboarding/isolation walkthrough | Private setup exists; complete deployment walkthrough pending | 0/1 | 0% |
 | V01-8 Installable candidate and end-to-end recovery | Clean bundle installation and signed batch restore passed; end-to-end recovery remains open | 0/1 | 0% |
-| **Total** | **In development; not ready for production** | **12/15** | **80%** |
+| **Total** | **In development; not ready for production** | **13/15** | **87%** |
 
 Include this scorecard in major progress updates. Name the milestone changed and
 the evidence closing its check. Do not increase completion for a commit, documentation
@@ -129,7 +129,7 @@ The one-unit site transfer passed source -1, destination +1 and unchanged total
 stock/average cost. Each new transaction retained one Add, exact saved fields,
 valid audit and duplicate refusal. General posting is paused with no unresolved
 sample write. Their [supported scope and recovery details](QBWC_JOURNALS_CHECKS_TRANSFERS.md)
-remain explicit. These complete V01-5; three other scorecard checks remain.
+remain explicit. These complete V01-5; two other scorecard checks remain.
 
 ## Hermes connection and reviewed-batch implementation
 
@@ -162,7 +162,7 @@ retain the job, transaction, native event and provider IDs outside Git.
 
 This test used a controlled source captured through remote MCP, not an actual
 operator attachment conversation or a paid model run. It closes V01-2, V01-4 and
-V01-6, while V01-1, V01-7 and V01-8 remain open. The invoice receipt verifies the
+V01-6. V01-7 and V01-8 remain open. The invoice receipt verifies the
 saved transaction, not a fresh full customer-balance report.
 See [channel integration](HERMES_CHANNEL.md) for installation and trust boundaries.
 
@@ -173,8 +173,8 @@ confirmation was rejected without posting. Fresh evidence revalidated the same j
 the operator confirmed the replacement preview through native WhatsApp. One QBWC
 posting attempt reached verified readback, and preview/result provider receipts
 were retained. Posting was paused afterward and the audit verified successfully.
-This strengthens the existing confirmation/posting/delivery evidence, but does not
-close autonomous upload/preparation V01-1. The score remains **12/15 (80%)**.
+This strengthens the existing confirmation/posting/delivery evidence. Autonomous
+upload/preparation was qualified separately with KB-HM-003.
 
 The seven-tool adapter now includes a read-only `find` entry action so Hermes can
 resolve a duplicate by exact operation/reference, inspect the owned existing job,
@@ -189,8 +189,11 @@ and creates one validated review without approving, dispatching or posting it.
 Retries reuse the same source job, and a finished incompatible read fails clearly
 instead of remaining in a pending loop. An actual KB-HM-003 WhatsApp attachment was
 captured and produced one validated, unposted review after its queued QBWC read.
-The final Hermes-generated review response in that same conversation remains the
-acceptance step for V01-1, so the score remains **12/15 (80%)**.
+Hermes then found the same job through the Osman profile, created review batch
+`9ce2403809f365e264c81050`, checked its status and returned the exact review in the
+native WhatsApp conversation. The batch remained unconfirmed, the job remained
+validated, posting attempts stayed at zero, posting remained paused and the audit
+remained valid. This closes V01-1; the score is **13/15 (87%)**.
 
 `setup hermes` now generates the private Windows launchers and Linux connection
 inputs from an existing company configuration. The generated launchers passed

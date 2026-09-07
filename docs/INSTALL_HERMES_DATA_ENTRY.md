@@ -177,7 +177,7 @@ and use the same Windows company configuration and durable state as Web Connecto
 Validate discovery with `hermes mcp test kaydbooks` after the entry is configured.
 This is a connection check, not evidence of successful accounting or WhatsApp delivery.
 The actual pilot SSH/MCP connection is now qualified against the same Windows state;
-overall v0.1.0 acceptance is **12/15 (80%)**. The full operator walkthrough remains open.
+overall v0.1.0 acceptance is **13/15 (87%)**. The full operator walkthrough remains open.
 See the [official Hermes MCP reference](https://hermes-agent.nousresearch.com/docs/reference/mcp-config-reference/)
 and the [current Bridge tool inventory](HERMES_TOOLS.md).
 
