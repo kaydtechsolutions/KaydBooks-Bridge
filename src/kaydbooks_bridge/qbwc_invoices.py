@@ -20,6 +20,12 @@ def make_plan(company, payload, txn_id=None, operation="invoice.create"):
         if txn_id is not None:
             raise BridgeError("report reads do not accept a transaction selector")
         return report_plan(company, payload)
+    if operation == "reference-data.read":
+        from .reference_data import plan as reference_plan
+
+        if txn_id is not None:
+            raise BridgeError("reference-data reads do not accept a transaction selector")
+        return reference_plan(company, payload)
     if operation == "inventory-sites.read":
         from .inventory_catalog import plan as site_plan
 
@@ -65,6 +71,10 @@ def append_request(request, correlation, check):
         from .native_reports import append_queries
 
         return append_queries(request, correlation, check)
+    if check.get("operation") == "reference-data.read":
+        from .reference_data import append_queries
+
+        return append_queries(request, correlation, check)
     if check.get("operation") == "inventory-sites.read":
         from .inventory_catalog import append_request as append_sites
 
@@ -105,6 +115,10 @@ def check_response(response, correlation, check):
         from .native_reports import validate_response as report_response
 
         return report_response(response, correlation, check)
+    if check.get("operation") == "reference-data.read":
+        from .reference_data import validate_response as reference_response
+
+        return reference_response(response, correlation, check)
     if check.get("operation") == "inventory-sites.read":
         from .inventory_catalog import validate_response as site_response
 
@@ -142,7 +156,9 @@ def check_response(response, correlation, check):
 
 
 def current_plan(service, job, connector):
-    permission = "report" if job["operation"] == "report.read" else "validate"
+    permission = (
+        "report" if job["operation"] in ("report.read", "reference-data.read") else "validate"
+    )
     company = service.config.authorize(job["actor"], connector.company, permission)
     service.config.authorize(job["actor"], connector.company, "read")
     if job["connector"] != connector.id:
@@ -171,7 +187,7 @@ def invoice_job(
     connector = service.config.connectors.get(connector_id)
     if connector is None:
         raise BridgeError("unknown connector")
-    permission = "report" if operation == "report.read" else "validate"
+    permission = "report" if operation in ("report.read", "reference-data.read") else "validate"
     company = service.config.authorize(actor, connector.company, permission)
     service.config.authorize(actor, connector.company, "read")
     if connector.identity_sha256 == UNCONFIRMED_IDENTITY:
@@ -240,6 +256,14 @@ def invoice_job(
 
                 result.update(result_metadata(service, row, connector, discovery, receipt))
                 store.event(db, time.time(), actor, None, "qbwc_report_read", {"job": job_id})
+                return result
+            if operation == "reference-data.read":
+                from .qbwc_reference_data import result_metadata
+
+                result.update(result_metadata(service, row, connector, discovery, receipt))
+                store.event(
+                    db, time.time(), actor, None, "qbwc_reference_data_read", {"job": job_id}
+                )
                 return result
             if operation == "inventory-sites.read":
                 result.update(operation=operation, transport="qbwc", **receipt)

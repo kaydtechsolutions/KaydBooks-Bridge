@@ -35,6 +35,11 @@ class Tools:
                 {"date_from", "basis", "entity_list_id", "item_list_id", "columns_by"},
             )
             return read(self.bridge, self.token, company, **arguments)
+        if name == "qbwc_reference_data_v1":
+            from .qbwc_reference_data import read
+
+            strict_keys(arguments, {"connector_id", "request_id"})
+            return read(self.bridge, self.token, company, **arguments)
         if name in {"batch_preview_v1", "batch_status_v1"}:
             from . import hermes_batches
 
@@ -432,6 +437,15 @@ def server(config_path, token):
                 "specification": specification,
                 "recover_read": recover_read,
             },
+        )
+
+    @app.tool()
+    def qbwc_reference_data_v1(company: str, connector_id: str, request_id: str) -> dict:
+        """Read complete QuickBooks customer, vendor, item, account, site, sales-rep, terms and payment-method lists. Read-only; use a new request_id for fresh data."""
+        return tools.call(
+            "qbwc_reference_data_v1",
+            company,
+            {"connector_id": connector_id, "request_id": request_id},
         )
 
     @app.tool()
