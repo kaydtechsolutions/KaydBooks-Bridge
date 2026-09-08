@@ -7,6 +7,7 @@ from .config import BridgeError, Config, strict_keys
 from .onboarding import _write, private_path, read_json, restrict_directory
 
 TOOLS = [
+    "qbwc_report_v1",
     "company_catalog_v1",
     "capture_document_v1",
     "extract_document_v1",

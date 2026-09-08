@@ -14,6 +14,12 @@ from .validation import canonical
 def make_plan(company, payload, txn_id=None, operation="invoice.create"):
     from .qbwc_contracts import contract
 
+    if operation == "report.read":
+        from .qbwc_reports import plan as report_plan
+
+        if txn_id is not None:
+            raise BridgeError("report reads do not accept a transaction selector")
+        return report_plan(company, payload)
     if operation == "inventory-sites.read":
         from .inventory_catalog import plan as site_plan
 
@@ -55,6 +61,10 @@ def make_plan(company, payload, txn_id=None, operation="invoice.create"):
 
 
 def append_request(request, correlation, check):
+    if check.get("operation") == "report.read":
+        from .native_reports import append_queries
+
+        return append_queries(request, correlation, check)
     if check.get("operation") == "inventory-sites.read":
         from .inventory_catalog import append_request as append_sites
 
@@ -91,6 +101,10 @@ def append_request(request, correlation, check):
 
 
 def check_response(response, correlation, check):
+    if check.get("operation") == "report.read":
+        from .native_reports import validate_response as report_response
+
+        return report_response(response, correlation, check)
     if check.get("operation") == "inventory-sites.read":
         from .inventory_catalog import validate_response as site_response
 
@@ -128,7 +142,8 @@ def check_response(response, correlation, check):
 
 
 def current_plan(service, job, connector):
-    company = service.config.authorize(job["actor"], connector.company, "validate")
+    permission = "report" if job["operation"] == "report.read" else "validate"
+    company = service.config.authorize(job["actor"], connector.company, permission)
     service.config.authorize(job["actor"], connector.company, "read")
     if job["connector"] != connector.id:
         raise BridgeError("invoice lookup connector mismatch")
@@ -156,7 +171,8 @@ def invoice_job(
     connector = service.config.connectors.get(connector_id)
     if connector is None:
         raise BridgeError("unknown connector")
-    company = service.config.authorize(actor, connector.company, "validate")
+    permission = "report" if operation == "report.read" else "validate"
+    company = service.config.authorize(actor, connector.company, permission)
     service.config.authorize(actor, connector.company, "read")
     if connector.identity_sha256 == UNCONFIRMED_IDENTITY:
         raise BridgeError("operator-confirmed company binding required")
@@ -219,6 +235,12 @@ def invoice_job(
         ):
             discovery, receipt = check_response(row["response_xml"], row["correlation"], check)
             service._verify_discovery_response(discovery, row, connector)
+            if operation == "report.read":
+                from .qbwc_reports import result_metadata
+
+                result.update(result_metadata(service, row, connector, discovery, receipt))
+                store.event(db, time.time(), actor, None, "qbwc_report_read", {"job": job_id})
+                return result
             if operation == "inventory-sites.read":
                 result.update(operation=operation, transport="qbwc", **receipt)
                 store.event(

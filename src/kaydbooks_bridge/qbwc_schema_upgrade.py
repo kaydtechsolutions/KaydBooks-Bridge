@@ -3,14 +3,14 @@
 from .inventory_catalog import OPERATION
 from .qbwc_contracts import CONTRACTS, OPERATIONS_SQL
 
-READ_OPERATIONS_SQL = OPERATIONS_SQL + ",'" + OPERATION + "'"
+READ_OPERATIONS_SQL = OPERATIONS_SQL + ",'" + OPERATION + "','report.read'"
 
 
 def expand_read_operations(db):
     sql = db.execute(
         "SELECT sql FROM sqlite_master WHERE type='table' AND name='qbwc_invoice_jobs'"
     ).fetchone()[0]
-    if all("'" + operation + "'" in sql for operation in (*CONTRACTS, OPERATION)):
+    if all("'" + operation + "'" in sql for operation in (*CONTRACTS, OPERATION, "report.read")):
         return
     # Other table triggers refer to this table; retain them across the rebuild.
     triggers = db.execute(

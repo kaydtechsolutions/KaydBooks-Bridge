@@ -25,6 +25,11 @@ class Tools:
             from .hermes_qbwc import call
 
             return call(self.bridge, self.token, company, arguments)
+        if name == "qbwc_report_v1":
+            from .qbwc_reports import read
+
+            strict_keys(arguments, {"connector_id", "request_id", "report", "date_to"})
+            return read(self.bridge, self.token, company, **arguments)
         if name in {"batch_preview_v1", "batch_status_v1"}:
             from . import hermes_batches
 
@@ -357,6 +362,37 @@ def server(config_path, token):
             )
         except BridgeError as exc:
             return {"ok": False, "error": str(exc), "action": action}
+
+    @app.tool()
+    def qbwc_report_v1(
+        company: str,
+        connector_id: str,
+        request_id: Annotated[str, Field(pattern=r"^[a-z][a-z0-9_-]{0,63}$")],
+        report: Literal["customer-balances"],
+        date_to: Annotated[str, Field(pattern=r"^\d{4}-\d{2}-\d{2}$")],
+    ) -> dict:
+        """Fresh read-only Customer Balance Summary via Web Connector. Use the exact
+        company alias and connector from company_catalog_v1. date_to is the explicit
+        YYYY-MM-DD as-of date; basis is fixed Accrual, all customers, no filters.
+        Choose a new request_id for a new report. While pending=true, wait for QBWC
+        and repeat the same parameters/id. Never invent balances or use old receipts.
+        Success includes the live verified company_display_name, source time, complete
+        rows and native_totals. Evidence expires after five minutes; expired reads
+        require a new request_id. No SDK, accounting writes, approval or messaging.
+        """
+        try:
+            return tools.call(
+                "qbwc_report_v1",
+                company,
+                {
+                    "connector_id": connector_id,
+                    "request_id": request_id,
+                    "report": report,
+                    "date_to": date_to,
+                },
+            )
+        except BridgeError as exc:
+            return {"ok": False, "error": str(exc)}
 
     @app.tool()
     def native_report_v1(

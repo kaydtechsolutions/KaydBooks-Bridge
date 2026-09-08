@@ -111,6 +111,12 @@ def catalog(config_path, token, company=None):
         }
         for name, value in REPORTS.items()
     }
+    result["qbwc_reports"] = {
+        "tool": "qbwc_report_v1",
+        "supported": ["customer-balances"],
+        "basis": "Accrual",
+        "company_name": "verified in each fresh report response",
+    }
     return result
 
 
