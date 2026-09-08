@@ -1,0 +1,4 @@
+interface:
+  display_name: "KaydBooks Reviewed Data Entry"
+  short_description: "Post reviewed QuickBooks Desktop batches safely through QBWC."
+  default_prompt: "Use $kaydbooks-reviewed-data-entry to validate, dispatch, verify, and report this reviewed QuickBooks Desktop batch."

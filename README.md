@@ -112,6 +112,11 @@ See [PROJECT_STATUS.md](PROJECT_STATUS.md), the [architecture and durable plan](
 [M2 qualification runbook](docs/M2_QUALIFICATION.md), and
 [expanded scope from PR #1](HERMES_INTEGRATION_SCOPE.md).
 
+Codex operators can use the repository's
+[`kaydbooks-reviewed-data-entry`](skills/kaydbooks-reviewed-data-entry/SKILL.md)
+skill for explicitly reviewed, source-ordered QBWC batches with at-most-once writes,
+independent QuickBooks readback, reconciliation, and completion reporting.
+
 ## License
 
 MIT. Includes `qbwc-kit`, copyright 2026 Eren Altuntas; see [LICENSE](LICENSE).
