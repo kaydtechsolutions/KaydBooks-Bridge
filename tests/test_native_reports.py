@@ -211,6 +211,21 @@ def test_financial_report_without_basis_is_rejected(case):
         run(case, alter=alter)
 
 
+@pytest.mark.parametrize(
+    "name,native",
+    [("check-detail", "CheckDetail"), ("deposit-detail", "DepositDetail"), ("journal", "Journal")],
+)
+def test_banking_detail_omits_basis_rejected_by_quickbooks(case, name, native):
+    policy = Config.load(case[0]).companies["company-a"]
+    check = reports.plan(policy, specification(name))
+    request = reports.append_queries(S._discovery_request("1234", "17.0"), "1234", check)
+    query = ET.fromstring(request)[0][-1]
+    assert query.findtext("GeneralDetailReportType") == native
+    assert query.find("ReportBasis") is None
+    with pytest.raises(BridgeError, match="basis"):
+        reports.plan(policy, {**specification(name), "basis": "Cash"})
+
+
 def test_restart_retains_report_time_and_does_not_query_again(case):
     def interrupted(request, path):
         path.write_text(response(request))

@@ -47,6 +47,9 @@ FIXED_ACCRUAL = {
     "payables-aging",
     "job-profitability",
     "time-by-job",
+    "check-detail",
+    "deposit-detail",
+    "journal",
 }
 FIXED_COLUMNS = {"inventory-valuation", "inventory-stock"}
 

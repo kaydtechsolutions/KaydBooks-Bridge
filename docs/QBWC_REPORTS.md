@@ -60,6 +60,12 @@ wrong-company responses and unsupported multicurrency results release no balance
 Closing a session again cannot renew the evidence timestamp. Unsupported report
 types must not be routed to transaction checks or inferred from historical receipts.
 
+Live QuickBooks qualification showed Check Detail, Deposit Detail and Journal
+reject `ReportBasis` with status 3151. Their requests now omit that unsupported
+selector; the returned basis is still checked and preserved. They are advertised
+with fixed accrual behavior on the qualified host. The legacy fixed SDK allowlist
+is kept consistent with the QBWC builder; Hermes continues to use QBWC only.
+
 Request names and XML field ordering follow Intuit's SDK Onscreen Reference:
 [General Summary](https://static.developer.intuit.com/qbSDK-current/common/newosr/qbsdk/json/GeneralSummaryReportQueryRq.json),
 [General Detail](https://static.developer.intuit.com/qbSDK-current/common/newosr/qbsdk/json/GeneralDetailReportQueryRq.json),
@@ -84,3 +90,31 @@ The Linux Hermes host retrieved the same complete response through its SSH/MCP
 launcher, with the company display name verified and native total retained. Posting
 stayed paused, all accounting-attempt counts were unchanged, and database integrity
 passed. Private evidence retains the actual company name, balances and source XML.
+
+### Main-report expansion, 2026-09-08
+
+161 focused tests passed across report framing, all 23 report selectors, explicit
+MCP schemas, queue/restart/duplicate behavior, web catalog, direct-SDK allowlist
+consistency and existing accounting gates. The installed Windows service and the
+existing Linux Hermes SSH/MCP connection both exposed the expanded report catalog.
+Hermes' actual MCP connection retrieved a complete native inventory report.
+
+An authorized real company completed all 21 unfiltered main reports through its
+own identity-bound QBWC connection. Period checks used September 1–8, 2026;
+as-of checks used September 8, 2026. All returned complete typed rows with their
+native basis and totals retained. Check Detail, Deposit Detail and Journal first
+returned status 3151, then passed after the unsupported basis selector was removed.
+This establishes actual native readback, not an operator's visual comparison of
+every QuickBooks report screen. Private evidence retains each request, response,
+result and the initial held checks.
+
+The two filtered customer/vendor balance-detail selectors are implemented and
+synthetic-tested; they require verified per-company entity mappings before that
+company's individual statements can be live-qualified. They are not included in
+the 21/21 unfiltered qualification score. Real-company permissions remain read/report
+only with no posting gates. Accounting-job counts were unchanged, and database
+integrity and audit verification passed for both configured companies.
+
+The original v0.1.0 candidate ZIP remains unchanged. This development report update
+is installed separately; it is not a published release or approval for production
+data entry. See the [plain-language report guide](REPORTS_USER_GUIDE.md).

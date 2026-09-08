@@ -75,7 +75,7 @@ public static class PrivateReadOnlyDiscovery {
   }
   if(kind.InnerText=="OpenInvoices"||kind.InnerText=="UnpaidBillsDetail")expected+="<ReportTxnTypeFilter><TxnTypeFilter>"+(kind.InnerText=="OpenInvoices"?"Invoice":"Bill")+"</TxnTypeFilter></ReportTxnTypeFilter>";
   bool inventory=kind.InnerText=="InventoryValuationSummary"||kind.InnerText=="InventoryStockStatusByItem";
-  bool fixedBasis=inventory||family=="Job"||family=="Time"||Array.IndexOf(new string[]{"CustomerBalanceSummary","VendorBalanceSummary","OpenInvoices","UnpaidBillsDetail"},kind.InnerText)>=0;
+  bool fixedBasis=inventory||family=="Job"||family=="Time"||Array.IndexOf(new string[]{"CustomerBalanceSummary","VendorBalanceSummary","OpenInvoices","UnpaidBillsDetail","CheckDetail","DepositDetail","Journal"},kind.InnerText)>=0;
   if(family=="GeneralSummary"&&!inventory) {
    var grouping=node.SelectSingleNode("SummarizeColumnsBy");
    if(grouping==null||Array.IndexOf(new string[]{"TotalOnly","Month","Quarter","Year"},grouping.InnerText)<0)throw new Exception("Invalid report grouping");
