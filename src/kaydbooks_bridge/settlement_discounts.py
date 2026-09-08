@@ -7,7 +7,10 @@ from .config import BridgeError, strict_keys
 from .invoice_commercial import decimal_evidence
 from .validation import money
 
-ROLES = {"customer": ("customer_discount", "Income"), "supplier": ("supplier_discount", "Expense")}
+ROLES = {
+    "customer": ("customer_discount", {"Income", "OtherExpense"}),
+    "supplier": ("supplier_discount", {"Expense"}),
+}
 
 
 def amount(allocation):
@@ -41,7 +44,7 @@ def check_account(rows, check, kind):
         record = rows.pop()
         if (
             record.get("ListID") != check["binding"]["discount_account"]
-            or record.get("AccountType") != ROLES[kind][1]
+            or record.get("AccountType") not in ROLES[kind][1]
             or record.get("IsActive") != "true"
             or record.get("CurrencyRef")
         ):

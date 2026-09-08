@@ -9,6 +9,9 @@ from .qbwc_posting import enqueue
 from .service import audited
 from .validation import canonical, digest
 
+MAX_BATCH_ENTRIES = 30
+MAX_BATCH_MANIFEST_BYTES = 60000
+
 
 def schema(db):
     db.execute("""CREATE TABLE IF NOT EXISTS hermes_batches (
@@ -61,11 +64,11 @@ def create(bridge, token, company, job_ids):
     config.authorize(actor, company, "validate")
     if (
         not isinstance(job_ids, list)
-        or not 1 <= len(job_ids) <= 10
+        or not 1 <= len(job_ids) <= MAX_BATCH_ENTRIES
         or any(not isinstance(j, str) for j in job_ids)
         or len(set(job_ids)) != len(job_ids)
     ):
-        raise BridgeError("one to ten distinct job IDs required")
+        raise BridgeError(f"one to {MAX_BATCH_ENTRIES} distinct job IDs required")
     rows = []
     for j in job_ids:
         job = bridge.status(token, company, j)
@@ -94,7 +97,7 @@ def create(bridge, token, company, job_ids):
     value_hash = digest(manifest)
     batch_id = digest([actor, value_hash])[:24]
     # Bound previews fit a small number of WhatsApp text chunks; do not silently truncate rows.
-    if len(canonical(manifest)) > 12000:
+    if len(canonical(manifest)) > MAX_BATCH_MANIFEST_BYTES:
         raise BridgeError("batch preview too long; prepare smaller batches")
     with store.transaction() as db:
         schema(db)
@@ -141,7 +144,7 @@ def create(bridge, token, company, job_ids):
 def preview_text(row, manifest):
     parts = [
         f"KB v0.1.0 | {manifest['company']} | Batch {row['id']}",
-        "Review every entry below. Confirmation authorizes these exact entries in the configured sample company.",
+        "Review every entry below. Confirmation authorizes these exact entries in the configured company.",
     ]
     for index, entry in enumerate(manifest["rows"], 1):
         parts.append(

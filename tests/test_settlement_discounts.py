@@ -101,6 +101,16 @@ def test_discount_value_counts_toward_company_and_schedule_limits(case):
     assert module.plan(changed, payload)["context_sha256"] != original
 
 
+def test_customer_discount_accepts_configured_other_expense_account(case):
+    kind, policy, payload, module, _, rows = case
+    if kind != "customer":
+        pytest.skip("customer-only QuickBooks account convention")
+    rows["Account"][-1]["AccountType"] = "OtherExpense"
+    check = module.plan(policy, payload)
+    request = module.append_check(S._discovery_request("1234", "17.0"), "1234", check)
+    module.validate_check(response(request, rows), "1234", check)
+
+
 @pytest.mark.parametrize("change", ["amount", "account", "missing"])
 def test_saved_discount_must_match_exact_requested_amount_and_account(case, change, tmp_path):
     kind, policy, payload, _, receipt, _ = case

@@ -27,6 +27,11 @@ from test_hermes_qbwc import (
 from test_qbwc_journals import Session
 
 
+def test_batch_capacity_covers_thirty_entry_source_batch():
+    assert batches.MAX_BATCH_ENTRIES == 30
+    assert batches.MAX_BATCH_MANIFEST_BYTES >= 18000
+
+
 @pytest.fixture
 def reviewed(journal_case, monkeypatch):
     path, token, payload = journal_case
