@@ -10,10 +10,9 @@ A local bundle can be built with `tools/build_pilot_bundle.py`; it includes the
 Windows wheel, separate Hermes plugin, setup guides and a SHA-256 manifest.
 See [bundle instructions](../integrations/hermes/PILOT_BUNDLE.md). Its clean Windows
 environment installation, module imports, capabilities command and dependency
-consistency check passed. A signed snapshot/isolated restore retained 71 jobs,
-the completed batch confirmation and both provider receipts, with valid audit,
-database integrity and paused state. The restored copy never started a service.
-These checks do not close the outstanding end-to-end interruption qualification.
+consistency check passed. A signed snapshot/isolated restore retained 74 jobs with
+valid audit, database integrity and paused state. The restored service started on an
+isolated port, reported healthy with posting disabled, and shut down cleanly.
 
 ## Where each component runs
 
@@ -101,7 +100,7 @@ For each company, in turn:
 3. Generate and register the reviewed company-specific `.qwc` profile. Use schema 2,
    `access_mode: "bridge-gated"`, `is_read_only: false`, a unique connector name and
    unique stable OwnerID/FileID values. Generate it with
-   `kaydbooks-bridge-qbwc-profile generate-qwc`. Never reuse another company's QWC.
+   `kaydbooks-bridge-qbwc-config generate-qwc`. Never reuse another company's QWC.
    Bridge policy, approval, company binding, pause and posting gates still control
    every accounting write.
 4. In Web Connector, click **Add an Application**, choose that company's QWC file,
