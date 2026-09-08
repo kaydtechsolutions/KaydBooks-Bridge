@@ -784,6 +784,15 @@ class Bridge:
                     ],
                     "audit_valid": store.verify_audit(db),
                 }
+                if db.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='reviewed_batches'"
+                ).fetchone():
+                    result["reviewed_batches"] = [
+                        dict(row)
+                        for row in db.execute(
+                            "SELECT id,state,position,phase,detail,(SELECT count(*) FROM reviewed_results r WHERE r.batch_id=b.id) AS verified_records FROM reviewed_batches b ORDER BY rowid"
+                        )
+                    ]
             store.event(db, self.clock(), actor, job_id, "read", {})
             return result
 

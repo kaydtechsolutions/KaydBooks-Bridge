@@ -13,6 +13,9 @@ OPERATION = "reference-data.read"
 # These queries cover the QuickBooks lists used to resolve the current data-entry
 # batch. Item Listing is represented by every native item subtype.
 QUERIES = (
+    ("names", "OtherName", ("ListID", "Name", "IsActive")),
+    ("names", "Employee", ("ListID", "Name", "IsActive")),
+    ("tax_codes", "SalesTaxCode", ("ListID", "Name", "IsActive", "IsTaxable")),
     ("accounts", "Account", ("ListID", "Name", "FullName", "IsActive", "AccountType", "AccountNumber", "ParentRef", "Sublevel")),
     ("customers", "Customer", ("ListID", "Name", "FullName", "IsActive", "CompanyName", "FirstName", "LastName", "Phone", "Contact", "AltContact", "TermsRef", "SalesRepRef", "ParentRef", "JobStatus")),
     ("vendors", "Vendor", ("ListID", "Name", "IsActive", "CompanyName", "FirstName", "LastName", "Phone", "Contact", "AltContact", "TermsRef")),
@@ -41,7 +44,7 @@ def plan(policy, specification):
     return {
         "operation": OPERATION,
         "context_sha256": digest(
-            {"schema": "reference-data-v1", "policy": company_policy_context(policy)}
+            {"schema": "reference-data-v2", "policy": company_policy_context(policy)}
         ),
     }
 
@@ -87,6 +90,8 @@ def validate_response(response, run, _check):
     ):
         raise BridgeError("complete reference-data response set required")
     catalogs = {
+        "names": [],
+        "tax_codes": [],
         "accounts": [],
         "customers": [],
         "vendors": [],
@@ -127,4 +132,3 @@ def validate_response(response, run, _check):
         "read_only": True,
         "response_sha256": hashlib.sha256(raw).hexdigest(),
     }
-

@@ -272,9 +272,9 @@ def create_staging_app(config_path: str | Path, endpoint_url: str, max_bytes: in
             "mode": "QBWC with explicitly gated sample invoices; production disabled",
         }
 
-    from .qbwc_posting import DurableQBWCPostingService
+    from .reviewed_qbwc import ReviewedQBWCService
 
-    service = DurableQBWCPostingService.from_path(config_path)
+    service = ReviewedQBWCService.from_path(config_path)
     from .web_ui import install
 
     install(app, config_path, endpoint_url)
