@@ -35,3 +35,14 @@ bundles. Previously generated bundles need this explicit allowlist addition. The
 original seven data-entry tools and accounting/confirmation gates are unchanged.
 
 This is an additional report route; the eight-entry v0.1.0 pilot score stays 15/15.
+
+## Qualification
+
+118 focused tests passed, including queue/restart/duplicate callbacks, native total
+preservation, wrong-company and incomplete-response rejection, report permission
+revocation, immutable selectors, stale evidence rejection and explicit MCP schema.
+The installed Windows service completed an actual sample QBWC report on 2026-09-08.
+The Linux Hermes host retrieved the same complete response through its SSH/MCP
+launcher, with the company display name verified and native total retained. Posting
+stayed paused, all accounting-attempt counts were unchanged, and database integrity
+passed. Private evidence retains the actual company name, balances and source XML.
