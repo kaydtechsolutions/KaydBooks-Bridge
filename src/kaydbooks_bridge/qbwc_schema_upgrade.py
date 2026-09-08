@@ -3,7 +3,12 @@
 from .inventory_catalog import OPERATION
 from .qbwc_contracts import CONTRACTS, OPERATIONS_SQL
 
-READ_OPERATIONS_SQL = OPERATIONS_SQL + ",'" + OPERATION + "','report.read','reference-data.read'"
+READ_OPERATIONS_SQL = (
+    OPERATIONS_SQL
+    + ",'"
+    + OPERATION
+    + "','report.read','reference-data.read','batch-preflight.read'"
+)
 
 
 def expand_read_operations(db):
@@ -12,7 +17,13 @@ def expand_read_operations(db):
     ).fetchone()[0]
     if all(
         "'" + operation + "'" in sql
-        for operation in (*CONTRACTS, OPERATION, "report.read", "reference-data.read")
+        for operation in (
+            *CONTRACTS,
+            OPERATION,
+            "report.read",
+            "reference-data.read",
+            "batch-preflight.read",
+        )
     ):
         return
     # Other table triggers refer to this table; retain them across the rebuild.

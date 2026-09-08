@@ -14,6 +14,12 @@ from .validation import canonical
 def make_plan(company, payload, txn_id=None, operation="invoice.create"):
     from .qbwc_contracts import contract
 
+    if operation == "batch-preflight.read":
+        from .batch_preflight import plan as preflight_plan
+
+        if txn_id is not None:
+            raise BridgeError("preflight uses exact reference selectors")
+        return preflight_plan(company, payload)
     if operation == "report.read":
         from .qbwc_reports import plan as report_plan
 
@@ -67,6 +73,10 @@ def make_plan(company, payload, txn_id=None, operation="invoice.create"):
 
 
 def append_request(request, correlation, check):
+    if check.get("operation") == "batch-preflight.read":
+        from .batch_preflight import append_queries
+
+        return append_queries(request, correlation, check)
     if check.get("operation") == "report.read":
         from .native_reports import append_queries
 
@@ -111,6 +121,10 @@ def append_request(request, correlation, check):
 
 
 def check_response(response, correlation, check):
+    if check.get("operation") == "batch-preflight.read":
+        from .batch_preflight import validate_response as preflight_response
+
+        return preflight_response(response, correlation, check)
     if check.get("operation") == "report.read":
         from .native_reports import validate_response as report_response
 
@@ -157,7 +171,9 @@ def check_response(response, correlation, check):
 
 def current_plan(service, job, connector):
     permission = (
-        "report" if job["operation"] in ("report.read", "reference-data.read") else "validate"
+        "report"
+        if job["operation"] in ("report.read", "reference-data.read", "batch-preflight.read")
+        else "validate"
     )
     company = service.config.authorize(job["actor"], connector.company, permission)
     service.config.authorize(job["actor"], connector.company, "read")
@@ -187,7 +203,11 @@ def invoice_job(
     connector = service.config.connectors.get(connector_id)
     if connector is None:
         raise BridgeError("unknown connector")
-    permission = "report" if operation in ("report.read", "reference-data.read") else "validate"
+    permission = (
+        "report"
+        if operation in ("report.read", "reference-data.read", "batch-preflight.read")
+        else "validate"
+    )
     company = service.config.authorize(actor, connector.company, permission)
     service.config.authorize(actor, connector.company, "read")
     if connector.identity_sha256 == UNCONFIRMED_IDENTITY:
@@ -257,10 +277,11 @@ def invoice_job(
                 result.update(result_metadata(service, row, connector, discovery, receipt))
                 store.event(db, time.time(), actor, None, "qbwc_report_read", {"job": job_id})
                 return result
-            if operation == "reference-data.read":
+            if operation in ("reference-data.read", "batch-preflight.read"):
                 from .qbwc_reference_data import result_metadata
 
                 result.update(result_metadata(service, row, connector, discovery, receipt))
+                result["operation"] = operation
                 store.event(
                     db, time.time(), actor, None, "qbwc_reference_data_read", {"job": job_id}
                 )
