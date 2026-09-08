@@ -14,7 +14,13 @@ from .config import BridgeError, Config
 from .customer_payments import append_check, plan, validate_check
 from .direct_sdk import company_lock, discover
 from .payment_evidence import require
-from .payment_receipt import add_request, append_query, validate_receipt, verify_balance_effect
+from .payment_receipt import (
+    add_request,
+    append_query,
+    matching_receipt,
+    validate_receipt,
+    verify_balance_effect,
+)
 from .qbwc import DurableQBWCDiscoveryService
 from .service import Bridge, audited
 from .validation import digest, validate_source
@@ -44,6 +50,8 @@ def check_preflight(response, policy, payload, connector, run, *, recovering=Fal
     collision = root[0][-1]
     if collision.tag != "ReceivePaymentQueryRs" or collision.get("requestID") != run + "999":
         raise BridgeError("uncorrelated payment duplicate query")
+    isolated = ET.Element("QBXML")
+    ET.SubElement(isolated, "QBXMLMsgsRs").append(ET.fromstring(ET.tostring(collision)))
     root[0].remove(collision)
     discovery, balances = validate_check(
         ET.tostring(root), run, plan(policy, payload), recovering=recovering or len(collision) > 0
@@ -56,9 +64,7 @@ def check_preflight(response, policy, payload, connector, run, *, recovering=Fal
         ("500", "Warn"),
     ):
         return None, balances
-    isolated = ET.Element("QBXML")
-    ET.SubElement(isolated, "QBXMLMsgsRs").append(collision)
-    return validate_receipt(ET.tostring(isolated), policy, payload, run + "999"), balances
+    return matching_receipt(ET.tostring(isolated), policy, payload, run + "999"), balances
 
 
 def windows_exchange(request, write, folder, approve):

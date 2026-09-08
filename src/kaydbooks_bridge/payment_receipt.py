@@ -211,6 +211,40 @@ def validate_receipt(xml, policy, payload, run, *, operation="ReceivePaymentQuer
     }
 
 
+def matching_receipt(xml, policy, payload, run):
+    """Select one exact payment from a RefNumber query that may return sibling deposit legs."""
+    root = fromstring(xml)
+    if (
+        root.tag != "QBXML"
+        or len(root) != 1
+        or root[0].tag != "QBXMLMsgsRs"
+        or len(root[0]) != 1
+    ):
+        raise BridgeError("invalid payment duplicate response envelope")
+    response = root[0][0]
+    if response.tag != "ReceivePaymentQueryRs" or response.get("requestID") != run:
+        raise BridgeError("uncorrelated payment duplicate query")
+    if not len(response):
+        return None
+    matches = []
+    for record in list(response):
+        isolated = ET.Element("QBXML")
+        messages = ET.SubElement(isolated, "QBXMLMsgsRs")
+        selected = ET.SubElement(
+            messages,
+            "ReceivePaymentQueryRs",
+            {key: value for key, value in response.attrib.items()},
+        )
+        selected.append(record)
+        try:
+            matches.append(validate_receipt(ET.tostring(isolated), policy, payload, run))
+        except BridgeError:
+            continue
+    if len(matches) > 1:
+        raise BridgeError("multiple exact saved payments share this reference and deposit")
+    return matches[0] if matches else None
+
+
 def validate_lookup(xml, run, policy, payload, txn_id):
     from .customer_payments import validate_check
 

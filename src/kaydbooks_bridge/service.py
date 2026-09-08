@@ -21,6 +21,13 @@ SURFACES = frozenset(
 )
 
 
+def transaction_business_key(operation, payload):
+    key = [operation, payload["ref_number"].casefold()]
+    if operation == "customer-payment.create":
+        key.append(payload["deposit_id"])
+    return canonical(key)
+
+
 def validate_payload(operation, payload, policy):
     if operation == "check.create":
         from .checks import validate_payload as validate_check
@@ -210,7 +217,10 @@ class Bridge:
             {"operation": envelope["operation"], "payload": payload, "source": source}
         )
         source_key = canonical([source["namespace"], source["reference"]])
-        business_key = canonical([envelope["operation"], payload["ref_number"].casefold()])
+        business_key = transaction_business_key(envelope["operation"], payload)
+        # One paper receipt may represent separate QuickBooks payments deposited through
+        # different cashier accounts. Keep the visible QuickBooks reference unchanged,
+        # while making each deposit leg a distinct, idempotent business transaction.
         if envelope["operation"] == "master.change":
             business_key = canonical(
                 [

@@ -12,7 +12,9 @@ import pytest
 from kaydbooks_bridge.config import BridgeError, Config
 from kaydbooks_bridge.customer_payments import append_check, plan, validate_check, validate_payload
 from kaydbooks_bridge.direct_sdk import discover
+from kaydbooks_bridge.payment_receipt import append_query, matching_receipt
 from kaydbooks_bridge.qbwc import DurableQBWCDiscoveryService as S
+from kaydbooks_bridge.service import transaction_business_key
 from qbwc_kit.testing import FakeQuickBooks
 from test_direct_sdk import direct  # noqa: F401
 from test_qbwc_discovery import (  # noqa: F401
@@ -121,6 +123,45 @@ def run(case, **kwargs):
 def test_partial_allocation_native_read_restarts_without_requery(payment_case):
     assert run(payment_case, exchange=exchange())["balances"]["invoice-id"]["balance"] == "10.00"
     assert run(payment_case, exchange=lambda *_: pytest.fail("duplicate IO"))["state"] == "verified"
+
+
+def test_same_reference_is_distinct_for_different_payment_deposits(payment_case):
+    _, _, payload = payment_case
+    other = {**payload, "deposit_id": "edahab"}
+    assert transaction_business_key("customer-payment.create", payload) != transaction_business_key(
+        "customer-payment.create", other
+    )
+    assert transaction_business_key("invoice.create", payload) == transaction_business_key(
+        "invoice.create", other
+    )
+
+
+def test_reference_lookup_selects_exact_deposit_leg(payment_case):
+    path, _, payload = payment_case
+    policy = Config.load(path).companies["company-a"]
+    exact = {
+        "TxnID": "payment-id",
+        "EditSequence": "1234",
+        "CustomerRef": {"ListID": "customer-id"},
+        "ARAccountRef": {"ListID": "ar-id"},
+        "TxnDate": payload["txn_date"],
+        "RefNumber": payload["ref_number"],
+        "TotalAmount": "5.00",
+        "PaymentMethodRef": {"ListID": "method-id"},
+        "DepositToAccountRef": {"ListID": "bank-id"},
+        "UnusedPayment": "0.00",
+        "UnusedCredits": "0.00",
+        "AppliedToTxnRet": {
+            "TxnID": "invoice-id",
+            "TxnType": "Invoice",
+            "Amount": "5.00",
+        },
+    }
+    sibling = {**exact, "TxnID": "other-payment", "DepositToAccountRef": {"ListID": "other"}}
+    base = '<QBXML><QBXMLMsgsRq onError="stopOnError" /></QBXML>'
+    request = append_query(base, "1234", ref_number=payload["ref_number"])
+    xml = response(request, {"ReceivePayment": [sibling, exact]})
+    assert matching_receipt(xml, policy, payload, "1234")["txn_id"] == "payment-id"
 
 
 @pytest.mark.parametrize(
