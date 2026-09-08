@@ -111,10 +111,14 @@ def catalog(config_path, token, company=None):
         }
         for name, value in REPORTS.items()
     }
+    from .qbwc_reports import CATEGORIES
+
     result["qbwc_reports"] = {
         "tool": "qbwc_report_v1",
-        "supported": ["customer-balances"],
-        "basis": "Accrual",
+        "supported": list(REPORTS),
+        "categories": CATEGORIES,
+        "default_basis": "Accrual",
+        "parameters": "See reports for date_mode, fixed_accrual and fixed_columns. Statements require entity_list_id.",
         "company_name": "verified in each fresh report response",
     }
     return result

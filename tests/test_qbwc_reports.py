@@ -33,7 +33,7 @@ def request(path, token, **overrides):
     return read(Bridge(path), token, "company-a", **args)
 
 
-def exchange(path, *, company=None, alter=None):
+def exchange(path, *, company=None, alter=None, native_type="CustomerBalanceSummary"):
     svc = S.from_path(path)
     ticket, _ = authenticate(svc)
     xml = call(
@@ -46,7 +46,7 @@ def exchange(path, *, company=None, alter=None):
         qbXMLMajorVers="17",
         qbXMLMinorVers="0",
     )
-    assert "CustomerBalanceSummary" in xml
+    assert native_type in xml
     assert not any(op in xml for op in ("AddRq", "ModRq", "DelRq"))
     result = response(xml, **({"company": company} if company else {}), alter=alter)
     code = receive(svc, ticket, result)
@@ -154,5 +154,66 @@ def test_mcp_report_schema_is_explicit(case):
     tools = asyncio.run(app.list_tools())
     schema = next(t.inputSchema for t in tools if t.name == "qbwc_report_v1")
     assert set(schema["required"]) == {"company", "connector_id", "request_id", "report", "date_to"}
-    assert schema["properties"]["report"]["const"] == "customer-balances"
+    from kaydbooks_bridge.native_reports import REPORTS
+
+    assert set(schema["properties"]["report"]["enum"]) == set(REPORTS)
     assert schema["properties"]["date_to"]["pattern"]
+
+
+def test_all_main_reports_cross_qbwc_queue_and_readback(case):
+    from kaydbooks_bridge.native_reports import REPORTS
+    from test_native_reports import specification
+
+    path, token = case
+    for index, (name, (_, native, _)) in enumerate(REPORTS.items()):
+        args = {**specification(name), "request_id": f"report-{index}"}
+        assert request(path, token, **args)["pending"]
+        _, _, code = exchange(path, native_type=native)
+        assert code == 100
+        result = request(path, token, **args)
+        assert result["report"]["report"] == name
+        assert result["report"]["complete"] is True
+        assert result["report"]["native_totals"][0]["cells"]["2"]["decimal"] == "25.00"
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"report": "profit-loss"},
+        {"report": "customer-balances", "date_from": "2026-01-01"},
+        {"report": "profit-loss", "date_from": "2026-10-01"},
+        {"report": "customer-balances", "basis": "Cash"},
+        {"report": "customer-statement", "date_from": "2026-01-01"},
+        {"report": "inventory-stock", "columns_by": "Month"},
+        {"report": "time-by-job", "date_from": "2026-01-01", "basis": "Cash"},
+        {"report": "job-profitability", "date_from": "2026-01-01", "columns_by": "Month"},
+        {"report": "sales-tax-liability"},
+    ],
+)
+def test_report_specific_required_fields_and_unsupported_options(case, overrides):
+    with pytest.raises(BridgeError):
+        request(*case, **overrides)
+
+
+def test_period_filters_and_cash_basis_are_immutable_and_echoed(case):
+    args = {
+        "report": "sales-customers",
+        "date_from": "2026-01-01",
+        "basis": "Cash",
+        "entity_list_id": "customer-1",
+        "columns_by": "Month",
+    }
+    request(*case, **args)
+    with pytest.raises(BridgeError, match="immutable"):
+        request(*case, **{**args, "basis": "Accrual"})
+
+    def alter(root):
+        root.find(".//ReportBasis").text = "Cash"
+        root.find(".//ReportSubtitle").text = "January 1, 2026 - September 7, 2026"
+
+    _, _, code = exchange(case[0], native_type="SalesByCustomerSummary", alter=alter)
+    assert code == 100
+    result = request(*case, **args)
+    assert result["report"]["basis"] == "Cash"
+    assert result["report"]["date_evidence"]["native_start_date"] == "2026-01-01"
+    assert result["report"]["filters"]["entity_list_id"] == "customer-1"

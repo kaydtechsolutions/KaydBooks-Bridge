@@ -245,7 +245,7 @@ def test_real_mcp_stdio_transport_without_model_calls(setup):
                 catalog = await session.call_tool("company_catalog_v1", {"company": "company-a"})
                 assert not catalog.isError
                 assert (
-                    len(names) == 42
+                    len(names) == 43
                     and {
                         "status_v1",
                         "batch_preview_v1",
@@ -254,6 +254,7 @@ def test_real_mcp_stdio_transport_without_model_calls(setup):
                         "revise_document_v1",
                         "table_intake_v1",
                         "native_report_v1",
+                        "qbwc_report_v1",
                         "extract_document_v1",
                         "prepare_extraction_v1",
                         "master_lookup_v1",

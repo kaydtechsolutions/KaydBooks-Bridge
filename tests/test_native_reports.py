@@ -188,6 +188,29 @@ def test_empty_native_report_is_complete_without_inventing_zero(case):
     assert report["rows"] == [] and report["native_totals"] == [] and report["complete"]
 
 
+@pytest.mark.parametrize("name", ["job-profitability", "time-by-job"])
+@pytest.mark.parametrize("missing", [False, True])
+def test_job_time_native_none_basis_is_preserved(case, name, missing):
+    def alter(root):
+        ret = root.find(".//ReportRet")
+        if missing:
+            ret.remove(ret.find("ReportBasis"))
+        else:
+            ret.find("ReportBasis").text = "None"
+
+    result = run(case, specification(name), alter=alter)
+    assert result["report"]["basis"] == "None"
+
+
+def test_financial_report_without_basis_is_rejected(case):
+    def alter(root):
+        ret = root.find(".//ReportRet")
+        ret.remove(ret.find("ReportBasis"))
+
+    with pytest.raises(BridgeError, match="validation"):
+        run(case, alter=alter)
+
+
 def test_restart_retains_report_time_and_does_not_query_again(case):
     def interrupted(request, path):
         path.write_text(response(request))

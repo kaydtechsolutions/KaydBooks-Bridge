@@ -1,10 +1,10 @@
-# Customer balances through Web Connector
+# Main reports through Web Connector
 
-`qbwc_report_v1` exposes a fresh, read-only Customer Balance Summary to Hermes.
+`qbwc_report_v1` exposes 23 fixed, read-only QuickBooks reports to Hermes.
 It uses the shared QBWC read queue and requires the assigned company's `read` and
 `report` permissions. It never uses the direct SDK, posts entries or sends messages.
 
-All five fields are required:
+The original five fields remain required and compatible:
 
 ```json
 {
@@ -16,8 +16,39 @@ All five fields are required:
 }
 ```
 
-Use company and connector aliases from `company_catalog_v1`. Dates are explicit
-as-of dates; the report uses accrual basis and all customers, without optional filters.
+Use company and connector aliases from `company_catalog_v1`. Its `reports` and
+`qbwc_reports.categories` describe the exact supported names and date modes.
+As-of reports require `date_to` and omit `date_from`. Period reports require both.
+`basis` defaults to `Accrual`; use `Cash` only when `fixed_accrual` is false.
+Job/time reports do not accept a native basis selector and may return `None`;
+that native value is preserved, never relabeled as cash or accrual.
+Optional `entity_list_id` and `item_list_id` must be exact verified QuickBooks IDs.
+Customer/vendor statements require `entity_list_id`; do not invent mappings.
+Omit filters for all entities. `columns_by` accepts TotalOnly/Month/Quarter/Year
+only on summary reports without fixed columns. Null optional fields are omitted.
+
+| QuickBooks category | Main report names |
+| --- | --- |
+| 11 Company & Financial | `profit-loss`, `balance-sheet` |
+| 12 Customers & Receivables | `customer-balances`, `receivables-aging`, `unpaid-invoices`, `customer-statement` |
+| 13 Sales | `sales-customers`, `sales-items` |
+| 14 Jobs, Time & Mileage | `job-profitability`, `time-by-job` |
+| 15 Vendors & Payables | `vendor-balances`, `payables-aging`, `unpaid-bills`, `vendor-statement` |
+| 16 Purchases | `purchases-vendors`, `purchases-items` |
+| 17 Inventory | `inventory-valuation`, `inventory-stock` |
+| 19 Banking | `check-detail`, `deposit-detail` |
+| 20 Accountant & Taxes | `trial-balance`, `general-ledger`, `journal` |
+
+This is the main-report set, not every submenu entry. Mileage, reconciliation,
+tax-specific reports, payroll and custom reports are not part of this allowlist.
+Statement aliases retrieve native balance detail; they do not produce or send
+customer-facing statement documents.
+
+For example, ask Hermes: "Get ISKAASHI's Profit & Loss from September 1 to
+September 8, 2026, accrual basis. Use fresh QuickBooks data." The equivalent
+report parameters add `"date_from": "2026-09-01"` to the original example and
+change `report` to `profit-loss`, selecting the intended company's aliases.
+
 Repeat identical parameters while `pending=true`, after Web Connector runs. Reuse
 that request ID only for the same request. A new fresh snapshot needs a new ID.
 If another read is queued, wait for it; do not clear the queue or request a write.
@@ -28,6 +59,13 @@ immutable read-start time. Responses older than five minutes, incomplete reports
 wrong-company responses and unsupported multicurrency results release no balances.
 Closing a session again cannot renew the evidence timestamp. Unsupported report
 types must not be routed to transaction checks or inferred from historical receipts.
+
+Request names and XML field ordering follow Intuit's SDK Onscreen Reference:
+[General Summary](https://static.developer.intuit.com/qbSDK-current/common/newosr/qbsdk/json/GeneralSummaryReportQueryRq.json),
+[General Detail](https://static.developer.intuit.com/qbSDK-current/common/newosr/qbsdk/json/GeneralDetailReportQueryRq.json),
+[Job](https://static.developer.intuit.com/qbSDK-current/common/newosr/qbsdk/json/JobReportQueryRq.json),
+[Time](https://static.developer.intuit.com/qbSDK-current/common/newosr/qbsdk/json/TimeReportQueryRq.json),
+[Aging](https://static.developer.intuit.com/qbSDK-current/common/newosr/qbsdk/json/AgingReportQueryRq.json).
 
 Add `qbwc_report_v1` to the named Hermes profile's MCP tool allowlist and reconnect
 that profile after deploying the Bridge update. `setup hermes` includes it in new

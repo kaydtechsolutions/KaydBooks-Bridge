@@ -52,8 +52,8 @@ public static class PrivateReadOnlyDiscovery {
  }
  public static void ReportQuery(System.Xml.XmlNode node,string correlation) {
   string family=node.Name.Replace("ReportQueryRq","");
-  if(Array.IndexOf(new string[]{"GeneralSummary","GeneralDetail","Aging"},family)<0 || node.Attributes.Count!=1 || node.Attributes["requestID"]==null || node.Attributes["requestID"].Value!=correlation+"4")throw new Exception("Fixed report query required");
-  string allowed=family=="GeneralSummary"?"ProfitAndLossStandard,BalanceSheetStandard,TrialBalance,CustomerBalanceSummary,VendorBalanceSummary,InventoryValuationSummary,InventoryStockStatusByItem,SalesByCustomerSummary,SalesByItemSummary,PurchaseByVendorSummary,PurchaseByItemSummary":family=="GeneralDetail"?"OpenInvoices,UnpaidBillsDetail,CustomerBalanceDetail,VendorBalanceDetail,GeneralLedger":"ARAgingSummary,APAgingSummary";
+  if(Array.IndexOf(new string[]{"GeneralSummary","GeneralDetail","Aging","Job","Time"},family)<0 || node.Attributes.Count!=1 || node.Attributes["requestID"]==null || node.Attributes["requestID"].Value!=correlation+"4")throw new Exception("Fixed report query required");
+  string allowed=family=="GeneralSummary"?"ProfitAndLossStandard,BalanceSheetStandard,TrialBalance,CustomerBalanceSummary,VendorBalanceSummary,InventoryValuationSummary,InventoryStockStatusByItem,SalesByCustomerSummary,SalesByItemSummary,PurchaseByVendorSummary,PurchaseByItemSummary":family=="GeneralDetail"?"OpenInvoices,UnpaidBillsDetail,CustomerBalanceDetail,VendorBalanceDetail,GeneralLedger,CheckDetail,DepositDetail,Journal":family=="Job"?"JobProfitabilitySummary":family=="Time"?"TimeByJobSummary":"ARAgingSummary,APAgingSummary";
   var kind=node.SelectSingleNode(family+"ReportType");
   if(kind==null||Array.IndexOf(allowed.Split(','),kind.InnerText)<0)throw new Exception("Report type unavailable");
   string expected="<"+family+"ReportType>"+kind.InnerText+"</"+family+"ReportType><DisplayReport>false</DisplayReport><ReportPeriod>";
@@ -75,7 +75,7 @@ public static class PrivateReadOnlyDiscovery {
   }
   if(kind.InnerText=="OpenInvoices"||kind.InnerText=="UnpaidBillsDetail")expected+="<ReportTxnTypeFilter><TxnTypeFilter>"+(kind.InnerText=="OpenInvoices"?"Invoice":"Bill")+"</TxnTypeFilter></ReportTxnTypeFilter>";
   bool inventory=kind.InnerText=="InventoryValuationSummary"||kind.InnerText=="InventoryStockStatusByItem";
-  bool fixedBasis=inventory||Array.IndexOf(new string[]{"CustomerBalanceSummary","VendorBalanceSummary","OpenInvoices","UnpaidBillsDetail"},kind.InnerText)>=0;
+  bool fixedBasis=inventory||family=="Job"||family=="Time"||Array.IndexOf(new string[]{"CustomerBalanceSummary","VendorBalanceSummary","OpenInvoices","UnpaidBillsDetail"},kind.InnerText)>=0;
   if(family=="GeneralSummary"&&!inventory) {
    var grouping=node.SelectSingleNode("SummarizeColumnsBy");
    if(grouping==null||Array.IndexOf(new string[]{"TotalOnly","Month","Quarter","Year"},grouping.InnerText)<0)throw new Exception("Invalid report grouping");

@@ -30,6 +30,11 @@ REPORTS = {
     "general-ledger": ("GeneralDetail", "GeneralLedger", "period"),
     "receivables-aging": ("Aging", "ARAgingSummary", "as-of"),
     "payables-aging": ("Aging", "APAgingSummary", "as-of"),
+    "job-profitability": ("Job", "JobProfitabilitySummary", "period"),
+    "time-by-job": ("Time", "TimeByJobSummary", "period"),
+    "check-detail": ("GeneralDetail", "CheckDetail", "period"),
+    "deposit-detail": ("GeneralDetail", "DepositDetail", "period"),
+    "journal": ("GeneralDetail", "Journal", "period"),
 }
 FIXED_ACCRUAL = {
     "customer-balances",
@@ -40,6 +45,8 @@ FIXED_ACCRUAL = {
     "inventory-stock",
     "receivables-aging",
     "payables-aging",
+    "job-profitability",
+    "time-by-job",
 }
 FIXED_COLUMNS = {"inventory-valuation", "inventory-stock"}
 
@@ -310,8 +317,12 @@ def validate_response(response, run, check):
     if preference.findtext("MultiCurrencyPreferences/IsMultiCurrencyOn") != "false":
         raise BridgeError("native multi-currency report qualification is not yet available")
     report = one(answer, "ReportRet")
-    basis = one(report, "ReportBasis").text
-    if basis != check["specification"]["basis"]:
+    basis_nodes = report.findall("ReportBasis")
+    if len(basis_nodes) > 1:
+        raise BridgeError("native report basis duplicated")
+    basis = basis_nodes[0].text if basis_nodes else "None"
+    native_nonfinancial = check["family"] in {"Job", "Time"} and basis == "None"
+    if basis != check["specification"]["basis"] and not native_nonfinancial:
         raise BridgeError("native report basis differs from request")
     result = {
         **report_table(report),

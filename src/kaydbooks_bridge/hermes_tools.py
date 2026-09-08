@@ -10,6 +10,7 @@ from .config import BridgeError, Config, strict_keys
 from .direct_sdk import discover
 from .documents import capture, prepare
 from .qbwc import DurableQBWCDiscoveryService
+from .qbwc_reports import ReportName
 from .service import Bridge
 
 
@@ -28,7 +29,11 @@ class Tools:
         if name == "qbwc_report_v1":
             from .qbwc_reports import read
 
-            strict_keys(arguments, {"connector_id", "request_id", "report", "date_to"})
+            strict_keys(
+                arguments,
+                {"connector_id", "request_id", "report", "date_to"},
+                {"date_from", "basis", "entity_list_id", "item_list_id", "columns_by"},
+            )
             return read(self.bridge, self.token, company, **arguments)
         if name in {"batch_preview_v1", "batch_status_v1"}:
             from . import hermes_batches
@@ -368,12 +373,22 @@ def server(config_path, token):
         company: str,
         connector_id: str,
         request_id: Annotated[str, Field(pattern=r"^[a-z][a-z0-9_-]{0,63}$")],
-        report: Literal["customer-balances"],
+        report: ReportName,
         date_to: Annotated[str, Field(pattern=r"^\d{4}-\d{2}-\d{2}$")],
+        date_from: Annotated[str, Field(pattern=r"^\d{4}-\d{2}-\d{2}$")] | None = None,
+        basis: Literal["Accrual", "Cash"] = "Accrual",
+        entity_list_id: Annotated[str, Field(pattern=r"^[A-Za-z0-9-]{1,31}$")] | None = None,
+        item_list_id: Annotated[str, Field(pattern=r"^[A-Za-z0-9-]{1,31}$")] | None = None,
+        columns_by: Literal["TotalOnly", "Month", "Quarter", "Year"] | None = None,
     ) -> dict:
-        """Fresh read-only Customer Balance Summary via Web Connector. Use the exact
-        company alias and connector from company_catalog_v1. date_to is the explicit
-        YYYY-MM-DD as-of date; basis is fixed Accrual, all customers, no filters.
+        """Fresh read-only QuickBooks reports via Web Connector. First use
+        company_catalog_v1 for exact company/connector aliases and each report's
+        date_mode and fixed_accrual flags. date_to is required; date_from is REQUIRED
+        for period reports and MUST be omitted for as-of reports. Dates are YYYY-MM-DD.
+        Default basis Accrual; Cash only where fixed_accrual=false. Customer/vendor
+        statements REQUIRE entity_list_id from a verified mapping; never invent IDs.
+        Omit filters to include all entities. columns_by only for GeneralSummary
+        reports without fixed_columns. Jobs/time use fixed native basis; no tax reports.
         Choose a new request_id for a new report. While pending=true, wait for QBWC
         and repeat the same parameters/id. Never invent balances or use old receipts.
         Success includes the live verified company_display_name, source time, complete
@@ -389,6 +404,11 @@ def server(config_path, token):
                     "request_id": request_id,
                     "report": report,
                     "date_to": date_to,
+                    "date_from": date_from,
+                    "basis": basis,
+                    "entity_list_id": entity_list_id,
+                    "item_list_id": item_list_id,
+                    "columns_by": columns_by,
                 },
             )
         except BridgeError as exc:

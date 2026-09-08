@@ -19,7 +19,7 @@ All calls require an explicit company. Config and grants are rechecked per opera
 | Tool v1 | Operation |
 | --- | --- |
 | company_catalog_v1 | Read authorized company mappings and supported entry forms |
-| qbwc_report_v1 | Fresh Customer Balance Summary through QBWC; explicit company, connector, request ID, report and as-of date; report/read permissions |
+| qbwc_report_v1 | 23 fixed reports through QBWC; explicit company, connector, request ID, dates and typed options; report/read permissions; see QBWC_REPORTS.md |
 | qbwc_entry_v1 | Eight selected QBWC check/prepare/validate/preview/submit/dispatch/recover/status actions |
 | batch_preview_v1 | Freeze exact source-bound validated jobs for separate operator review |
 | batch_status_v1 | Read immutable batch progress and provider acknowledgments |
