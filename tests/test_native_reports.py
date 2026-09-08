@@ -40,6 +40,37 @@ from test_qbwc_discovery import (  # noqa: F401
 )
 
 
+@pytest.mark.parametrize(
+    "header,first,last",
+    [
+        ("August 2026", "2026-08-01", "2026-08-31"),
+        ("February 2028", "2028-02-01", "2028-02-29"),
+        ("February 2026", "2026-02-01", "2026-02-28"),
+        ("December 2026", "2026-12-01", "2026-12-31"),
+    ],
+)
+def test_full_month_header_preserves_exact_calendar_boundaries(header, first, last):
+    check = {"specification": {"date_from": first, "date_to": last}}
+    result = reports.date_evidence(header, check)
+    assert result["native_start_date"] == first
+    assert result["native_end_date"] == last
+    assert result["start_date_evidence"] == "native-header"
+
+
+@pytest.mark.parametrize(
+    "spec",
+    [
+        {"date_from": "2026-08-02", "date_to": "2026-08-31"},
+        {"date_from": "2026-08-01", "date_to": "2026-08-30"},
+        {"date_from": "2025-08-01", "date_to": "2025-08-31"},
+        {"date_to": "2026-08-31"},
+    ],
+)
+def test_full_month_header_rejects_different_dates_or_asof_request(spec):
+    with pytest.raises(BridgeError):
+        reports.date_evidence("August 2026", {"specification": spec})
+
+
 @pytest.fixture
 def case(direct):
     path, token = direct

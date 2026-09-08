@@ -60,6 +60,12 @@ wrong-company responses and unsupported multicurrency results release no balance
 Closing a session again cannot renew the evidence timestamp. Unsupported report
 types must not be routed to transaction checks or inferred from historical receipts.
 
+Full calendar-month headings such as `August 2026` are expanded to the first and
+last calendar dates, including leap years, and both boundaries must match the
+requested period. Such a heading cannot validate an as-of request or a partial
+month. Original native heading text remains in the returned report. A prior held
+request stays held; use a new request ID for a fresh read after a validator update.
+
 Live QuickBooks qualification showed Check Detail, Deposit Detail and Journal
 reject `ReportBasis` with status 3151. Their requests now omit that unsupported
 selector; the returned basis is still checked and preserved. They are advertised

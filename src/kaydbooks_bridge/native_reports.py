@@ -2,6 +2,7 @@
 
 import hashlib
 import re
+from calendar import monthrange
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from xml.etree import ElementTree as ET
@@ -253,6 +254,21 @@ def date_evidence(subtitle, check):
         "November",
         "December",
     ]
+    # A complete calendar month is rendered as e.g. "August 2026" by QuickBooks.
+    # Expand only that exact shape and verify both boundaries below. It cannot
+    # establish an as-of date or an arbitrary subperiod within the month.
+    full_month = re.fullmatch(r"(" + "|".join(months) + r") ([0-9]{4})", subtitle or "")
+    if full_month:
+        month, year = full_month.groups()
+        spec = check["specification"]
+        if "date_from" not in spec:
+            raise BridgeError("native full-month header requires an exact requested period")
+        try:
+            last_day = monthrange(int(year), months.index(month) + 1)[1]
+            date(int(year), months.index(month) + 1, last_day)
+        except ValueError as exc:
+            raise BridgeError("invalid native report month header") from exc
+        subtitle = f"{month} 1, {year} - {month} {last_day}, {year}"
     pattern = r"(" + "|".join(months) + r") ([1-9][0-9]?)(?:, ([0-9]{4}))?"
     # QuickBooks abbreviates the end month for a period within one month, e.g.
     # September 1 - 7, 2026. Expand only this exact native header shape.
