@@ -5,10 +5,20 @@ import hashlib
 import json
 import os
 import re
+import secrets
 import uuid
 from pathlib import Path
 
-from .config import PERMISSIONS, BridgeError, Config, identifier, outside_repository, strict_keys
+from .config import (
+    ALL_PERMISSIONS,
+    PERMISSIONS,
+    PRODUCTION_PERMISSIONS,
+    BridgeError,
+    Config,
+    identifier,
+    outside_repository,
+    strict_keys,
+)
 from .direct_sdk import company_lock
 from .service import Bridge, audited
 from .validation import canonical
@@ -34,13 +44,13 @@ def permissions_for(*, roles=None, permissions=None, deny=None):
         return set(values)
 
     if permissions is not None:
-        grants = distinct(permissions, PERMISSIONS)
+        grants = distinct(permissions, ALL_PERMISSIONS)
     elif roles is not None:
         selected = distinct(roles, ROLES)
         grants = set().union(*(ROLES[r] for r in selected))
     else:
         grants = {"read"}
-    return sorted(grants - distinct([] if deny is None else deny, PERMISSIONS))
+    return sorted(grants - distinct([] if deny is None else deny, ALL_PERMISSIONS))
 
 
 def revision(content):
@@ -63,6 +73,12 @@ def inspect(bridge, token, company):
             "role_presets": {name: sorted(values) for name, values in ROLES.items()},
             "allow_self_approval": policy.allow_self_approval,
             "new_user_default": "read-only-company-permissions",
+            "explicit_production_permissions": sorted(PRODUCTION_PERMISSIONS),
+            "disabled_users": sorted(
+                name
+                for name, principal in config.principals.items()
+                if company in principal["companies"] and principal.get("disabled", False)
+            ),
             "owner_access": {
                 "active": config.owner_override(actor, company, bridge.clock()),
                 "expires_at": config.owner_access.get(company, {}).get("expires_at"),
@@ -71,19 +87,30 @@ def inspect(bridge, token, company):
         }
 
 
-def _change(bridge, token, company, expected_revision, mutate, description):
+def _change(bridge, token, company, expected_revision, mutate, description, *, guard=None):
     path = outside_repository(Path(bridge.config_path))
     if not isinstance(expected_revision, str) or not re.fullmatch(
         r"[a-f0-9]{64}", expected_revision
     ):
         raise BridgeError("reviewed configuration revision required")
     with company_lock(path.with_suffix(path.suffix + ".access.lock")):
-        _, actor, _, store = bridge._context(token, company, "manage-users")
+        config, actor, _, store = bridge._context(token, company, "manage-users")
         old = path.read_bytes()
         if revision(old) != expected_revision:
             raise BridgeError("configuration changed; review current access before updating")
+        if guard is not None:
+            guard(config, actor)
+        metadata = path.stat()
         data = json.loads(old)
         previous = mutate(data)
+        if "permissions" in description:
+            changed = set(previous.get("previous_permissions") or []) ^ set(
+                description["permissions"]
+            )
+            if changed & PRODUCTION_PERMISSIONS:
+                # Checked under the same config lock as the replacement. A legacy
+                # company administrator cannot grant itself production authority.
+                config.authorize(actor, company, "manage-production", at=bridge.clock())
         description = {**description, **previous}
         value = (canonical(data) + "\n").encode()
         change = uuid.uuid4().hex
@@ -93,6 +120,9 @@ def _change(bridge, token, company, expected_revision, mutate, description):
                 os.chmod(temporary, 0o600)
                 f.write(value)
                 f.flush()
+                if os.name != "nt":
+                    os.fchown(f.fileno(), metadata.st_uid, metadata.st_gid)
+                    os.fchmod(f.fileno(), metadata.st_mode & 0o777)
                 os.fsync(f.fileno())
             candidate = Config.load(temporary)
             if candidate.root != Config.load(path).root:
@@ -116,6 +146,12 @@ def _change(bridge, token, company, expected_revision, mutate, description):
             if path.read_bytes() != old:
                 raise BridgeError("configuration changed during access update")
             os.replace(temporary, path)
+            if os.name != "nt":
+                directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+                try:
+                    os.fsync(directory)
+                finally:
+                    os.close(directory)
             with store.transaction() as db:
                 store.event(
                     db,
@@ -129,6 +165,79 @@ def _change(bridge, token, company, expected_revision, mutate, description):
             if temporary.exists():
                 temporary.unlink()
     return {"company": company, "updated": True, "config_revision": revision(value), **description}
+
+
+def _principal_admin(config, actor, company, principal, now):
+    """Global credential/disable changes need authority in every assigned company."""
+    user = config.principals.get(principal)
+    if user is None or company not in user["companies"]:
+        raise BridgeError("assigned principal required")
+    for assigned, permissions in user["companies"].items():
+        config.authorize(actor, assigned, "manage-users", at=now)
+        if set(permissions) & PRODUCTION_PERMISSIONS:
+            config.authorize(actor, assigned, "manage-production", at=now)
+
+
+@audited
+def rotate_credential(bridge, token, company, principal, expected_revision, token_env):
+    """Switch to a separately provisioned secret reference; never accept a secret value."""
+    identifier(principal)
+    if not isinstance(token_env, str) or not re.fullmatch(r"KAYDBOOKS_[A-Z0-9_]+", token_env):
+        raise BridgeError("private environment credential reference required")
+
+    def guard(config, actor):
+        _principal_admin(config, actor, company, principal, bridge.clock())
+        value = os.environ.get(token_env, "")
+        if len(value) < 32:
+            raise BridgeError("provision a new distinct credential before rotation")
+        references = [u["token_env"] for u in config.principals.values()]
+        references += [c.password_env for c in config.connectors.values()]
+        if token_env in references or any(
+            secrets.compare_digest(value.encode(), os.environ.get(ref, "").encode())
+            for ref in references
+        ):
+            raise BridgeError("provision a new distinct credential before rotation")
+
+    def mutate(data):
+        user = data["principals"][principal]
+        previous = user["token_env"]
+        user["token_env"] = token_env
+        return {"previous_token_env": previous}
+
+    return _change(
+        bridge,
+        token,
+        company,
+        expected_revision,
+        mutate,
+        {"principal": principal, "token_env": token_env, "credential_reference_rotated": True},
+        guard=guard,
+    )
+
+
+@audited
+def set_disabled(bridge, token, company, principal, expected_revision, disabled):
+    identifier(principal)
+    if type(disabled) is not bool:
+        raise BridgeError("principal disabled state must be boolean")
+
+    def mutate(data):
+        user = data["principals"][principal]
+        previous = user.get("disabled", False)
+        user["disabled"] = disabled
+        return {"previous_disabled": previous}
+
+    return _change(
+        bridge,
+        token,
+        company,
+        expected_revision,
+        mutate,
+        {"principal": principal, "disabled": disabled},
+        guard=lambda config, actor: _principal_admin(
+            config, actor, company, principal, bridge.clock()
+        ),
+    )
 
 
 @audited
@@ -247,7 +356,17 @@ def main(argv=None):
     )
     parser.add_argument("--config", required=True)
     parser.add_argument("--company", required=True)
-    parser.add_argument("action", choices=["inspect", "set-user", "self-approval", "owner-access"])
+    parser.add_argument(
+        "action",
+        choices=[
+            "inspect",
+            "set-user",
+            "self-approval",
+            "owner-access",
+            "rotate-credential",
+            "disable-user",
+        ],
+    )
     parser.add_argument("input", nargs="?", type=Path)
     args = parser.parse_args(argv)
     try:
@@ -271,6 +390,12 @@ def main(argv=None):
             elif args.action == "self-approval":
                 strict_keys(value, {"expected_revision", "allow"})
                 result = set_self_approval(bridge, token, args.company, **value)
+            elif args.action == "rotate-credential":
+                strict_keys(value, {"principal", "expected_revision", "token_env"})
+                result = rotate_credential(bridge, token, args.company, **value)
+            elif args.action == "disable-user":
+                strict_keys(value, {"principal", "expected_revision", "disabled"})
+                result = set_disabled(bridge, token, args.company, **value)
             else:
                 strict_keys(
                     value,
