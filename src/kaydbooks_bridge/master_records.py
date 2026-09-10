@@ -59,6 +59,7 @@ FIELDS = {
         "SalesAndPurchase",
         "UnitOfMeasureSetRef",
         "IsTaxIncluded",
+        "SalesTaxCodeRef",
     ),
     "inventory": COMMON
     + (
@@ -113,6 +114,8 @@ def validate(payload, policy):
     is_item = kind not in ("customer", "supplier")
     attributes = DISCOUNT if kind == "discount" else ITEM if is_item else CONTACT
     allowed = {"name", "active"} | set(attributes)
+    if kind == "service" and action == "create":
+        allowed.add("sales_tax_code_id")
     required = {"name"} if action == "create" else set()
     if kind == "discount" and action == "create":
         required |= {"discount_amount", "discount_account"}
@@ -146,7 +149,11 @@ def validate(payload, policy):
     elif "target" in payload:
         raise BridgeError("creation cannot target an existing record")
     for name, value in fields.items():
-        if name == "active":
+        if name == "sales_tax_code_id":
+            from .invoice_compatibility import required_id
+
+            required_id(value)
+        elif name == "active":
             if type(value) is not bool:
                 raise BridgeError("active must be explicit boolean")
         elif name in ACCOUNTS:
@@ -186,6 +193,10 @@ def request(payload, policy, run, *, external_guid=None):
         ET.SubElement(node, "Name").text = fields["name"]
     if "active" in fields or action == "Add":
         ET.SubElement(node, "IsActive").text = str(fields.get("active", True)).lower()
+    if "sales_tax_code_id" in fields:
+        ET.SubElement(ET.SubElement(node, "SalesTaxCodeRef"), "ListID").text = fields[
+            "sales_tax_code_id"
+        ]
     if value["kind"] in ("customer", "supplier"):
         for name, (tag, _) in CONTACT.items():
             if name in fields:
@@ -304,6 +315,8 @@ def compare(payload, policy, saved, original=None):
             )
     if "name" in fields and value["kind"] != "supplier":
         expected["FullName"] = fields["name"]
+    if "sales_tax_code_id" in fields:
+        expected["SalesTaxCodeRef"] = {"ListID": fields["sales_tax_code_id"]}
     if value["kind"] in ("customer", "supplier"):
         for name, (tag, _) in CONTACT.items():
             if name in fields:

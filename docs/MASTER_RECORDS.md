@@ -9,6 +9,13 @@ Company identity, account mappings and authorization remain private configuratio
 
 ## Supported fields and boundaries
 
+Service creation accepts an optional `fields.sales_tax_code_id` with an exact
+QuickBooks ListID. A fresh preflight must prove the code is active and non-taxable;
+the write sets `SalesTaxCodeRef` explicitly, and independent readback must retain
+the same ListID. Use this option for non-tax service qualification instead of relying
+on QuickBooks defaults. It does not enable tax-code changes on existing masters.
+The field follows Intuit's [service-item request structure](https://static.developer.intuit.com/resources/QBSDK_ProGuide.pdf).
+
 | Record | Creation | Update |
 | --- | --- | --- |
 | Customer / supplier | Flat name, active flag, company name, phone, email | Same explicit fields |
