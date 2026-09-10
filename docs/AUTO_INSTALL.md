@@ -267,7 +267,11 @@ also pass. Neither command posts accounting or certifies QuickBooks readback.
 
 If a service fails, inspect `journalctl -u SERVICE -n 80 --no-pager` locally. If HTTPS
 fails, check Tailscale login, Serve status, certificate permission, DNS, tailnet access
-rules and system time. If credentials/company checks fail, review only the intended
+rules and system time. If services and loopback health are ready but the MagicDNS URL
+does not resolve, inspect `tailscale dns status` and `/etc/resolv.conf` before restarting
+installation. Correct the resolver/MagicDNS configuration; a ready local service does
+not prove private DNS is working. The verifier reports DNS failure explicitly and
+stops before authenticated probes. If credentials/company checks fail, review only the intended
 company in `/etc/kaydbooks/bridge-config.json` and `/etc/kaydbooks/remote-policy.json`.
 Do not loosen access rules merely to make a check green.
 

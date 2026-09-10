@@ -12,6 +12,8 @@ import os
 import re
 import secrets
 import shutil
+import socket
+import ssl
 import subprocess
 import sys
 import tempfile
@@ -338,6 +340,20 @@ def request(url, body=None, token=None):
         return exc.code, exc.read(4096)
 
 
+def network_failure(exc):
+    """Actionable diagnostics without echoing URLs, headers or arbitrary exception text."""
+    reason = exc.reason if isinstance(exc, urllib.error.URLError) else exc
+    if isinstance(reason, socket.gaierror):
+        return "DNS lookup failed; run tailscale dns status and inspect /etc/resolv.conf"
+    if isinstance(reason, ssl.SSLCertVerificationError):
+        return (
+            "HTTPS certificate verification failed; check hostname, system time and Tailscale Serve"
+        )
+    if isinstance(reason, TimeoutError):
+        return "HTTPS connection timed out; check Tailscale connectivity and Serve status"
+    return "HTTPS connection failed; check tailscale serve status and service logs"
+
+
 def verify(base, etc):
     """Tests the running HTTP boundary with real tokens but prints no credentials/payloads."""
     failed = False
@@ -348,20 +364,25 @@ def verify(base, etc):
         failed |= not success
 
     for path in ("/healthz", "/health"):
+        detail = ""
         for _ in range(15):
             try:
                 code, payload = request(base + path)
+                detail = f"HTTP {code}"
                 if code == 200:
                     break
-            except (OSError, urllib.error.URLError):
+            except (OSError, urllib.error.URLError) as exc:
                 code = 0
+                detail = network_failure(exc)
             time.sleep(1)
-        check(path, code == 200)
+        check(path if code == 200 else f"{path}: {detail}", code == 200)
         if code == 200:
             health = json.loads(payload)
             check(f"{path}: ready", health.get("status") == "ready")
             if path == "/healthz":
                 check("production posting disabled", health.get("live_posting") is False)
+    if failed:
+        return False
     check("unknown route denied", request(base + "/not-a-kb-route")[0] == 404)
     initialize = {
         "jsonrpc": "2.0",
@@ -768,8 +789,15 @@ def main(argv=None, *, source=None):
         return 0
     except (InstallError, OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
         # External command output is already visible. Never print a token-bearing argv.
+        detail = (
+            network_failure(exc)
+            if isinstance(exc, urllib.error.URLError)
+            else str(exc)
+            if isinstance(exc, InstallError)
+            else type(exc).__name__
+        )
         print(
-            f"FAIL {exc if isinstance(exc, InstallError) else type(exc).__name__}; correct the issue and rerun with the same choices.",
+            f"FAIL {detail}; correct the issue and rerun with the same choices.",
             file=sys.stderr,
         )
         return 2

@@ -311,3 +311,26 @@ def test_check_includes_selected_component_dependencies(tmp_path, monkeypatch, c
     installer.preflight(tmp_path, components=components)
     assert set(installer.PACKAGES) <= set(checked)
     assert ("build-essential" in checked) == ("hermes" in components)
+
+
+def test_dns_failure_reports_remedy_without_sending_authenticated_probes(
+    tmp_path, monkeypatch, capsys
+):
+    import socket
+    import urllib.error
+
+    from kaydbooks_bridge import installer
+
+    calls = []
+
+    def unreachable(url, body=None, token=None):
+        calls.append((url, token))
+        raise urllib.error.URLError(socket.gaierror(-2, "private diagnostic must not be printed"))
+
+    monkeypatch.setattr(installer, "request", unreachable)
+    monkeypatch.setattr(installer.time, "sleep", lambda seconds: None)
+    assert not installer.verify("https://books.example.ts.net", tmp_path)
+    output = capsys.readouterr().out
+    assert "DNS lookup failed" in output and "tailscale dns status" in output
+    assert "private diagnostic" not in output
+    assert all(url.endswith(("/health", "/healthz")) and token is None for url, token in calls)
