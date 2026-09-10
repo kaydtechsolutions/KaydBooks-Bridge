@@ -35,18 +35,29 @@ set +a
 sudo -u kaydbooks-tunnel env HOME=/var/lib/kaydbooks-tunnel \
   CONTROL_PLANE_API_KEY="$CONTROL_PLANE_API_KEY" \
   CONTROL_PLANE_TUNNEL_ID="$CONTROL_PLANE_TUNNEL_ID" tunnel-client init \
-  --profile kaydbooks-private-mcp --tunnel-id env:CONTROL_PLANE_TUNNEL_ID \
-  --mcp-server-url "http://<private-magicdns-name>/mcp"
-sudo -u kaydbooks-tunnel env HOME=/var/lib/kaydbooks-tunnel \
-  CONTROL_PLANE_API_KEY="$CONTROL_PLANE_API_KEY" \
-  CONTROL_PLANE_TUNNEL_ID="$CONTROL_PLANE_TUNNEL_ID" tunnel-client doctor \
-  --profile kaydbooks-private-mcp --explain
-sudo systemctl enable --now kaydbooks-openai-tunnel
-unset CONTROL_PLANE_API_KEY CONTROL_PLANE_TUNNEL_ID
+  --profile kaydbooks-private-mcp --tunnel-id "$CONTROL_PLANE_TUNNEL_ID" \
+  --mcp-server-url "https://<private-magicdns-name>/mcp"
 ```
 
-Enter the runtime key and tunnel ID only in the root-owned environment file; the profile
-keeps environment references instead of copying those values. Store the dedicated
+The `init --tunnel-id` option expects the actual tunnel ID; it rejects an `env:`
+reference. After initialization, edit
+`/var/lib/kaydbooks-tunnel/.config/tunnel-client/kaydbooks-private-mcp.yaml`
+to use these runtime references. Preserve the generated configuration's other fields:
+
+```yaml
+control_plane:
+  tunnel_id: "env:CONTROL_PLANE_TUNNEL_ID"
+  api_key: "env:CONTROL_PLANE_API_KEY"
+health:
+  listen_addr: "127.0.0.1:8099"
+admin_ui:
+  open_browser: false
+```
+
+Port 8080 is already used by the Bridge. The tunnel's health listener must use a
+different free loopback port; the Test1 installation uses 8099.
+
+Keep the runtime key in the root-owned environment file. Store the dedicated
 ChatGPT principal as a complete `Bearer <token>` value in
 `/etc/kaydbooks/openai-tunnel-mcp-authorization`, owned by `root:kaydbooks` with mode
 `0640`, and add this scoped file reference to the generated profile:
@@ -57,17 +68,34 @@ mcp:
     Authorization: "file:/etc/kaydbooks/openai-tunnel-mcp-authorization"
 ```
 
+Then verify the profile and start the service:
+
+```sh
+sudo -u kaydbooks-tunnel env HOME=/var/lib/kaydbooks-tunnel \
+  CONTROL_PLANE_API_KEY="$CONTROL_PLANE_API_KEY" \
+  CONTROL_PLANE_TUNNEL_ID="$CONTROL_PLANE_TUNNEL_ID" tunnel-client doctor \
+  --profile kaydbooks-private-mcp --explain
+sudo systemctl enable --now kaydbooks-openai-tunnel
+unset CONTROL_PLANE_API_KEY CONTROL_PLANE_TUNNEL_ID
+curl --fail --silent --show-error http://127.0.0.1:8099/readyz
+```
+
 In ChatGPT developer mode, create the app with the Tunnel connection, select this tunnel,
 and choose **No Auth**. The tunnel client adds the MCP Bearer credential locally; the
 credential is never entered into ChatGPT or uploaded to OpenAI. Verify authenticated
 `initialize` and `tools/list`, scan the frozen tool list and create the draft app. This
 final app creation and any workspace publication require the signed-in administrator.
 
-The tunnel daemon runs inside the same LXC as Caddy. Proxmox maps that container's own
-hostname to `127.0.1.1`, so Caddy provides a dedicated HTTP listener on that loopback
-address. The tunnel profile uses the hostname without an explicit port, which preserves
-the expected HTTP `Host` value. External tailnet clients continue to use private HTTPS
-on port 443.
+Fresh automatic installations use the private HTTPS MCP URL on port 443. Verify that
+the hostname resolves inside the LXC before starting the tunnel. Older deployments may
+have a dedicated HTTP listener on `127.0.1.1`; use that route only after verifying its
+Caddy configuration. It is not created by every installation.
+
+After connecting the app in ChatGPT, call `company_catalog_v1` for its assigned company
+and an unassigned company. The first must succeed and the second must be denied. The
+published MCP tool catalog describes the full contract; the remote policy and Bridge
+permissions enforce the tools each principal can actually call. A connected app or a
+successful catalog read does not verify accounting posting or transaction readback.
 
 Official references: [Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels)
 and [ChatGPT developer-mode MCP apps](https://help.openai.com/en/articles/12584461-developer-mode-apps-and-full-mcp-connectors-in-chatgpt-beta).
