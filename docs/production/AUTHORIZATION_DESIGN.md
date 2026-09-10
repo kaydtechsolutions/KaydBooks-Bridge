@@ -70,7 +70,7 @@ membership alone does not imply the sensitive production-administration capabili
 | Existing entry point | Current boundary | Required production behavior |
 | --- | --- | --- |
 | Shared QBWC enqueue | `qbwc_posting.enqueue` and `_authority` call sample operation gates | Select environment explicitly; authorize actor and reserve exact durable production budget before enqueue |
-| QBWC sendRequestXML | `QBWCPostingService._context` and `_do_sendRequestXML`, write phase | Reload current policy; recheck all five decisions in the same DB transaction that durably records the first write handoff |
+| QBWC sendRequestXML | `DurableQBWCPostingService._context` and `_do_sendRequestXML`, write phase | Reload current policy; recheck all five decisions in the same DB transaction that durably records the first write handoff |
 | Repeated QBWC callback | Existing phase/request/response records | Query phases may replay their exact retained request; write phases never emit an already handed-out mutation again |
 | Native invoice/bill/payment/credit/refund/application paths | `sample_*_posting.post`, `gate`, final `*_write_authorized` event | Remain sample-only until each has explicit transport qualification; no production fallback through an older native route |
 | Native master change | `master_posting.post`, `gate`, final `sample_master_write_authorized` | Remain sample-only until the required QBWC master path is qualified; expose an explicit unsupported result meanwhile |
