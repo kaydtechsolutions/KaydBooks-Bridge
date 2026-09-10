@@ -111,6 +111,33 @@ def test_private_secret_file_loads_only_long_kaydbooks_values(tmp_path, monkeypa
     monkeypatch.delenv("KAYDBOOKS_QBWC_TEST_SECRET", raising=False)
 
 
+def test_private_secret_file_accepts_provider_issued_composio_key(tmp_path, monkeypatch):
+    name = "KAYDBOOKS_COMPOSIO_API_KEY"
+    monkeypatch.delenv(name, raising=False)
+    path = tmp_path / "secrets.json"
+    key = "ak_" + "x" * 20
+    path.write_text(json.dumps({name: key}), encoding="utf-8")
+    load_secret_file(path)
+    assert __import__("os").environ[name] == key
+    monkeypatch.delenv(name)
+
+
+@pytest.mark.parametrize(
+    "name,value",
+    [
+        ("KAYDBOOKS_OPERATOR_SECRET", "ak_" + "x" * 20),
+        ("KAYDBOOKS_COMPOSIO_API_KEY", "x" * 19),
+        ("KAYDBOOKS_COMPOSIO_API_KEY", "ak_" + "x" * 20 + "\n"),
+        ("KAYDBOOKS_COMPOSIO_API_KEY", "ak_" + "x" * 20 + "\0"),
+    ],
+)
+def test_provider_key_exception_keeps_credential_validation(tmp_path, name, value):
+    path = tmp_path / "secrets.json"
+    path.write_text(json.dumps({name: value}), encoding="utf-8")
+    with pytest.raises(BridgeError, match="credential"):
+        load_secret_file(path)
+
+
 def test_staging_health_is_explicitly_read_only(tmp_path, monkeypatch):
     config_path = tmp_path / "config.json"
     state = tmp_path / "state"

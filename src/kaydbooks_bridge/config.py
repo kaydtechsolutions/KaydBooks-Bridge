@@ -482,7 +482,11 @@ class Config:
         env_names = set()
         for name, principal in principals.items():
             identifier(name)
-            strict_keys(principal, {"token_env", "companies"}, {"owner"})
+            strict_keys(principal, {"token_env", "companies"}, {"owner", "sample_qualification"})
+            if "sample_qualification" in principal:
+                from .sample_qualification import validate_grant
+
+                validate_grant(principal, name)
             if type(principal.get("owner", False)) is not bool:
                 raise BridgeError("owner designation must be boolean")
             env = principal["token_env"]

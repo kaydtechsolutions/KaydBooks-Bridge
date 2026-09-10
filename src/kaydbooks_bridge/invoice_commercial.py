@@ -51,6 +51,14 @@ FIELDS = {
     "ItemSalesTax": ("ListID", "IsActive", "TaxRate"),
 }
 
+PRICE_LEVEL_FIELDS = (
+    "ListID",
+    "IsActive",
+    "PriceLevelType",
+    "PriceLevelFixedPercentage",
+    "CurrencyRef",
+)
+
 ADJUSTMENT_FIELDS = {
     "ItemDiscount": (
         "ListID",
@@ -75,7 +83,11 @@ def decimal_evidence(value):
 def validate_policy(policy):
     from .invoice_compatibility import required_id
 
-    strict_keys(policy, {"sales_tax_code_id", "tax_item_id", "tax_rate", "pricing", "inventory"})
+    strict_keys(
+        policy,
+        {"sales_tax_code_id", "tax_item_id", "tax_rate", "pricing", "inventory"},
+        {"price_level"},
+    )
     required_id(policy["sales_tax_code_id"])
     rate = decimal_evidence(policy["tax_rate"])
     if not 0 <= rate <= 100:
@@ -84,8 +96,21 @@ def validate_policy(policy):
         required_id(policy["tax_item_id"])
     elif rate != 0:
         raise BridgeError("taxable invoices require an exact sales-tax item")
-    if policy["pricing"] != "list-price" or policy["inventory"] != "uncommitted-on-hand":
+    if (
+        policy["pricing"] not in ("list-price", "fixed-percentage")
+        or policy["inventory"] != "uncommitted-on-hand"
+    ):
         raise BridgeError("unsupported pricing or inventory policy")
+    if policy["pricing"] == "fixed-percentage":
+        level = policy.get("price_level")
+        strict_keys(level, {"list_id", "percentage"})
+        required_id(level["list_id"])
+        if not -100 < decimal_evidence(level["percentage"]) <= 100:
+            raise BridgeError("price-level percentage must be greater than -100 and at most 100")
+        if policy["tax_item_id"] is not None or rate != 0:
+            raise BridgeError("fixed-percentage pricing currently requires non-tax service sales")
+    elif "price_level" in policy:
+        raise BridgeError("price-level binding requires fixed-percentage pricing")
 
 
 def extend_plan(check, policy, invoice):
@@ -110,6 +135,16 @@ def extend_plan(check, policy, invoice):
     check["queries"].append(("SalesTaxCode", policy["sales_tax_code_id"]))
     if policy["tax_item_id"] is not None:
         check["queries"].append(("ItemSalesTax", policy["tax_item_id"]))
+    if policy["pricing"] == "fixed-percentage":
+        if invoice.get("adjustments") or any(
+            spec.get("kind", "Service") != "Service" for spec in check["item_specs"]
+        ):
+            raise BridgeError(
+                "fixed-percentage pricing currently requires unadjusted service lines"
+            )
+        check["fields"] = {**check["fields"], "PriceLevel": PRICE_LEVEL_FIELDS}
+        check["price_level_offset"] = len(check["queries"]) + 2
+        check["queries"].append(("PriceLevel", policy["price_level"]["list_id"]))
 
 
 def validate_commercial(records, ar_index, check):
@@ -123,7 +158,25 @@ def validate_commercial(records, ar_index, check):
         raise BridgeError("configured taxability differs from sales-tax code")
     if ref(customer, "SalesTaxCodeRef") != policy["sales_tax_code_id"]:
         raise BridgeError("customer sales-tax code differs from invoice policy")
-    if "PriceLevelRef" in customer:
+    multiplier = Decimal(1)
+    if policy["pricing"] == "fixed-percentage":
+        binding = policy["price_level"]
+        level = records[check["price_level_offset"]]
+        if ref(customer, "PriceLevelRef") != binding["list_id"]:
+            raise BridgeError("customer price level differs from configured binding")
+        if level.get("PriceLevelType") != "FixedPercentage" or level.get("CurrencyRef"):
+            raise BridgeError("only single-currency fixed-percentage price levels are qualified")
+        percentage = decimal_evidence(level.get("PriceLevelFixedPercentage"))
+        if percentage != decimal_evidence(binding["percentage"]):
+            raise BridgeError("price-level percentage changed; review policy and draft again")
+        sales = prefs.get("SalesAndCustomersPreferences")
+        if not isinstance(sales, dict):
+            raise BridgeError("price-level preferences must be enabled and verified")
+        levels = sales.get("PriceLevels", {})
+        if not isinstance(levels, dict) or levels.get("IsUsingPriceLevels") != "true":
+            raise BridgeError("price-level preferences must be enabled and verified")
+        multiplier += percentage / Decimal(100)
+    elif "PriceLevelRef" in customer:
         raise BridgeError("customer price levels are not qualified")
     tax_prefs = prefs.get("SalesTaxPreferences")
     if tax_prefs is None and not taxable:
@@ -206,5 +259,8 @@ def validate_commercial(records, ar_index, check):
                 price = decimal_evidence(sale.get("Price"))
             else:
                 price = decimal_evidence(item["SalesAndPurchase"].get("SalesPrice"))
+        price *= multiplier
+        if policy["pricing"] == "fixed-percentage" and price != price.quantize(Decimal("0.000001")):
+            raise BridgeError("price-level rate requires unsupported rounding")
         if any(positive_decimal(line["unit_price"]) != price for line in lines):
             raise BridgeError("invoice unit price differs from verified item list price")

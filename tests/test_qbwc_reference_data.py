@@ -53,7 +53,8 @@ def request(path, token, request_id="references-001"):
     return read(Bridge(path), token, "company-a", "connector-company-a", request_id)
 
 
-def test_reference_data_request_is_read_only_and_complete(case):  # noqa: F811
+@pytest.mark.parametrize("sites_enabled", [True, False])
+def test_reference_data_request_is_read_only_and_complete(case, sites_enabled):  # noqa: F811
     path, token = case
     assert request(path, token)["pending"] is True
     service = S.from_path(path)
@@ -71,7 +72,15 @@ def test_reference_data_request_is_read_only_and_complete(case):  # noqa: F811
     assert all(entity + "QueryRq" in xml for _, entity, _ in QUERIES)
     assert "<ActiveStatus>All</ActiveStatus>" in xml
     assert not any(word in xml for word in ("AddRq", "ModRq", "DelRq"))
-    assert receive(service, ticket, response(xml)) == 100
+    answer = response(xml)
+    if not sites_enabled:
+        root = ET.fromstring(answer)
+        sites = root.find("./QBXMLMsgsRs/InventorySiteQueryRs")
+        sites.remove(sites[0])
+        sites.set("statusCode", "3250")
+        sites.set("statusSeverity", "Error")
+        answer = ET.tostring(root, encoding="unicode")
+    assert receive(service, ticket, answer) == 100
     call(service, "closeConnection", ticket=ticket)
     result = request(path, token)
     assert result["pending"] is False
@@ -80,6 +89,10 @@ def test_reference_data_request_is_read_only_and_complete(case):  # noqa: F811
     assert result["counts"]["accounts"] == 1
     assert result["counts"]["items"] == sum(catalog == "items" for catalog, _, _ in QUERIES)
     assert result["counts"]["terms"] == 2
+    assert result["counts"]["inventory_sites"] == int(sites_enabled)
+    assert result["unavailable_catalogs"] == (
+        {} if sites_enabled else {"inventory_sites": "feature-not-enabled"}
+    )
     with service._stores["company-a"].transaction() as db:
         assert db.execute("SELECT count(*) FROM jobs").fetchone()[0] == 0
         assert service._stores["company-a"].verify_audit(db)
@@ -100,6 +113,30 @@ def test_reference_data_rejects_incomplete_or_duplicate_lists(case):  # noqa: F8
         root[0][-2].find("./ItemSalesTaxRet/ListID").text
     )
     with pytest.raises(BridgeError, match="duplicate"):
+        validate_response(ET.tostring(root, encoding="unicode"), run, check)
+
+
+@pytest.mark.parametrize(
+    "entity,code,severity,keep_record",
+    [
+        ("InventorySite", "3260", "Error", False),
+        ("InventorySite", "3250", "Warn", False),
+        ("InventorySite", "3250", "Error", True),
+        ("Customer", "3250", "Error", False),
+    ],
+)
+def test_optional_sites_do_not_hide_other_failures(case, entity, code, severity, keep_record):  # noqa: F811
+    policy = S.from_path(case[0]).config.companies["company-a"]
+    check = plan(policy, {})
+    run = "123456789"
+    xml = append_queries(S._discovery_request(run, "17.0"), run, check)
+    root = ET.fromstring(response(xml))
+    answer = root.find("./QBXMLMsgsRs/" + entity + "QueryRs")
+    if not keep_record:
+        answer.remove(answer[0])
+    answer.set("statusCode", code)
+    answer.set("statusSeverity", severity)
+    with pytest.raises(BridgeError, match="reference list"):
         validate_response(ET.tostring(root, encoding="unicode"), run, check)
 
 

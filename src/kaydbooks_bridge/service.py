@@ -87,6 +87,9 @@ def validate_payload(operation, payload, policy):
 
 
 def require_evidence(config, policy, store, db, job, now):
+    from .sample_qualification import require_if_delegated
+
+    require_if_delegated(config, policy, store, db, job, job.get("approval_by"), now)
     if job["operation"] == "check.create":
         from .check_evidence import require
 
@@ -753,12 +756,19 @@ class Bridge:
 
             require_review(config, policy, store, db, job)
             if action == "approve":
+                from .sample_qualification import require_if_delegated
+
+                grant = require_if_delegated(config, policy, store, db, job, actor, self.clock())
                 if actor == job["submitter"] and not policy.allow_self_approval:
                     raise BridgeError("approval must come from a different principal")
                 db.execute(
                     "UPDATE jobs SET approval_by=?,approval_hash=? WHERE id=?",
                     (actor, job["fingerprint"], job_id),
                 )
+                if grant is not None:
+                    store.event(
+                        db, self.clock(), actor, job_id, "sample_qualification_approved", grant
+                    )
             else:
                 if action == "submit":
                     self._approval(config, policy, job)
@@ -775,6 +785,9 @@ class Bridge:
             if not job["approval_by"] or job["approval_hash"] != job["fingerprint"]:
                 raise BridgeError("approval required")
             config.authorize(job["approval_by"], policy.id, "approve")
+            from .sample_qualification import require_window
+
+            require_window(config, policy, job["approval_by"], time.time())
             if job["approval_by"] == job["submitter"] and not policy.allow_self_approval:
                 raise BridgeError("company self-approval policy no longer permits this approval")
 

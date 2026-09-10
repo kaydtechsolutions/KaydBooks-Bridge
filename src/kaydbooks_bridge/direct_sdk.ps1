@@ -47,6 +47,7 @@ public static class PrivateReadOnlyDiscovery {
    case "ItemInventoryQueryRq": FixedQuery(node,"ItemInventory","ListID,IsActive,SalesPrice,IncomeAccountRef,COGSAccountRef,AssetAccountRef,QuantityOnHand,QuantityOnSalesOrder,SalesTaxCodeRef,UnitOfMeasureSetRef,IsTaxIncluded"+(!preview && node.SelectSingleNode("IncludeRetElement[text()='AverageCost']")!=null?",AverageCost":""),!preview,preview); break;
    case "SalesTaxCodeQueryRq": FixedQuery(node,"SalesTaxCode","ListID,IsActive,IsTaxable",!preview,preview); break;
    case "ItemSalesTaxQueryRq": FixedQuery(node,"ItemSalesTax","ListID,IsActive,TaxRate",!preview,preview); break;
+   case "PriceLevelQueryRq": FixedQuery(node,"PriceLevel","ListID,IsActive,PriceLevelType,PriceLevelFixedPercentage,CurrencyRef",true); break;
    default: throw new InvalidOperationException("Unsupported commercial query");
   }
  }

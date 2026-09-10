@@ -339,6 +339,9 @@ def test_compiled_master_write_gate(master_case, tmp_path):
     values = [
         masters.request(proposal(kind), p, "100", external_guid=GUID) for kind in masters.KINDS
     ]
+    non_tax_service = proposal("service")
+    non_tax_service["fields"]["sales_tax_code_id"] = "non-tax-id"
+    values.append(masters.request(non_tax_service, p, "100", external_guid=GUID))
     for kind in masters.KINDS:
         value = proposal(kind)
         value.update(
@@ -420,3 +423,66 @@ def test_adjustment_item_update_cannot_change_discount_account(master_case):
     )
     with pytest.raises(BridgeError, match="unsupported fields"):
         masters.validate(value, p)
+
+
+def test_explicit_non_tax_service_creation_and_saved_tax_identity(master_case):
+    b, token, policy = master_case
+    payload = proposal("service")
+    payload["fields"]["sales_tax_code_id"] = "non-tax-id"
+    observed = checks.read(
+        b,
+        token,
+        policy.id,
+        "connector-company-a",
+        "service",
+        payload=payload,
+        transport=transport(
+            {"SalesTaxCode": [{"ListID": "non-tax-id", "IsActive": "true", "IsTaxable": "false"}]}
+        ),
+    )
+    assert observed["payload_sha256"] == masters.digest(payload)
+    node = ET.fromstring(masters.request(payload, policy, "100", external_guid=GUID))[0][0][0]
+    tags = [child.tag for child in node]
+    assert tags.index("SalesTaxCodeRef") < tags.index("SalesOrPurchase")
+    assert node.findtext("SalesTaxCodeRef/ListID") == "non-tax-id"
+    saved = existing("service")
+    saved["SalesTaxCodeRef"] = {"ListID": "non-tax-id"}
+    assert masters.compare(payload, policy, saved)["list_id"] == "master-id"
+    saved["SalesTaxCodeRef"]["ListID"] = "taxable-id"
+    with pytest.raises(BridgeError):
+        masters.compare(payload, policy, saved)
+
+
+@pytest.mark.parametrize("active,taxable", [("false", "false"), ("true", "true"), ("true", "")])
+def test_service_creation_refuses_inactive_or_unverified_non_tax_code(master_case, active, taxable):
+    b, token, policy = master_case
+    payload = proposal("service")
+    payload["fields"]["sales_tax_code_id"] = "non-tax-id"
+    with pytest.raises(BridgeError, match="active non-taxable"):
+        checks.read(
+            b,
+            token,
+            policy.id,
+            "connector-company-a",
+            "service",
+            payload=payload,
+            transport=transport(
+                {
+                    "SalesTaxCode": [
+                        {"ListID": "non-tax-id", "IsActive": active, "IsTaxable": taxable}
+                    ]
+                }
+            ),
+        )
+
+
+def test_tax_code_option_does_not_enable_existing_master_tax_changes(master_case):
+    _, _, policy = master_case
+    payload = proposal("service")
+    payload.update(
+        action="update",
+        target=masters.target_reference(existing("service")),
+        fields={"sales_tax_code_id": "non-tax-id"},
+    )
+    with pytest.raises(BridgeError, match="unsupported fields"):
+        masters.validate(payload, policy)
