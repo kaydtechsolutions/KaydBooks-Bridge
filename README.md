@@ -31,7 +31,7 @@ tax reports are excluded from this release by operator choice; the current sampl
 invoice path is only part of that release.
 
 The prior v0.1.0 development pilot completed its 15/15 workflow checks. v0.2.0 is at
-**32/39 gates passed** in the separate [acceptance record](docs/v020-acceptance.json).
+**33/39 gates passed** in the separate [acceptance record](docs/v020-acceptance.json).
 Historical v0.1.0 scores are evidence for the earlier pilot and do not qualify v0.2.0.
 See the [v0.2 deployment runbook](docs/V020_DEPLOYMENT.md),
 [Remote MCP guide](docs/REMOTE_MCP.md) and [upgrade/rollback guide](docs/UPGRADE_ROLLBACK.md).

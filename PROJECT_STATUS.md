@@ -2,7 +2,7 @@
 
 ## Active release: KaydBooks Bridge v0.2.0
 
-v0.2.0 is in qualification at **32/39 gates passed**. Its canonical result is the 39-gate
+v0.2.0 is in qualification at **33/39 gates passed**. Its canonical result is the 39-gate
 [acceptance record](docs/v020-acceptance.json); a gate passes only with retained evidence.
 The target deployment is one fresh unprivileged Linux LXC for Bridge, Remote MCP and the
 WhatsApp-only Hermes worker, reached privately through Tailscale HTTPS and loopback Caddy.
