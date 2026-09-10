@@ -268,11 +268,19 @@ def validate_response(response, run, _check):
         "items": [],
     }
     seen = {name: set() for name in catalogs}
+    unavailable_catalogs = {}
     for index, (catalog, entity, _) in enumerate(QUERIES, start=3):
         answer = root[0][index - 1]
         if answer.tag != entity + "QueryRs" or answer.get("requestID") != run + str(index):
             raise BridgeError("reference-data response correlation mismatch")
         code, severity = answer.get("statusCode"), answer.get("statusSeverity")
+        # Inventory sites require an optional QuickBooks feature. Preserve its
+        # unavailable status without discarding unrelated, successful lists.
+        if entity == "InventorySite" and (code, severity) == ("3250", "Error"):
+            if len(answer):
+                raise BridgeError("unavailable reference list contains records")
+            unavailable_catalogs[catalog] = "feature-not-enabled"
+            continue
         records = [node for node in answer if node.tag == entity + "Ret"]
         empty = not records and (code, severity) in (("1", "Info"), ("500", "Warn"))
         if not empty and (code, severity) != ("0", "Info"):
@@ -297,6 +305,7 @@ def validate_response(response, run, _check):
     return ET.tostring(root, encoding="unicode"), {
         "catalogs": catalogs,
         "counts": {name: len(values) for name, values in catalogs.items()},
+        "unavailable_catalogs": unavailable_catalogs,
         "complete": True,
         "active_status": "All",
         "read_only": True,
