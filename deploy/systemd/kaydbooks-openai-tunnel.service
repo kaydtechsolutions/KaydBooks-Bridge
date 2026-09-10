@@ -1,7 +1,7 @@
 [Unit]
 Description=KaydBooks private MCP outbound tunnel
-After=network-online.target tailscaled.service kaydbooks-remote-mcp.service
-Wants=network-online.target
+After=network-online.target caddy.service kaydbooks-remote-mcp.service
+Wants=network-online.target caddy.service kaydbooks-remote-mcp.service
 
 [Service]
 Type=simple

@@ -50,7 +50,8 @@ The hardened Caddy configuration disables its admin API. After a validated Caddy
 change, use `sudo systemctl restart caddy`; `systemctl reload caddy` is unavailable by
 design.
 
-Only loopback ports 8000, 8080 and 8088 may listen. Tailscale owns private port 443.
+Only loopback ports 80, 8000, 8080 and 8088 may listen. Port 80 binds only to
+`127.0.1.1` for the co-located OpenAI tunnel client; Tailscale owns private port 443.
 An unknown Caddy path must return 404 and unauthenticated `/mcp` must return 401.
 Use the optional outbound-only OpenAI Secure MCP Tunnel unit documented in
 `REMOTE_MCP.md` for ChatGPT developer-mode testing. Leave it disabled until a private

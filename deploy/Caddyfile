@@ -27,3 +27,19 @@ http://:8088 {
 		respond "" 404
 	}
 }
+
+# Proxmox maps an LXC's own hostname to 127.0.1.1. The outbound OpenAI tunnel
+# uses this loopback-only listener so the upstream receives the canonical Host
+# value without a port suffix.
+http://:80 {
+	bind 127.0.1.1
+
+	@mcp path /mcp /mcp/* /health
+	handle @mcp {
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	handle {
+		respond "" 404
+	}
+}

@@ -33,21 +33,29 @@ set -a
 . /etc/kaydbooks/openai-tunnel.env
 set +a
 sudo -u kaydbooks-tunnel env HOME=/var/lib/kaydbooks-tunnel \
-  CONTROL_PLANE_API_KEY="$CONTROL_PLANE_API_KEY" tunnel-client init \
-  --profile kaydbooks-private-mcp --tunnel-id "$OPENAI_MCP_TUNNEL_ID" \
-  --mcp-server-url "https://<private-magicdns-name>/mcp"
+  CONTROL_PLANE_API_KEY="$CONTROL_PLANE_API_KEY" \
+  CONTROL_PLANE_TUNNEL_ID="$CONTROL_PLANE_TUNNEL_ID" tunnel-client init \
+  --profile kaydbooks-private-mcp --tunnel-id env:CONTROL_PLANE_TUNNEL_ID \
+  --mcp-server-url "http://<private-magicdns-name>/mcp"
 sudo -u kaydbooks-tunnel env HOME=/var/lib/kaydbooks-tunnel \
-  CONTROL_PLANE_API_KEY="$CONTROL_PLANE_API_KEY" tunnel-client doctor \
+  CONTROL_PLANE_API_KEY="$CONTROL_PLANE_API_KEY" \
+  CONTROL_PLANE_TUNNEL_ID="$CONTROL_PLANE_TUNNEL_ID" tunnel-client doctor \
   --profile kaydbooks-private-mcp --explain
 sudo systemctl enable --now kaydbooks-openai-tunnel
-unset CONTROL_PLANE_API_KEY OPENAI_MCP_TUNNEL_ID
+unset CONTROL_PLANE_API_KEY CONTROL_PLANE_TUNNEL_ID
 ```
 
-Enter the runtime key only in the root-owned environment file, and enter the tunnel ID
-only through the authenticated setup command. In ChatGPT Apps developer mode, choose
-Tunnel, select that ID, configure Bearer authentication for the `chatgpt` principal,
-scan the frozen tool list and create the draft app. This final connector creation and any
-workspace publication require the signed-in workspace administrator.
+Enter the runtime key and tunnel ID only in the root-owned environment file; the profile
+keeps environment references instead of copying those values. In ChatGPT Apps developer
+mode, choose Tunnel, select that ID, configure Bearer authentication for the `chatgpt`
+principal, scan the frozen tool list and create the draft app. This final connector
+creation and any workspace publication require the signed-in workspace administrator.
+
+The tunnel daemon runs inside the same LXC as Caddy. Proxmox maps that container's own
+hostname to `127.0.1.1`, so Caddy provides a dedicated HTTP listener on that loopback
+address. The tunnel profile uses the hostname without an explicit port, which preserves
+the expected HTTP `Host` value. External tailnet clients continue to use private HTTPS
+on port 443.
 
 Official references: [Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels)
 and [ChatGPT developer-mode MCP apps](https://help.openai.com/en/articles/12584461-developer-mode-apps-and-full-mcp-connectors-in-chatgpt-beta).

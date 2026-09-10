@@ -54,6 +54,11 @@ check systemctl is-active hermes-gateway.service
 check systemctl is-active kaydbooks-hermes-worker.service
 check systemctl is-active caddy.service
 check systemctl is-active tailscaled.service
+if systemctl is-enabled --quiet kaydbooks-openai-tunnel.service 2>/dev/null; then
+    check systemctl is-active kaydbooks-openai-tunnel.service
+    check curl --fail --silent --show-error http://127.0.0.1:8090/healthz
+    check curl --fail --silent --show-error http://127.0.0.1:8090/readyz
+fi
 check curl --fail --silent --show-error http://127.0.0.1:8080/healthz
 check_eventually whatsapp_connected whatsapp_connected
 check_eventually hermes_mcp_connected hermes_mcp_connected
