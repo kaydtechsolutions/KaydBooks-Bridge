@@ -1,29 +1,29 @@
 {
-    auto_https off
-    admin off
+	auto_https off
+	admin off
 }
 
 http://:8088 {
-    bind 127.0.0.1
-    log {
-        output file /var/log/caddy/kaydbooks-access.log {
-            roll_size 25MiB
-            roll_keep 10
-        }
-        format json
-    }
+	bind 127.0.0.1
+	log {
+		output file /var/log/caddy/kaydbooks-access.log {
+			roll_size 25MiB
+			roll_keep 10
+		}
+		format json
+	}
 
-    @mcp path /mcp /mcp/* /health
-    handle @mcp {
-        reverse_proxy 127.0.0.1:8000
-    }
+	@mcp path /mcp /mcp/* /health
+	handle @mcp {
+		reverse_proxy 127.0.0.1:8000
+	}
 
-    @bridge path /qbwc /qbwc/* /setup /setup/* /admin /admin/* /app /app/* /api/* /support /healthz
-    handle @bridge {
-        reverse_proxy 127.0.0.1:8080
-    }
+	@bridge path /qbwc /qbwc/* /setup /setup/* /admin /admin/* /app /app/* /api/* /support /healthz
+	handle @bridge {
+		reverse_proxy 127.0.0.1:8080
+	}
 
-    handle {
-        respond "" 404
-    }
+	handle {
+		respond "" 404
+	}
 }

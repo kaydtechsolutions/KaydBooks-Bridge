@@ -41,6 +41,10 @@ sudo tailscale serve --bg --https=443 http://127.0.0.1:8088
 sudo /usr/local/sbin/kaydbooks-doctor
 ```
 
+The hardened Caddy configuration disables its admin API. After a validated Caddyfile
+change, use `sudo systemctl restart caddy`; `systemctl reload caddy` is unavailable by
+design.
+
 Only loopback ports 8000, 8080 and 8088 may listen. Tailscale owns private port 443.
 An unknown Caddy path must return 404 and unauthenticated `/mcp` must return 401.
 Use the optional outbound-only OpenAI Secure MCP Tunnel unit documented in
