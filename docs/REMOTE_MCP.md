@@ -46,10 +46,22 @@ unset CONTROL_PLANE_API_KEY CONTROL_PLANE_TUNNEL_ID
 ```
 
 Enter the runtime key and tunnel ID only in the root-owned environment file; the profile
-keeps environment references instead of copying those values. In ChatGPT Apps developer
-mode, choose Tunnel, select that ID, configure Bearer authentication for the `chatgpt`
-principal, scan the frozen tool list and create the draft app. This final connector
-creation and any workspace publication require the signed-in workspace administrator.
+keeps environment references instead of copying those values. Store the dedicated
+ChatGPT principal as a complete `Bearer <token>` value in
+`/etc/kaydbooks/openai-tunnel-mcp-authorization`, owned by `root:kaydbooks` with mode
+`0640`, and add this scoped file reference to the generated profile:
+
+```yaml
+mcp:
+  extra_headers:
+    Authorization: "file:/etc/kaydbooks/openai-tunnel-mcp-authorization"
+```
+
+In ChatGPT developer mode, create the app with the Tunnel connection, select this tunnel,
+and choose **No Auth**. The tunnel client adds the MCP Bearer credential locally; the
+credential is never entered into ChatGPT or uploaded to OpenAI. Verify authenticated
+`initialize` and `tools/list`, scan the frozen tool list and create the draft app. This
+final app creation and any workspace publication require the signed-in administrator.
 
 The tunnel daemon runs inside the same LXC as Caddy. Proxmox maps that container's own
 hostname to `127.0.1.1`, so Caddy provides a dedicated HTTP listener on that loopback
