@@ -50,13 +50,15 @@ public static class ControlledSampleMaster {
   else if(rq.Name.StartsWith("ItemDiscount"))Fields(node,common+",ItemDesc,DiscountRate"+(add?",AccountRef":""),add);
   else {
    string aggregate=null;
-   foreach(XmlNode child in node.ChildNodes)if(child.Name.StartsWith("Sales")) {
+   foreach(XmlNode child in node.ChildNodes)if(child.Name.StartsWith("Sales")&&child.Name!="SalesTaxCodeRef") {
     if(aggregate!=null||!OneOf(child.Name,add?"SalesOrPurchase,SalesAndPurchase":"SalesOrPurchaseMod,SalesAndPurchaseMod"))throw new Exception("Unsupported service aggregate");
     aggregate=child.Name;
     bool purchased=child.Name.StartsWith("SalesAnd");
     Fields(child,purchased?"SalesDesc,SalesPrice,PurchaseDesc,PurchaseCost"+(add?",IncomeAccountRef,ExpenseAccountRef":""):"Desc,Price"+(add?",AccountRef":""),add);
    }
-   var copy=node.CloneNode(true);if(aggregate!=null)copy.RemoveChild(copy.SelectSingleNode(aggregate));Fields(copy,common,false);
+   var copy=node.CloneNode(true);if(aggregate!=null)copy.RemoveChild(copy.SelectSingleNode(aggregate));
+   bool serviceTax=add&&rq.Name=="ItemServiceAddRq";
+   Fields(copy,common+(serviceTax?",SalesTaxCodeRef":""),serviceTax);
   }
  }
  public static void Run(string root,string hash,bool readOnly) {
@@ -66,7 +68,7 @@ public static class ControlledSampleMaster {
    var batch=Parse(request).SelectSingleNode("/QBXML/QBXMLMsgsRq");
    if(batch==null||batch.ChildNodes.Count<2||batch.ChildNodes.Count>12)throw new Exception("Bounded read batch required");
    foreach(XmlNode q in batch.ChildNodes) {
-    if(!OneOf(q.Name,"HostQueryRq,CompanyQueryRq,PreferencesQueryRq,AccountQueryRq,CustomerQueryRq,VendorQueryRq,ItemServiceQueryRq,ItemInventoryQueryRq,ItemDiscountQueryRq,ItemOtherChargeQueryRq,EntityQueryRq,ItemQueryRq"))throw new Exception("Unsupported preflight request");
+    if(!OneOf(q.Name,"HostQueryRq,CompanyQueryRq,PreferencesQueryRq,AccountQueryRq,CustomerQueryRq,VendorQueryRq,ItemServiceQueryRq,ItemInventoryQueryRq,ItemDiscountQueryRq,ItemOtherChargeQueryRq,EntityQueryRq,ItemQueryRq,SalesTaxCodeQueryRq"))throw new Exception("Unsupported preflight request");
     foreach(XmlNode f in q.ChildNodes)if(!OneOf(f.Name,"ListID,FullName,IncludeRetElement")||f.ChildNodes.Count!=1||f.FirstChild.NodeType!=XmlNodeType.Text)throw new Exception("Fixed read selectors required");
    }
    string write=readOnly?null:File.ReadAllText(Path.Combine(root,"write.request.xml"));if(!readOnly)CheckWrite(write,hash);

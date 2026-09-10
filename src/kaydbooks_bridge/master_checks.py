@@ -102,6 +102,11 @@ def request(policy, spec, run):
         if kind not in ("ItemService", "ItemInventory", "ItemOtherCharge", "ItemDiscount"):
             for field in fields:
                 ET.SubElement(node, "IncludeRetElement").text = field
+    if payload and "sales_tax_code_id" in payload["fields"]:
+        node = ET.SubElement(batch, "SalesTaxCodeQueryRq", requestID=run + "90")
+        ET.SubElement(node, "ListID").text = payload["fields"]["sales_tax_code_id"]
+        for field in ("ListID", "IsActive", "IsTaxable"):
+            ET.SubElement(node, "IncludeRetElement").text = field
     return xml(root)
 
 
@@ -202,6 +207,10 @@ def response(text, policy, connector, spec, run):
                     raise BridgeError("master account role is inactive or incompatible")
                 if account.get("CurrencyRef"):
                     raise BridgeError("foreign-currency master account unsupported")
+        if "sales_tax_code_id" in fields:
+            tax_code = values.pop(0)
+            if tax_code.get("IsActive") != "true" or tax_code.get("IsTaxable") != "false":
+                raise BridgeError("service creation requires an active non-taxable sales tax code")
     return {
         "record": original,
         "target": target_reference(original) if original else None,
