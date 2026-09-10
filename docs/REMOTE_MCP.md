@@ -49,13 +49,13 @@ control_plane:
   tunnel_id: "env:CONTROL_PLANE_TUNNEL_ID"
   api_key: "env:CONTROL_PLANE_API_KEY"
 health:
-  listen_addr: "127.0.0.1:8099"
+  listen_addr: "127.0.0.1:8090"
 admin_ui:
   open_browser: false
 ```
 
 Port 8080 is already used by the Bridge. The tunnel's health listener must use a
-different free loopback port; the Test1 installation uses 8099.
+different free loopback port. Use 8090 to match `kaydbooks-doctor`.
 
 Keep the runtime key in the root-owned environment file. Store the dedicated
 ChatGPT principal as a complete `Bearer <token>` value in
@@ -77,7 +77,7 @@ sudo -u kaydbooks-tunnel env HOME=/var/lib/kaydbooks-tunnel \
   --profile kaydbooks-private-mcp --explain
 sudo systemctl enable --now kaydbooks-openai-tunnel
 unset CONTROL_PLANE_API_KEY CONTROL_PLANE_TUNNEL_ID
-curl --fail --silent --show-error http://127.0.0.1:8099/readyz
+curl --fail --silent --show-error http://127.0.0.1:8090/readyz
 ```
 
 In ChatGPT developer mode, create the app with the Tunnel connection, select this tunnel,
