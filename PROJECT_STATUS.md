@@ -2,7 +2,7 @@
 
 ## Active release: KaydBooks Bridge v0.2.0
 
-v0.2.0 is qualified for merge at **38/39 gates passed**. Its canonical result is the 39-gate
+v0.2.0 is qualified and merged at **39/39 gates passed**. Its canonical result is the 39-gate
 [acceptance record](docs/v020-acceptance.json); a gate passes only with retained evidence.
 The target deployment is one fresh unprivileged Linux LXC for Bridge, Remote MCP and the
 WhatsApp-only Hermes worker, reached privately through Tailscale HTTPS and loopback Caddy.
@@ -13,7 +13,7 @@ The physical QBWC import and bounded live sample preview, approval, post, indepe
 readback and duplicate-refusal cycle passed. The sample company is paused, its cumulative
 invoice quota is exhausted, and the private audit chain is valid. The ChatGPT development
 app is connected through the outbound-only OpenAI tunnel and its read-only live tool call
-is qualified. Only the final merge gate remains.
+is qualified. The complete qualified branch is merged into `main`.
 
 The v0.2.0 live cycle used one USD5 non-tax service invoice in the explicitly authorized
 synthetic company. A fresh physical-QBWC master check backed the exact preview; a separate

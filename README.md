@@ -1,6 +1,6 @@
 # KaydBooks Bridge
 
-A multi-company QuickBooks Desktop automation platform. The active release candidate is
+A multi-company QuickBooks Desktop automation platform. The active release is
 **KaydBooks Bridge v0.2.0**. It runs Bridge, the authenticated Remote MCP server and the
 WhatsApp-only Hermes worker in one private Linux LXC; physical Windows computers retain
 QuickBooks Desktop and Web Connector. **Production posting is disabled.**
@@ -13,7 +13,7 @@ Its [upstream reference](docs-upstream-qbwc-kit.md) describes transport examples
 not the Bridge application or deployment readiness. Do not expose those examples
 as Bridge endpoints: they do not enforce Bridge company permissions or durable jobs.
 
-## v0.2.0 release qualification
+## v0.2.0 release
 
 QuickBooks Web Connector (`.qwc`) is the required accounting transport. Each company
 has a distinct connector identity, callback URL and SQLite database. Tailscale Serve
@@ -30,10 +30,10 @@ their required gates before final M7 deployment qualification; tax functionality
 tax reports are excluded from this release by operator choice; the current sample
 invoice path is only part of that release.
 
-The prior v0.1.0 development pilot completed its 15/15 workflow checks. v0.2.0 is at
-**38/39 gates passed** in the separate [acceptance record](docs/v020-acceptance.json).
+The prior v0.1.0 development pilot completed its 15/15 workflow checks. v0.2.0 passed
+**39/39 gates** in the separate [acceptance record](docs/v020-acceptance.json).
 The physical Windows QBWC workflow, bounded sample write, independent readback and
-duplicate refusal have passed; only the final merge gate remains.
+duplicate refusal passed, and the qualified branch is merged into `main`.
 Historical v0.1.0 scores are evidence for the earlier pilot and do not qualify v0.2.0.
 See the [v0.2 deployment runbook](docs/V020_DEPLOYMENT.md),
 [Remote MCP guide](docs/REMOTE_MCP.md) and [upgrade/rollback guide](docs/UPGRADE_ROLLBACK.md).
