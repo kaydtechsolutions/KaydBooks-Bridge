@@ -2,17 +2,26 @@
 
 ## Active release: KaydBooks Bridge v0.2.0
 
-v0.2.0 is in qualification at **33/39 gates passed**. Its canonical result is the 39-gate
+v0.2.0 is qualified for merge at **38/39 gates passed**. Its canonical result is the 39-gate
 [acceptance record](docs/v020-acceptance.json); a gate passes only with retained evidence.
 The target deployment is one fresh unprivileged Linux LXC for Bridge, Remote MCP and the
 WhatsApp-only Hermes worker, reached privately through Tailscale HTTPS and loopback Caddy.
 Physical Windows computers continue to run QuickBooks Desktop and Web Connector. The
 optional Composio adapter is company-scoped and approval-gated. Production posting remains
 disabled; only explicit bounded sample gates may write.
-The remaining gates are physical QBWC import, the bounded live sample
-preview/post/readback/duplicate cycle, and final merge. The ChatGPT development app
-is connected through the outbound-only OpenAI tunnel and its read-only live tool call
-is qualified.
+The physical QBWC import and bounded live sample preview, approval, post, independent
+readback and duplicate-refusal cycle passed. The sample company is paused, its cumulative
+invoice quota is exhausted, and the private audit chain is valid. The ChatGPT development
+app is connected through the outbound-only OpenAI tunnel and its read-only live tool call
+is qualified. Only the final merge gate remains.
+
+The v0.2.0 live cycle used one USD5 non-tax service invoice in the explicitly authorized
+synthetic company. A fresh physical-QBWC master check backed the exact preview; a separate
+approver authorized it. Web Connector retained exactly one attempt and one write handoff,
+then verified the saved transaction through an independent lookup in the same cycle.
+Re-enqueue and recovery of the verified job were both refused without changing the counts.
+No connector session or unresolved write remains. Raw accounting identifiers, qbXML,
+credentials and private company configuration remain outside Git.
 
 ## Prior release: KB v0.1.0
 

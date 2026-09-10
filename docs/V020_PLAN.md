@@ -57,5 +57,8 @@ Available and verified: repository, local shell, the physical Windows workstatio
 Proxmox and LXC SSH aliases, Tailscale private HTTPS, Linux services, Remote MCP,
 the connected ChatGPT development app, Hermes WhatsApp, GitHub push and CI. The
 restricted ChatGPT principal completed a live read-only tool call through the Secure
-MCP Tunnel. QuickBooks Add Application approval and the live sample cycle remain human
-checkpoints. No production company is authorized for posting by this request.
+MCP Tunnel. All three QWC profiles are retained on the physical Windows workstation;
+the authorized synthetic profile is registered and completed the bounded preview,
+approval, write, independent readback and duplicate-refusal cycle against the Linux
+Bridge. The two production profiles were not connected to the sample company. No
+production company is authorized for posting by this request.
