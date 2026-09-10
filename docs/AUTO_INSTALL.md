@@ -271,7 +271,27 @@ rules and system time. If services and loopback health are ready but the MagicDN
 does not resolve, inspect `tailscale dns status` and `/etc/resolv.conf` before restarting
 installation. Correct the resolver/MagicDNS configuration; a ready local service does
 not prove private DNS is working. The verifier reports DNS failure explicitly and
-stops before authenticated probes. If credentials/company checks fail, review only the intended
+stops before authenticated probes.
+
+If Tailscale DNS is enabled but `/etc/resolv.conf` still lists public resolvers,
+restart `tailscaled` and retry the HTTPS health URL. For a Proxmox LXC running its
+own Tailscale client, prevent Proxmox from overwriting the working resolver again:
+
+```sh
+touch /etc/.pve-ignore.resolv.conf
+systemctl restart tailscaled
+cat /etc/resolv.conf
+# Replace YOUR_MAGICDNS_NAME with this container's full Tailscale DNS name.
+curl -fsS --max-time 15 https://YOUR_MAGICDNS_NAME/healthz
+```
+
+Run these commands inside the LXC. The ignore file is the
+[documented Proxmox DNS workaround](https://tailscale.com/docs/reference/troubleshooting/containers/proxmox#resolvconf-within-lxc);
+it leaves DNS management to the container. Do not edit Tailscale's generated resolver
+file manually. Repeat the HTTPS check after the next container restart. Once health
+works, resume a partial installation using its original commit and options above.
+
+If credentials/company checks fail, review only the intended
 company in `/etc/kaydbooks/bridge-config.json` and `/etc/kaydbooks/remote-policy.json`.
 Do not loosen access rules merely to make a check green.
 
