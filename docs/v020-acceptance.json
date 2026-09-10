@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "release_status": "release-candidate-awaiting-human-qualification",
   "last_updated": "2026-09-10",
-  "summary": {"passed": 31, "pending": 8, "total": 39},
+  "summary": {"passed": 32, "pending": 7, "total": 39},
   "gates": [
     {"id": "V02-01", "requirement": "Existing uncommitted work preserved", "status": "passed", "evidence": ["Verified Git bundle and SHA-256 manifest of the pre-existing work are retained outside the repository; all working changes remain on codex/v0.2.0."]},
     {"id": "V02-02", "requirement": "Repository audit complete", "status": "passed", "evidence": ["Reviewed repository instructions, Git state, remotes, documentation, tests, CI, v0.1 implementation, Hermes integration and the complete v0.2 diff."]},
@@ -37,7 +37,7 @@
     {"id": "V02-31", "requirement": "Doctor checks work", "status": "passed", "evidence": ["Installed doctor checks configuration, all services, Bridge health, WhatsApp, persistent Hermes MCP child, database integrity, Caddy and Tailscale HTTPS; post-restart retry handling returned all PASS."]},
     {"id": "V02-32", "requirement": "Secrets are absent from Git", "status": "passed", "evidence": ["Exact private credential scan found zero matches in added or modified v0.2 content; examples reference environment variables only."]},
     {"id": "V02-33", "requirement": "Private company information is absent from Git", "status": "passed", "evidence": ["Exact private configuration scan found zero matches in added or modified v0.2 content; committed examples use synthetic identifiers."]},
-    {"id": "V02-34", "requirement": "Linux and Windows CI pass", "status": "pending", "evidence": ["Local Windows suite passed 1,583 tests with 51 explicit skips. GitHub Linux and Windows matrix evidence requires the pending branch push."]},
+    {"id": "V02-34", "requirement": "Linux and Windows CI pass", "status": "passed", "evidence": ["Local Windows suite passed 1,583 tests with 51 explicit skips. GitHub Actions run 34421251332 passed lint/build, browser, offline intake, four Linux Python versions and four Windows Python versions for release-candidate SHA ebe3e9f."]},
     {"id": "V02-35", "requirement": "Documentation matches reality", "status": "passed", "evidence": ["Deployment, Remote MCP, Composio, upgrade/rollback, physical Windows QBWC, architecture, security and operator documents reflect the deployed release candidate and outstanding checkpoints."]},
     {"id": "V02-36", "requirement": "Release status contains no contradictions", "status": "passed", "evidence": ["README, PROJECT_STATUS, architecture and release plan consistently describe v0.2.0 as the active release candidate with 39 gates; v0.1 scores are explicitly historical."]},
     {"id": "V02-37", "requirement": "Clean release installation passes", "status": "passed", "evidence": ["Wheel built successfully and checksum-addressed installation created a fresh immutable Python environment; the same installer also passed repeat execution."]},

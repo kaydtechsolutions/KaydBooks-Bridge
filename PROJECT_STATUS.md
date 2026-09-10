@@ -2,15 +2,15 @@
 
 ## Active release: KaydBooks Bridge v0.2.0
 
-v0.2.0 is in qualification at **31/39 gates passed**. Its canonical result is the 39-gate
+v0.2.0 is in qualification at **32/39 gates passed**. Its canonical result is the 39-gate
 [acceptance record](docs/v020-acceptance.json); a gate passes only with retained evidence.
 The target deployment is one fresh unprivileged Linux LXC for Bridge, Remote MCP and the
 WhatsApp-only Hermes worker, reached privately through Tailscale HTTPS and loopback Caddy.
 Physical Windows computers continue to run QuickBooks Desktop and Web Connector. The
 optional Composio adapter is company-scoped and approval-gated. Production posting remains
 disabled; only explicit bounded sample gates may write.
-The remaining gates are GitHub CI, ChatGPT connector authorization, physical QBWC
-import, the bounded live sample preview/post/readback/duplicate cycle, and final merge.
+The remaining gates are ChatGPT connector authorization, physical QBWC import, the
+bounded live sample preview/post/readback/duplicate cycle, and final merge.
 
 ## Prior release: KB v0.1.0
 
