@@ -10,3 +10,16 @@ venv/
 .coverage
 htmlcov/
 *.db
+*.db-*
+*.sqlite*
+.env
+.env.*
+node_modules/
+!.env.example
+private/
+runtime/
+*.qwc
+*.QBW
+*.QBB
+*.pem
+*.key

@@ -1,0 +1,32 @@
+[Unit]
+Description=KaydBooks deterministic Hermes WhatsApp worker
+After=hermes-gateway.service kaydbooks-bridge.service
+Requires=hermes-gateway.service kaydbooks-bridge.service
+
+[Service]
+Type=simple
+User=hermes
+Group=hermes
+SupplementaryGroups=kaydbooks
+Environment=HOME=/var/lib/hermes
+Environment=PYTHONPATH=/var/lib/hermes/.hermes/plugins
+Environment=KAYDBOOKS_HERMES_CONFIG=/var/lib/hermes/.hermes/kaydbooks/channel.json
+Environment=KAYDBOOKS_CHANNEL_CONFIG=/etc/kaydbooks/channel-config.json
+Environment=KAYDBOOKS_TOOL_SECRET_FILE=/etc/kaydbooks/credentials.json
+EnvironmentFile=/etc/kaydbooks/bridge.env
+WorkingDirectory=/var/lib/hermes/.hermes/plugins
+ExecStart=/usr/local/lib/hermes-agent/venv/bin/python -m kaydbooks.worker
+Restart=on-failure
+RestartSec=15s
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/hermes /var/lib/kaydbooks
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

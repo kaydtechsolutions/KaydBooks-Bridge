@@ -1,0 +1,29 @@
+[Unit]
+Description=KaydBooks private MCP outbound tunnel
+After=network-online.target caddy.service kaydbooks-remote-mcp.service
+Wants=network-online.target caddy.service kaydbooks-remote-mcp.service
+
+[Service]
+Type=simple
+User=kaydbooks-tunnel
+Group=kaydbooks
+Environment=HOME=/var/lib/kaydbooks-tunnel
+EnvironmentFile=/etc/kaydbooks/openai-tunnel.env
+ExecStart=/usr/local/bin/tunnel-client run --profile kaydbooks-private-mcp
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/kaydbooks-tunnel
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

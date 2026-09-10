@@ -1,0 +1,32 @@
+[Unit]
+Description=Hermes Agent WhatsApp-only gateway
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hermes
+Group=hermes
+SupplementaryGroups=kaydbooks
+Environment=HOME=/var/lib/hermes
+Environment=HERMES_HOME=/var/lib/hermes/.hermes/profiles/osman-khalid-agent
+Environment=KAYDBOOKS_TOOL_SECRET_FILE=/etc/kaydbooks/credentials.json
+Environment=KAYDBOOKS_TOOL_TOKEN_ENV=KAYDBOOKS_HERMES_SAMPLE_SECRET
+EnvironmentFile=/etc/kaydbooks/bridge.env
+EnvironmentFile=-/etc/kaydbooks/hermes-mcp.env
+WorkingDirectory=/var/lib/hermes/.hermes/profiles/osman-khalid-agent
+ExecStart=/usr/local/lib/hermes-agent/venv/bin/python -m hermes_cli.main gateway run
+Restart=on-failure
+RestartSec=5s
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/hermes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target
