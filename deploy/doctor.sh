@@ -64,6 +64,8 @@ if systemctl is-enabled --quiet kaydbooks-openai-tunnel.service 2>/dev/null; the
     check systemctl is-active kaydbooks-openai-tunnel.service
     check curl --fail --silent --show-error http://127.0.0.1:8090/healthz
     check curl --fail --silent --show-error http://127.0.0.1:8090/readyz
+    check sudo -u kaydbooks-tunnel test ! -r /etc/kaydbooks/credentials.json
+    check sudo -u kaydbooks-tunnel test ! -w /var/lib/kaydbooks
 fi
 check curl --fail --silent --show-error http://127.0.0.1:8080/healthz
 if [ "$HERMES_ENABLED" = 1 ]; then

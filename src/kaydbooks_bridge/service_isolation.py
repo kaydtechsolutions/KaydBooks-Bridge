@@ -145,13 +145,68 @@ def migrate(profile, base_url):
     print("PASS Hermes service isolation applied; verify WhatsApp and company catalog separately")
 
 
+def migrate_tunnel():
+    import grp
+    import pwd
+
+    if os.geteuid() != 0:
+        raise InstallError("service isolation migration requires root")
+    user = "kaydbooks-tunnel"
+    pwd.getpwnam(user)
+    home = Path("/var/lib/kaydbooks-tunnel")
+    if not home.is_dir() or any(p.is_symlink() for p in (home, *home.parents)):
+        raise InstallError("existing tunnel home without symlinks required")
+    unit = "kaydbooks-openai-tunnel.service"
+    state = service_state(unit)
+    if state not in ("active", "inactive", "failed"):
+        raise InstallError("tunnel must have a stable active/inactive/failed state")
+    journal = Path("/etc/kaydbooks/isolation-tunnel.json")
+    intent = {"restart": state == "active", "complete": False}
+    if journal.exists():
+        previous = json.loads(journal.read_text())
+        if not previous.get("complete"):
+            intent["restart"] = previous["restart"]
+    replace_private(journal, intent)
+    run("systemctl", "stop", unit)
+    try:
+        grp.getgrnam(user)
+    except KeyError:
+        run("groupadd", "--system", user)
+    run("usermod", "--gid", user, user)
+    remove_bridge_group(user)
+    run("chown", user + ":" + user, home)
+    run("chmod", "0700", home)
+    replace_private(
+        Path("/etc/systemd/system/kaydbooks-openai-tunnel.service.d/zz-kaydbooks-isolation.conf"),
+        "[Service]\nGroup=kaydbooks-tunnel\nSupplementaryGroups=\n"
+        "InaccessiblePaths=/etc/kaydbooks /var/lib/kaydbooks /var/log/kaydbooks\n",
+    )
+    run("systemctl", "daemon-reload")
+    verify_user(user)
+    if intent["restart"]:
+        run("systemctl", "start", unit)
+        run("systemctl", "is-active", unit)
+    replace_private(journal, {**intent, "complete": True})
+    print("PASS tunnel account isolated; verify tunnel readiness separately")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--profile", required=True)
-    parser.add_argument("--server-url", required=True)
+    parser.add_argument("--profile")
+    parser.add_argument("--server-url")
+    parser.add_argument(
+        "--tunnel", action="store_true", help="migrate only the tunnel service account"
+    )
     args = parser.parse_args()
     try:
-        migrate(args.profile, args.server_url)
+        if args.tunnel:
+            if args.profile or args.server_url:
+                parser.error("--tunnel cannot be combined with Hermes profile arguments")
+            migrate_tunnel()
+        else:
+            if not args.profile or not args.server_url:
+                parser.error("Hermes migration requires --profile and --server-url")
+            migrate(args.profile, args.server_url)
     except (InstallError, OSError, subprocess.CalledProcessError):
         raise SystemExit(
             "Isolation incomplete; inspect the last check and rerun after correction. "

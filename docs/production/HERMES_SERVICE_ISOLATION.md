@@ -1,7 +1,7 @@
 # Hermes service isolation
 
 Status: the scoped remote client and resumable Hermes service migration are
-implemented and tested locally. Installed Linux qualification, tunnel isolation
+implemented and tested locally. A separate tunnel migration is implemented. Installed Linux qualification
 and the legacy deterministic worker migration are still pending. This document
 does not claim the currently deployed service is isolated.
 
@@ -107,3 +107,16 @@ An active or enabled legacy deterministic worker blocks this migration. An inact
 disabled worker receives an explicit failing service override, preventing later
 accidental use of its old shared-state adapter. Its separate remote-workflow
 migration remains a release task; this guard is not feature qualification.
+
+The tunnel has a separate migration:
+
+```sh
+/opt/kaydbooks/current/bin/python -m kaydbooks_bridge.service_isolation --tunnel
+```
+
+This stops the tunnel, assigns its dedicated `kaydbooks-tunnel` group, removes any
+Bridge supplementary membership, protects its home and blocks Bridge filesystem
+paths in its systemd namespace. Systemd reads the root-owned tunnel environment
+file before entering that namespace; the tunnel does not need filesystem access
+to `/etc/kaydbooks`. Restart intent is saved in `isolation-tunnel.json`. Verify
+`/healthz` and `/readyz` on its local status endpoint after the service restarts.

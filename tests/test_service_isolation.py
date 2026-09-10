@@ -2,7 +2,9 @@ import copy
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import yaml
@@ -318,3 +320,31 @@ def test_migration_does_not_activate_previously_inactive_gateway(tmp_path, monke
     assert state["gateway"] == "inactive"
     assert ("systemctl", "start", "hermes-gateway.service") not in calls
     assert json.loads(journal.read_text())["complete"]
+
+
+def test_tunnel_migration_removes_primary_and_supplementary_bridge_access(tmp_path, monkeypatch):
+    state, calls, _ = migration_fixture(tmp_path, monkeypatch)
+    home = tmp_path / "var/lib/kaydbooks-tunnel"
+    home.mkdir(parents=True)
+    monkeypatch.setitem(sys.modules, "pwd", SimpleNamespace(getpwnam=lambda u: object()))
+
+    def absent_group(name):
+        raise KeyError(name)
+
+    monkeypatch.setitem(sys.modules, "grp", SimpleNamespace(getgrnam=absent_group))
+    service_isolation.migrate_tunnel()
+    assert calls.index(("systemctl", "stop", "kaydbooks-openai-tunnel.service")) < calls.index(
+        ("usermod", "--gid", "kaydbooks-tunnel", "kaydbooks-tunnel")
+    )
+    assert calls.index(("remove", "kaydbooks-tunnel")) < calls.index(("verify", "kaydbooks-tunnel"))
+    assert calls.index(("verify", "kaydbooks-tunnel")) < calls.index(
+        ("systemctl", "start", "kaydbooks-openai-tunnel.service")
+    )
+    override = (
+        tmp_path
+        / "etc/systemd/system/kaydbooks-openai-tunnel.service.d/zz-kaydbooks-isolation.conf"
+    )
+    assert "Group=kaydbooks-tunnel\nSupplementaryGroups=\n" in override.read_text()
+    assert "InaccessiblePaths=/etc/kaydbooks" in override.read_text()
+    assert state["gateway"] == "active"
+    assert json.loads((tmp_path / "etc/kaydbooks/isolation-tunnel.json").read_text())["complete"]

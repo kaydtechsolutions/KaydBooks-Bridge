@@ -37,12 +37,13 @@ id hermes >/dev/null 2>&1 || useradd --system --gid hermes \
     --home-dir /var/lib/hermes --shell /usr/sbin/nologin hermes
 # Hermes uses a scoped HTTPS MCP client. Existing memberships are removed by
 # the explicit service migration only after the replacement client is verified.
-id kaydbooks-tunnel >/dev/null 2>&1 || useradd --system --gid kaydbooks \
+getent group kaydbooks-tunnel >/dev/null || groupadd --system kaydbooks-tunnel
+id kaydbooks-tunnel >/dev/null 2>&1 || useradd --system --gid kaydbooks-tunnel \
     --home-dir /var/lib/kaydbooks-tunnel --shell /usr/sbin/nologin kaydbooks-tunnel
 install -d -o root -g kaydbooks -m 0750 /etc/kaydbooks
 install -d -o kaydbooks -g kaydbooks -m 2770 /var/lib/kaydbooks /var/log/kaydbooks
 install -d -o hermes -g hermes -m 0700 /var/lib/hermes
-install -d -o kaydbooks-tunnel -g kaydbooks -m 0750 /var/lib/kaydbooks-tunnel
+install -d -o kaydbooks-tunnel -g kaydbooks-tunnel -m 0700 /var/lib/kaydbooks-tunnel
 install -d -o root -g root -m 0755 /opt/kaydbooks/releases
 
 SHORT=$(printf '%.12s' "$EXPECTED")
