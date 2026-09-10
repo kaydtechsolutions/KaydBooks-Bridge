@@ -3,7 +3,6 @@
 from xml.etree import ElementTree as ET
 
 import pytest
-from qbwc_kit.testing import FakeQuickBooks
 
 from kaydbooks_bridge.config import BridgeError
 from kaydbooks_bridge.hermes_tools import server
@@ -11,8 +10,9 @@ from kaydbooks_bridge.qbwc import DurableQBWCDiscoveryService as S
 from kaydbooks_bridge.qbwc_reference_data import read
 from kaydbooks_bridge.reference_data import QUERIES, append_queries, plan, validate_response
 from kaydbooks_bridge.service import Bridge
+from qbwc_kit.testing import FakeQuickBooks
 from test_direct_sdk import direct  # noqa: F401
-from test_native_reports import case
+from test_native_reports import case  # noqa: F401
 from test_qbwc_discovery import (
     COMPANY_A,
     HOST,
@@ -53,7 +53,7 @@ def request(path, token, request_id="references-001"):
     return read(Bridge(path), token, "company-a", "connector-company-a", request_id)
 
 
-def test_reference_data_request_is_read_only_and_complete(case):
+def test_reference_data_request_is_read_only_and_complete(case):  # noqa: F811
     path, token = case
     assert request(path, token)["pending"] is True
     service = S.from_path(path)
@@ -85,7 +85,7 @@ def test_reference_data_request_is_read_only_and_complete(case):
         assert service._stores["company-a"].verify_audit(db)
 
 
-def test_reference_data_rejects_incomplete_or_duplicate_lists(case):
+def test_reference_data_rejects_incomplete_or_duplicate_lists(case):  # noqa: F811
     policy = S.from_path(case[0]).config.companies["company-a"]
     check = plan(policy, {})
     run = "123456789"
@@ -96,14 +96,14 @@ def test_reference_data_rejects_incomplete_or_duplicate_lists(case):
     with pytest.raises(BridgeError, match="complete"):
         validate_response(ET.tostring(root, encoding="unicode"), run, check)
     root = ET.fromstring(answer)
-    root[0][-1].find("./ItemSalesTaxGroupRet/ListID").text = root[0][-2].find(
-        "./ItemSalesTaxRet/ListID"
-    ).text
+    root[0][-1].find("./ItemSalesTaxGroupRet/ListID").text = (
+        root[0][-2].find("./ItemSalesTaxRet/ListID").text
+    )
     with pytest.raises(BridgeError, match="duplicate"):
         validate_response(ET.tostring(root, encoding="unicode"), run, check)
 
 
-def test_reference_data_tool_schema_is_explicit(case):
+def test_reference_data_tool_schema_is_explicit(case):  # noqa: F811
     import asyncio
 
     app = server(*case)

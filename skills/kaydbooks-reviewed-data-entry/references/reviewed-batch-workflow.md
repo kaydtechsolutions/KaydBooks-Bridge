@@ -14,6 +14,17 @@ Freeze one immutable authorization envelope containing the source hash, target c
 
 Use read-only QBWC queries to collect Host and Company identity; customers, vendors, items, accounts, terms, sales reps, payment methods, inventory sites, names, and the non-tax code; exact-reference candidates; invoice balances; and preferences such as multicurrency.
 
+### Start the ISKAASHIRDP Web Connector session cleanly
+
+For ISKAASHI runs that use the existing ISKAASHIRDP QuickBooks/Web Connector session, verify the session state before queuing or retrying a query:
+
+- Confirm the exact Web Connector application has QuickBooks permission to read and modify the company file, with **Allow this application to login automatically** saved for the intended QuickBooks user. A permission dialog is not saved until the operator selects **OK** and accepts any follow-up confirmation prompt.
+- Once automatic login is configured, close the interactive QuickBooks instance before triggering Web Connector. Let Web Connector open the configured company file under the saved QuickBooks user.
+- Before retrying after a connection failure, inspect QuickBooks processes in the ISKAASHIRDP session. Do not trigger while both an interactive process and a stale `QBW.EXE -Embedding` process remain. A stale embedding process from a conclusively failed, closed QBWC session may be stopped after its session, command line, and failed callback state are verified; never terminate an interactive QuickBooks process on the operator's behalf.
+- Treat `0x80040438` as a multiple-instance/session-state failure. Clear the stale failed-session process or have the operator close interactive QuickBooks, then create a fresh read-only request ID.
+- Treat `0x8004041D` as missing or unsaved automatic-login permission for the exact connector identity. Have the QuickBooks administrator save that permission, close QuickBooks, and retry with a fresh read-only request ID.
+- Keep posting paused throughout connection repair. Failed read-only requests are conclusive unsent attempts and must remain in the evidence history.
+
 Reject inactive, missing, ambiguous, or changed masters. Match by stable ListID after the reviewed FullName, Name, or Initial is confirmed. Do not store this catalog in Git.
 
 For a newly authorized customer, create it as a separate dependency step, read back its ListID, then use that customer for the dependent transaction. The dependency does not increase the financial-entry denominator.

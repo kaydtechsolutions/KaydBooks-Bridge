@@ -244,11 +244,12 @@ def test_transport_uses_authenticated_server_clock_and_exact_signature(monkeypat
     assert len(seen) == 3  # One trusted clock query, two signed calls.
 
 
-def test_server_clock_endpoint_needs_no_secrets(monkeypatch, capsys):
+@pytest.mark.parametrize("argument", ["--clock", "-Clock"])
+def test_server_clock_endpoint_needs_no_secrets(monkeypatch, capsys, argument):
     import json
 
     from kaydbooks_bridge.hermes_channel import main
 
-    monkeypatch.setattr(sys, "argv", ["channel", "--clock"])
+    monkeypatch.setattr(sys, "argv", ["channel", argument])
     assert main() == 0
     assert json.loads(capsys.readouterr().out)["result"]["server_time"] > 0

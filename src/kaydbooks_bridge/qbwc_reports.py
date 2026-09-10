@@ -15,6 +15,7 @@ ReportName = Literal[
     "vendor-balances",
     "inventory-valuation",
     "inventory-stock",
+    "inventory-by-site",
     "sales-customers",
     "sales-items",
     "purchases-vendors",
@@ -50,7 +51,7 @@ CATEGORIES = {
         "vendor-statement",
     ],
     "16 Purchases": ["purchases-vendors", "purchases-items"],
-    "17 Inventory": ["inventory-valuation", "inventory-stock"],
+    "17 Inventory": ["inventory-valuation", "inventory-stock", "inventory-by-site"],
     "19 Banking": ["check-detail", "deposit-detail"],
     "20 Accountant & Taxes": ["trial-balance", "general-ledger", "journal"],
 }

@@ -51,9 +51,11 @@ def test_new_users_get_independent_unbound_private_bundles(tmp_path, monkeypatch
             monkeypatch.setenv(name, token)
         actor = config.authenticate(credentials["KAYDBOOKS_OPERATOR_SECRET"])
         config.authorize(actor, company, "read")
-        assert set(config.principals[actor]["companies"][company]) == PERMISSIONS
-        for permission in PERMISSIONS:
-            config.authorize(actor, company, permission)
+        assert set(config.principals[actor]["companies"][company]) == {"read"}
+        config.authorize(actor, company, "read")
+        for permission in PERMISSIONS - {"read"}:
+            with pytest.raises(BridgeError):
+                config.authorize(actor, company, permission)
             with pytest.raises(BridgeError, match="permission denied"):
                 config.authorize(actor, "unassigned-company", permission)
         assert config.companies[company].approval_required

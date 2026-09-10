@@ -53,4 +53,3 @@ def result_metadata(service, row, connector, discovery, data):
         "source": "quickbooks-web-connector",
         **data,
     }
-

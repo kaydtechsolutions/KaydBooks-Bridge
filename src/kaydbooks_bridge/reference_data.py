@@ -16,25 +16,191 @@ QUERIES = (
     ("names", "OtherName", ("ListID", "Name", "IsActive")),
     ("names", "Employee", ("ListID", "Name", "IsActive")),
     ("tax_codes", "SalesTaxCode", ("ListID", "Name", "IsActive", "IsTaxable")),
-    ("accounts", "Account", ("ListID", "Name", "FullName", "IsActive", "AccountType", "AccountNumber", "ParentRef", "Sublevel")),
-    ("customers", "Customer", ("ListID", "Name", "FullName", "IsActive", "CompanyName", "FirstName", "LastName", "Phone", "Contact", "AltContact", "TermsRef", "SalesRepRef", "ParentRef", "JobStatus")),
-    ("vendors", "Vendor", ("ListID", "Name", "IsActive", "CompanyName", "FirstName", "LastName", "Phone", "Contact", "AltContact", "TermsRef")),
+    (
+        "accounts",
+        "Account",
+        (
+            "ListID",
+            "Name",
+            "FullName",
+            "IsActive",
+            "AccountType",
+            "AccountNumber",
+            "ParentRef",
+            "Sublevel",
+        ),
+    ),
+    (
+        "customers",
+        "Customer",
+        (
+            "ListID",
+            "Name",
+            "FullName",
+            "IsActive",
+            "CompanyName",
+            "FirstName",
+            "LastName",
+            "Phone",
+            "Contact",
+            "AltContact",
+            "TermsRef",
+            "SalesRepRef",
+            "ParentRef",
+            "JobStatus",
+        ),
+    ),
+    (
+        "vendors",
+        "Vendor",
+        (
+            "ListID",
+            "Name",
+            "IsActive",
+            "CompanyName",
+            "FirstName",
+            "LastName",
+            "Phone",
+            "Contact",
+            "AltContact",
+            "TermsRef",
+        ),
+    ),
     ("sales_reps", "SalesRep", ("ListID", "Initial", "IsActive", "SalesRepEntityRef")),
     ("payment_methods", "PaymentMethod", ("ListID", "Name", "IsActive", "PaymentMethodType")),
-    ("terms", "StandardTerms", ("ListID", "Name", "IsActive", "StdDueDays", "StdDiscountDays", "DiscountPct")),
-    ("terms", "DateDrivenTerms", ("ListID", "Name", "IsActive", "DayOfMonthDue", "DueNextMonthDays", "DiscountDayOfMonth", "DiscountPct")),
-    ("inventory_sites", "InventorySite", ("ListID", "Name", "IsActive", "ParentSiteRef", "IsDefaultSite")),
-    ("items", "ItemInventory", ("ListID", "Name", "FullName", "IsActive", "ParentRef", "SalesDesc", "SalesPrice", "PurchaseDesc", "PurchaseCost", "IncomeAccountRef", "COGSAccountRef", "AssetAccountRef", "UnitOfMeasureSetRef")),
-    ("items", "ItemInventoryAssembly", ("ListID", "Name", "FullName", "IsActive", "ParentRef", "SalesDesc", "SalesPrice", "PurchaseDesc", "PurchaseCost", "IncomeAccountRef", "COGSAccountRef", "AssetAccountRef", "UnitOfMeasureSetRef")),
-    ("items", "ItemNonInventory", ("ListID", "Name", "FullName", "IsActive", "ParentRef", "SalesOrPurchase", "SalesAndPurchase", "UnitOfMeasureSetRef")),
-    ("items", "ItemService", ("ListID", "Name", "FullName", "IsActive", "ParentRef", "SalesOrPurchase", "SalesAndPurchase", "UnitOfMeasureSetRef")),
-    ("items", "ItemOtherCharge", ("ListID", "Name", "FullName", "IsActive", "ParentRef", "SalesOrPurchase", "SalesAndPurchase", "UnitOfMeasureSetRef")),
+    (
+        "terms",
+        "StandardTerms",
+        ("ListID", "Name", "IsActive", "StdDueDays", "StdDiscountDays", "DiscountPct"),
+    ),
+    (
+        "terms",
+        "DateDrivenTerms",
+        (
+            "ListID",
+            "Name",
+            "IsActive",
+            "DayOfMonthDue",
+            "DueNextMonthDays",
+            "DiscountDayOfMonth",
+            "DiscountPct",
+        ),
+    ),
+    (
+        "inventory_sites",
+        "InventorySite",
+        ("ListID", "Name", "IsActive", "ParentSiteRef", "IsDefaultSite"),
+    ),
+    (
+        "items",
+        "ItemInventory",
+        (
+            "ListID",
+            "Name",
+            "FullName",
+            "IsActive",
+            "ParentRef",
+            "SalesDesc",
+            "SalesPrice",
+            "PurchaseDesc",
+            "PurchaseCost",
+            "IncomeAccountRef",
+            "COGSAccountRef",
+            "AssetAccountRef",
+            "UnitOfMeasureSetRef",
+        ),
+    ),
+    (
+        "items",
+        "ItemInventoryAssembly",
+        (
+            "ListID",
+            "Name",
+            "FullName",
+            "IsActive",
+            "ParentRef",
+            "SalesDesc",
+            "SalesPrice",
+            "PurchaseDesc",
+            "PurchaseCost",
+            "IncomeAccountRef",
+            "COGSAccountRef",
+            "AssetAccountRef",
+            "UnitOfMeasureSetRef",
+        ),
+    ),
+    (
+        "items",
+        "ItemNonInventory",
+        (
+            "ListID",
+            "Name",
+            "FullName",
+            "IsActive",
+            "ParentRef",
+            "SalesOrPurchase",
+            "SalesAndPurchase",
+            "UnitOfMeasureSetRef",
+        ),
+    ),
+    (
+        "items",
+        "ItemService",
+        (
+            "ListID",
+            "Name",
+            "FullName",
+            "IsActive",
+            "ParentRef",
+            "SalesOrPurchase",
+            "SalesAndPurchase",
+            "UnitOfMeasureSetRef",
+        ),
+    ),
+    (
+        "items",
+        "ItemOtherCharge",
+        (
+            "ListID",
+            "Name",
+            "FullName",
+            "IsActive",
+            "ParentRef",
+            "SalesOrPurchase",
+            "SalesAndPurchase",
+            "UnitOfMeasureSetRef",
+        ),
+    ),
     ("items", "ItemGroup", ("ListID", "Name", "IsActive", "ItemDesc", "UnitOfMeasureSetRef")),
-    ("items", "ItemDiscount", ("ListID", "Name", "IsActive", "ItemDesc", "DiscountRate", "DiscountRatePercent", "AccountRef")),
-    ("items", "ItemFixedAsset", ("ListID", "Name", "IsActive", "AssetAccountRef", "PurchaseDesc", "PurchaseCost")),
+    (
+        "items",
+        "ItemDiscount",
+        (
+            "ListID",
+            "Name",
+            "IsActive",
+            "ItemDesc",
+            "DiscountRate",
+            "DiscountRatePercent",
+            "AccountRef",
+        ),
+    ),
+    (
+        "items",
+        "ItemFixedAsset",
+        ("ListID", "Name", "IsActive", "AssetAccountRef", "PurchaseDesc", "PurchaseCost"),
+    ),
     ("items", "ItemSubtotal", ("ListID", "Name", "IsActive", "ItemDesc")),
-    ("items", "ItemPayment", ("ListID", "Name", "IsActive", "ItemDesc", "PaymentMethodRef", "DepositToAccountRef")),
-    ("items", "ItemSalesTax", ("ListID", "Name", "IsActive", "ItemDesc", "TaxRate", "TaxVendorRef")),
+    (
+        "items",
+        "ItemPayment",
+        ("ListID", "Name", "IsActive", "ItemDesc", "PaymentMethodRef", "DepositToAccountRef"),
+    ),
+    (
+        "items",
+        "ItemSalesTax",
+        ("ListID", "Name", "IsActive", "ItemDesc", "TaxRate", "TaxVendorRef"),
+    ),
     ("items", "ItemSalesTaxGroup", ("ListID", "Name", "IsActive", "ItemDesc")),
 )
 
@@ -57,9 +223,7 @@ def append_queries(request, run, _check):
         ET.SubElement(query, "ActiveStatus").text = "All"
         for field in fields:
             ET.SubElement(query, "IncludeRetElement").text = field
-    return '<?xml version="1.0"?><?qbxml version="17.0"?>' + ET.tostring(
-        root, encoding="unicode"
-    )
+    return '<?xml version="1.0"?><?qbxml version="17.0"?>' + ET.tostring(root, encoding="unicode")
 
 
 def _value(node):
@@ -70,7 +234,9 @@ def _value(node):
         value = _value(child)
         if child.tag in result:
             existing = result[child.tag]
-            result[child.tag] = existing + [value] if isinstance(existing, list) else [existing, value]
+            result[child.tag] = (
+                existing + [value] if isinstance(existing, list) else [existing, value]
+            )
         else:
             result[child.tag] = value
     return result
@@ -121,7 +287,11 @@ def validate_response(response, run, _check):
             seen[catalog].add(list_id)
             catalogs[catalog].append({"kind": entity, **record})
     for values in catalogs.values():
-        values.sort(key=lambda row: (row.get("FullName") or row.get("Name") or row.get("Initial") or "").casefold())
+        values.sort(
+            key=lambda row: (
+                row.get("FullName") or row.get("Name") or row.get("Initial") or ""
+            ).casefold()
+        )
     for node in list(root[0])[2:]:
         root[0].remove(node)
     return ET.tostring(root, encoding="unicode"), {

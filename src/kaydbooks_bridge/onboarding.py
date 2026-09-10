@@ -81,7 +81,7 @@ def restrict_directory(path: Path):
 def initialize(request_path: str | Path, destination: str | Path) -> dict:
     request = read_json(request_path)
     strict_keys(request, {"target", "currency", "max_total"}, {"permissions"})
-    permissions = request.get("permissions", sorted(PERMISSIONS))
+    permissions = request.get("permissions", ["read"])
     if (
         not isinstance(permissions, list)
         or any(not isinstance(p, str) or p not in PERMISSIONS for p in permissions)

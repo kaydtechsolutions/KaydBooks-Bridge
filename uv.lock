@@ -634,7 +634,7 @@ wheels = [
 
 [[package]]
 name = "kaydbooks-bridge"
-version = "0.1.0.dev1"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "defusedxml" },
@@ -659,6 +659,10 @@ intake = [
     { name = "pillow" },
     { name = "pypdfium2" },
 ]
+remote = [
+    { name = "mcp" },
+    { name = "uvicorn" },
+]
 server = [
     { name = "fastapi" },
     { name = "uvicorn" },
@@ -671,6 +675,7 @@ requires-dist = [
     { name = "fastapi", marker = "extra == 'server'", specifier = ">=0.100" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.24" },
     { name = "mcp", marker = "extra == 'hermes'", specifier = ">=1.10,<2" },
+    { name = "mcp", marker = "extra == 'remote'", specifier = "==1.29.1" },
     { name = "openpyxl", specifier = ">=3.1.5,<4" },
     { name = "pillow", marker = "extra == 'intake'", specifier = ">=12,<13" },
     { name = "playwright", marker = "extra == 'dev'", specifier = ">=1.55,<2" },
@@ -680,9 +685,10 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
     { name = "tzdata", marker = "sys_platform == 'win32'" },
     { name = "uvicorn", marker = "extra == 'dev'", specifier = ">=0.23" },
+    { name = "uvicorn", marker = "extra == 'remote'", specifier = "==0.52.4" },
     { name = "uvicorn", marker = "extra == 'server'", specifier = ">=0.23" },
 ]
-provides-extras = ["server", "dev", "hermes", "intake"]
+provides-extras = ["server", "dev", "hermes", "remote", "intake"]
 
 [[package]]
 name = "mcp"

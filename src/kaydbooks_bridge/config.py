@@ -6,6 +6,7 @@ import json
 import os
 import re
 import secrets
+import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -118,6 +119,7 @@ class Config:
     companies: dict[str, Company]
     principals: dict[str, dict]
     connectors: dict[str, Connector]
+    owner_access: dict[str, dict] = field(default_factory=dict)
 
     @classmethod
     def load(cls, path: str | Path) -> Config:
@@ -126,7 +128,7 @@ class Config:
         strict_keys(
             data,
             {"schema_version", "mode", "state_root", "companies", "principals"},
-            {"connectors"},
+            {"connectors", "owner_access"},
         )
         if type(data["schema_version"]) is not int or data["schema_version"] != 1:
             raise BridgeError("unsupported configuration version")
@@ -480,7 +482,9 @@ class Config:
         env_names = set()
         for name, principal in principals.items():
             identifier(name)
-            strict_keys(principal, {"token_env", "companies"})
+            strict_keys(principal, {"token_env", "companies"}, {"owner"})
+            if type(principal.get("owner", False)) is not bool:
+                raise BridgeError("owner designation must be boolean")
             env = principal["token_env"]
             if not isinstance(env, str) or not re.fullmatch(r"KAYDBOOKS_[A-Z0-9_]+", env):
                 raise BridgeError("use a KAYDBOOKS_ environment secret reference")
@@ -495,6 +499,27 @@ class Config:
                     raise BridgeError("invalid company permission grants")
                 if any(p not in PERMISSIONS for p in permissions):
                     raise BridgeError("unsupported permission")
+        owner_access = data.get("owner_access", {})
+        if not isinstance(owner_access, dict):
+            raise BridgeError("owner access must be an object")
+        for company, grant in owner_access.items():
+            if company not in companies:
+                raise BridgeError("owner access references an unknown company")
+            strict_keys(grant, {"principal", "activated_at", "expires_at", "reason"})
+            principal = grant["principal"]
+            if principal not in principals or not principals[principal].get("owner", False):
+                raise BridgeError("owner access requires a designated owner")
+            if company not in principals[principal]["companies"]:
+                raise BridgeError("owner access must remain company scoped")
+            if (
+                type(grant["activated_at"]) not in (int, float)
+                or type(grant["expires_at"]) not in (int, float)
+                or grant["expires_at"] <= grant["activated_at"]
+                or grant["expires_at"] - grant["activated_at"] > 8 * 60 * 60
+                or not isinstance(grant["reason"], str)
+                or not 10 <= len(grant["reason"]) <= 256
+            ):
+                raise BridgeError("invalid owner access window")
         connectors = {}
         identity_companies: dict[str, str] = {}
         company_identities: dict[str, tuple[tuple[str, ...], str]] = {}
@@ -546,7 +571,7 @@ class Config:
                 identity_fields=tuple(fields),
                 identity_sha256=expected,
             )
-        return cls(root, companies, principals, connectors)
+        return cls(root, companies, principals, connectors, owner_access)
 
     def authenticate(self, token: str) -> str:
         matches = []
@@ -558,10 +583,23 @@ class Config:
             raise BridgeError("authentication failed")
         return matches[0]
 
-    def authorize(self, actor: str, company: str, permission: str) -> Company:
+    def owner_override(self, actor: str, company: str, at: float | None = None) -> bool:
+        grant = self.owner_access.get(company, {})
         principal = self.principals.get(actor, {})
-        if company not in self.companies or permission not in principal.get("companies", {}).get(
-            company, []
+        moment = time.time() if at is None else at
+        return bool(
+            principal.get("owner", False)
+            and grant.get("principal") == actor
+            and grant.get("activated_at", moment + 1) <= moment < grant.get("expires_at", moment)
+        )
+
+    def authorize(
+        self, actor: str, company: str, permission: str, *, at: float | None = None
+    ) -> Company:
+        principal = self.principals.get(actor, {})
+        granted = permission in principal.get("companies", {}).get(company, [])
+        if company not in self.companies or (
+            not granted and not self.owner_override(actor, company, at)
         ):
             raise BridgeError("permission denied")
         return self.companies[company]

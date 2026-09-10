@@ -1,15 +1,26 @@
 # KaydBooks Bridge project status
 
-## Active release: KB v0.1.0
+## Active release: KaydBooks Bridge v0.2.0
 
-The operator narrowed active work to Hermes upload -> exact operator confirmation
+v0.2.0 is in qualification at **30/39 gates passed**. Its canonical result is the 39-gate
+[acceptance record](docs/v020-acceptance.json); a gate passes only with retained evidence.
+The target deployment is one fresh unprivileged Linux LXC for Bridge, Remote MCP and the
+WhatsApp-only Hermes worker, reached privately through Tailscale HTTPS and loopback Caddy.
+Physical Windows computers continue to run QuickBooks Desktop and Web Connector. The
+optional Composio adapter is company-scoped and approval-gated. Production posting remains
+disabled; only explicit bounded sample gates may write.
+The remaining gates are GitHub push/CI, ChatGPT connector authorization, physical QBWC
+import, the bounded live sample preview/post/readback/duplicate cycle, and final merge.
+
+## Prior release: KB v0.1.0
+
+The operator narrowed that release to Hermes upload -> exact operator confirmation
 -> Web Connector data entry -> mini result in the operator's Hermes WhatsApp chat.
 Keep the eight selected entry types. Daily reports, customer statement delivery
-and broader roadmap expansion are deferred. The current score is **12/15 verified
-acceptance checks (80%)**; all eight entry types passed basic sample qualification,
+and broader roadmap expansion are deferred. The final score was **15/15 verified
+acceptance checks (100%)**; all eight entry types passed basic sample qualification,
 and native confirmation, remote connection, dispatch/readback and result delivery
-passed. Three workflow/setup checks remain open. Partial
-implementation is not counted as a passed end-to-end check. See the
+passed. See the
 [milestone scorecard](docs/HERMES_DATA_ENTRY_PILOT.md) and
 [multi-company installation guide](docs/INSTALL_HERMES_DATA_ENTRY.md).
 Every major progress update must include this version, milestone status and score.
@@ -22,8 +33,7 @@ Production posting remains disabled.
 
 All eight selected transaction paths have implementations, browser forms and basic
 installed Web Connector sample qualification. **V01-5: 8/8 (100%)**. The complete
-v0.1.0 workflow is **12/15 checks (80%)**; autonomous upload/preparation, per-company
-onboarding and final installation/recovery qualification remain open.
+v0.1.0 workflow finished at **15/15 checks (100%)**.
 Supported transaction variants are bounded; this is not production
 or complete conversational-workflow qualification.
 

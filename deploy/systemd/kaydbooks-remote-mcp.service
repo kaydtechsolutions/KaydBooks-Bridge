@@ -1,0 +1,26 @@
+[Unit]
+Description=KaydBooks authenticated Streamable HTTP Remote MCP
+After=network-online.target kaydbooks-bridge.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=kaydbooks
+Group=kaydbooks
+EnvironmentFile=/etc/kaydbooks/bridge.env
+ExecStart=/opt/kaydbooks/current/bin/kaydbooks-bridge-mcp
+Restart=on-failure
+RestartSec=5s
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/etc/kaydbooks /var/lib/kaydbooks /var/log/kaydbooks
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+[Install]
+WantedBy=multi-user.target

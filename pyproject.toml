@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kaydbooks-bridge"
-version = "0.1.0.dev1"
+version = "0.2.0"
 description = "Company-scoped QuickBooks Desktop bridge with verified receipts and controlled sample qualification."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -42,6 +42,10 @@ dev = [
 hermes = [
     "mcp>=1.10,<2",
 ]
+remote = [
+    "mcp==1.29.1",
+    "uvicorn==0.52.4",
+]
 intake = [
     "pillow>=12,<13",
     "pypdfium2>=5,<6",
@@ -60,6 +64,9 @@ kaydbooks-bridge-operations = "kaydbooks_bridge.operations:main"
 kaydbooks-bridge-qualification = "kaydbooks_bridge.qualification:main"
 kaydbooks-bridge-setup = "kaydbooks_bridge.onboarding:main"
 kaydbooks-bridge-dispatch = "kaydbooks_bridge.dispatch:main"
+kaydbooks-bridge-mcp = "kaydbooks_bridge.remote_mcp:main"
+kaydbooks-bridge-composio = "kaydbooks_bridge.composio:main"
+kaydbooks-bridge-channel = "kaydbooks_bridge.hermes_channel:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

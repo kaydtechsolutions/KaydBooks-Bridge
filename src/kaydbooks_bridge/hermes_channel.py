@@ -127,7 +127,7 @@ def main():
     from .deployment import load_secret_file
 
     try:
-        if sys.argv[1:] == ["--clock"]:
+        if sys.argv[1:] in (["--clock"], ["-Clock"]):
             # Reached only through the administrator's authenticated SSH launcher.
             print(json.dumps({"ok": True, "result": {"server_time": time.time()}}))
             return 0

@@ -180,8 +180,22 @@ class Bridge:
     def _context(self, token, company, permission):
         config = Config.load(self.config_path)  # re-read policy and environment credentials
         actor = config.authenticate(token)
-        selected = config.authorize(actor, company, permission)
-        return config, actor, selected, Store(config.root, company)
+        moment = self.clock()
+        selected = config.authorize(actor, company, permission, at=moment)
+        store = Store(config.root, company)
+        if config.owner_override(actor, company, moment):
+            with store.transaction() as db:
+                if not store.verify_audit(db):
+                    raise BridgeError("invalid audit chain")
+                store.event(
+                    db,
+                    moment,
+                    actor,
+                    None,
+                    "owner_access_used",
+                    {"permission": permission},
+                )
+        return config, actor, selected, store
 
     @audited
     def prepare(self, token: str, company: str, envelope: dict) -> dict:

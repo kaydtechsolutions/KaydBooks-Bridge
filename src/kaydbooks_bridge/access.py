@@ -39,7 +39,7 @@ def permissions_for(*, roles=None, permissions=None, deny=None):
         selected = distinct(roles, ROLES)
         grants = set().union(*(ROLES[r] for r in selected))
     else:
-        grants = set(PERMISSIONS)
+        grants = {"read"}
     return sorted(grants - distinct([] if deny is None else deny, PERMISSIONS))
 
 
@@ -51,7 +51,7 @@ def revision(content):
 def inspect(bridge, token, company):
     path = outside_repository(Path(bridge.config_path))
     with company_lock(path.with_suffix(path.suffix + ".access.lock")):
-        config, _, policy, _ = bridge._context(token, company, "manage-users")
+        config, actor, policy, _ = bridge._context(token, company, "manage-users")
         return {
             "company": company,
             "config_revision": revision(Path(bridge.config_path).read_bytes()),
@@ -62,7 +62,12 @@ def inspect(bridge, token, company):
             },
             "role_presets": {name: sorted(values) for name, values in ROLES.items()},
             "allow_self_approval": policy.allow_self_approval,
-            "new_user_default": "full-supported-company-permissions",
+            "new_user_default": "read-only-company-permissions",
+            "owner_access": {
+                "active": config.owner_override(actor, company, bridge.clock()),
+                "expires_at": config.owner_access.get(company, {}).get("expires_at"),
+                "principal": config.owner_access.get(company, {}).get("principal"),
+            },
         }
 
 
@@ -184,13 +189,65 @@ def set_self_approval(bridge, token, company, expected_revision, allow):
     )
 
 
+@audited
+def set_owner_access(bridge, token, company, expected_revision, *, enabled, reason=None, hours=1):
+    if type(enabled) is not bool:
+        raise BridgeError("owner access state must be boolean")
+    config = Config.load(bridge.config_path)
+    actor = config.authenticate(token)
+    if not config.principals.get(actor, {}).get("owner", False):
+        raise BridgeError("designated owner authentication required")
+    config.authorize(actor, company, "manage-users", at=bridge.clock())
+    if enabled:
+        if (
+            not isinstance(reason, str)
+            or not 10 <= len(reason) <= 256
+            or type(hours) not in (int, float)
+            or not 0 < hours <= 8
+        ):
+            raise BridgeError("owner access requires a reason and a window up to eight hours")
+    elif reason is not None:
+        raise BridgeError("disable does not accept a reason")
+
+    def mutate(data):
+        grants = data.setdefault("owner_access", {})
+        previous = grants.get(company)
+        expires = None
+        if enabled:
+            activated = bridge.clock()
+            expires = activated + hours * 60 * 60
+            grants[company] = {
+                "principal": actor,
+                "activated_at": activated,
+                "expires_at": expires,
+                "reason": reason,
+            }
+        else:
+            grants.pop(company, None)
+        return {
+            "previous_owner_access": previous,
+            "owner_access_expires_at": expires,
+        }
+
+    return _change(
+        bridge,
+        token,
+        company,
+        expected_revision,
+        mutate,
+        {
+            "owner_access_enabled": enabled,
+        },
+    )
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Company users, combined roles and self-approval policy"
     )
     parser.add_argument("--config", required=True)
     parser.add_argument("--company", required=True)
-    parser.add_argument("action", choices=["inspect", "set-user", "self-approval"])
+    parser.add_argument("action", choices=["inspect", "set-user", "self-approval", "owner-access"])
     parser.add_argument("input", nargs="?", type=Path)
     args = parser.parse_args(argv)
     try:
@@ -211,9 +268,16 @@ def main(argv=None):
                     {"roles", "permissions", "deny", "token_env"},
                 )
                 result = set_user(bridge, token, args.company, **value)
-            else:
+            elif args.action == "self-approval":
                 strict_keys(value, {"expected_revision", "allow"})
                 result = set_self_approval(bridge, token, args.company, **value)
+            else:
+                strict_keys(
+                    value,
+                    {"expected_revision", "enabled"},
+                    {"reason", "hours"},
+                )
+                result = set_owner_access(bridge, token, args.company, **value)
         print(canonical(result))
         return 0
     except (BridgeError, OSError, ValueError):

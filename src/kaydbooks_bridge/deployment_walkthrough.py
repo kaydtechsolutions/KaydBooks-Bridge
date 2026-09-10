@@ -116,7 +116,9 @@ def _hermes_checks(root: str | Path, config: Config, company: str, operator: str
         "start-channel.ps1",
         "INSTALL.txt",
     }
-    files_present = folder.is_dir() and required <= {p.name for p in folder.iterdir() if p.is_file()}
+    files_present = folder.is_dir() and required <= {
+        p.name for p in folder.iterdir() if p.is_file()
+    }
     if not files_present:
         return {
             "hermes_bundle_complete": False,
@@ -175,7 +177,11 @@ def inspect_deployment(request_path: str | Path) -> dict:
     connector = config.connectors.get(connector_id)
     if connector is None or connector.company != company:
         raise BridgeError("explicit company connector required")
-    if operator == reviewer or operator not in config.principals or reviewer not in config.principals:
+    if (
+        operator == reviewer
+        or operator not in config.principals
+        or reviewer not in config.principals
+    ):
         raise BridgeError("separate configured operator and reviewer required")
 
     credentials = read_json(request["credentials"])

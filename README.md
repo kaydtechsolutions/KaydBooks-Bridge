@@ -1,7 +1,9 @@
 # KaydBooks Bridge
 
-A multi-company QuickBooks Desktop automation platform under development,
-with broad, optional Hermes integration. **Production posting is disabled.**
+A multi-company QuickBooks Desktop automation platform. The active release candidate is
+**KaydBooks Bridge v0.2.0**. It runs Bridge, the authenticated Remote MCP server and the
+WhatsApp-only Hermes worker in one private Linux LXC; physical Windows computers retain
+QuickBooks Desktop and Web Connector. **Production posting is disabled.**
 Explicit private gates permit bounded invoice, bill, payment and customer-credit tests in an
 operator-confirmed sample company; see [controlled sample posting](docs/SAMPLE_POSTING.md).
 
@@ -11,17 +13,16 @@ Its [upstream reference](docs-upstream-qbwc-kit.md) describes transport examples
 not the Bridge application or deployment readiness. Do not expose those examples
 as Bridge endpoints: they do not enforce Bridge company permissions or durable jobs.
 
-## What works now
+## v0.2.0 release qualification
 
-**Client connection decision:** QuickBooks Web Connector (`.qwc`) is the required
-primary connection. All eight selected data-entry types have browser workflows on
-the durable Web Connector lifecycle, alongside supplier payments and bill credits.
-All eight selected types have basic installed sample qualification within their
-documented limits, including journals, vendor expense checks and site transfers.
-Installed sample evidence and remaining qualification are recorded in the
-[data-entry readiness checklist](docs/DATA_ENTRY_READINESS.md). Broader transaction,
-report and scheduling migration from the direct-SDK adapters remains unfinished. See the
-[connection decision and migration requirements](docs/WEB_CONNECTOR_DIRECTION.md).
+QuickBooks Web Connector (`.qwc`) is the required accounting transport. Each company
+has a distinct connector identity, callback URL and SQLite database. Tailscale Serve
+terminates private HTTPS on port 443 and forwards to loopback-only Caddy; Caddy routes
+only Bridge and `/mcp` paths. Remote MCP exposes versioned accounting workflow tools
+with Bearer authentication, source policy, company policy and rate limits. The optional
+[Composio integration](docs/COMPOSIO.md) adds an independently scoped, approval-gated
+path for exact external tools. Hermes remains the WhatsApp conversation surface and
+does not receive Composio credentials or general infrastructure access.
 
 The agreed [first-release scope and acceptance checklist](docs/FIRST_RELEASE_SCOPE.md)
 covers the remaining transactions, inputs, posting modes and reports. M3–M6 must meet
@@ -29,19 +30,15 @@ their required gates before final M7 deployment qualification; tax functionality
 tax reports are excluded from this release by operator choice; the current sample
 invoice path is only part of that release.
 
-The active **KB v0.1.0** target is **upload to Hermes -> confirm with the operator ->
-data entry through Web Connector -> mini result report in Hermes WhatsApp**.
-The [workflow and milestone scorecard](docs/HERMES_DATA_ENTRY_PILOT.md) records
-**8/15 verified acceptance checks (53.3%)**, including all eight selected entry
-types. The complete conversational workflow is not ready yet. Follow the
-[multi-company development installation guide](docs/INSTALL_HERMES_DATA_ENTRY.md)
-and [incremental release plan](docs/RELEASE_PLAN.md); each company requires private
-configuration and separate qualification. Broader daily reports and customer
-statements are deferred from v0.1.0.
+The prior v0.1.0 development pilot completed its 15/15 workflow checks. v0.2.0 is at
+**30/39 gates passed** in the separate [acceptance record](docs/v020-acceptance.json).
+Historical v0.1.0 scores are evidence for the earlier pilot and do not qualify v0.2.0.
+See the [v0.2 deployment runbook](docs/V020_DEPLOYMENT.md),
+[Remote MCP guide](docs/REMOTE_MCP.md) and [upgrade/rollback guide](docs/UPGRADE_ROLLBACK.md).
 
 - Explicit company context and per-company private SQLite databases.
-- Environment-backed credentials, explicit company assignment, full supported permissions
-  for newly assigned setup users unless restricted, and separate transaction approval.
+- Environment-backed credentials, explicit company assignment, read-only defaults for
+  new users, optional time-limited audited owner access, and separate transaction approval.
 - Strict synthetic invoice and source validation with decimal amounts and master allowlists.
 - Durable draft, validated, queued, in-flight, posted-unverified, verified, blocked,
   failed and unknown state vocabulary. `failed` is reserved; uncertain outcomes stay held.

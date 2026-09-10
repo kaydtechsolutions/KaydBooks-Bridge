@@ -42,9 +42,7 @@ def deployment_request(tmp_path, monkeypatch):
         {
             "operator": {
                 "token_env": "KAYDBOOKS_OPERATOR_SECRET",
-                "companies": {
-                    company: ["read", "prepare", "validate", "submit", "post-sample"]
-                },
+                "companies": {company: ["read", "prepare", "validate", "submit", "post-sample"]},
             },
             "reviewer": {
                 "token_env": "KAYDBOOKS_REVIEWER_SECRET",
@@ -62,9 +60,7 @@ def deployment_request(tmp_path, monkeypatch):
             )
         },
     )
-    monkeypatch.setattr(
-        "kaydbooks_bridge.deployment_walkthrough.Config.load", lambda _: config
-    )
+    monkeypatch.setattr("kaydbooks_bridge.deployment_walkthrough.Config.load", lambda _: config)
     monkeypatch.setattr(
         "kaydbooks_bridge.deployment_walkthrough._state_checks",
         lambda *_: {
@@ -112,8 +108,14 @@ def deployment_request(tmp_path, monkeypatch):
         "INSTALL.txt",
     ):
         (hermes / name).write_text("{}", encoding="utf-8")
-    write(hermes / "tools-credentials.json", {"KAYDBOOKS_OPERATOR_SECRET": values["KAYDBOOKS_OPERATOR_SECRET"]})
-    write(hermes / "channel-credentials.json", {k: values[k] for k in ("KAYDBOOKS_OPERATOR_SECRET", "KAYDBOOKS_REVIEWER_SECRET")})
+    write(
+        hermes / "tools-credentials.json",
+        {"KAYDBOOKS_OPERATOR_SECRET": values["KAYDBOOKS_OPERATOR_SECRET"]},
+    )
+    write(
+        hermes / "channel-credentials.json",
+        {k: values[k] for k in ("KAYDBOOKS_OPERATOR_SECRET", "KAYDBOOKS_REVIEWER_SECRET")},
+    )
     write(
         hermes / "windows-channel.json",
         {

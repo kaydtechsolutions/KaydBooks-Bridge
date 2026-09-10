@@ -20,6 +20,7 @@ REPORTS = {
     "vendor-balances": ("GeneralSummary", "VendorBalanceSummary", "as-of"),
     "inventory-valuation": ("GeneralSummary", "InventoryValuationSummary", "as-of"),
     "inventory-stock": ("GeneralSummary", "InventoryStockStatusByItem", "as-of"),
+    "inventory-by-site": ("GeneralSummary", "InventoryValuationSummaryBySite", "as-of"),
     "sales-customers": ("GeneralSummary", "SalesByCustomerSummary", "period"),
     "sales-items": ("GeneralSummary", "SalesByItemSummary", "period"),
     "purchases-vendors": ("GeneralSummary", "PurchaseByVendorSummary", "period"),
@@ -44,6 +45,7 @@ FIXED_ACCRUAL = {
     "unpaid-bills",
     "inventory-valuation",
     "inventory-stock",
+    "inventory-by-site",
     "receivables-aging",
     "payables-aging",
     "job-profitability",
@@ -52,7 +54,7 @@ FIXED_ACCRUAL = {
     "deposit-detail",
     "journal",
 }
-FIXED_COLUMNS = {"inventory-valuation", "inventory-stock"}
+FIXED_COLUMNS = {"inventory-valuation", "inventory-stock", "inventory-by-site"}
 
 
 def plan(policy, specification):

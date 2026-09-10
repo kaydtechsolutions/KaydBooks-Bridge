@@ -13,7 +13,17 @@ from test_onboarding import request_file
 @pytest.fixture
 def setup_request(tmp_path):
     bundle = tmp_path / "company"
-    initialize(request_file(tmp_path), bundle)
+    onboarding = request_file(tmp_path)
+    onboarding_request = json.loads(onboarding.read_text())
+    onboarding_request["permissions"] = [
+        "read",
+        "prepare",
+        "validate",
+        "submit",
+        "post-sample",
+    ]
+    onboarding.write_text(json.dumps(onboarding_request))
+    initialize(onboarding, bundle)
     cfg = bundle / "bridge-config.json"
     raw = json.loads(cfg.read_text())
     raw["principals"]["reviewer"] = {

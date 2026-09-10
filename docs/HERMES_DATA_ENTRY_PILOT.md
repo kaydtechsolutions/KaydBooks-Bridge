@@ -1,7 +1,8 @@
 # KB v0.1.0: reviewed data entry through Hermes
 
-This is the active release target selected by the operator. It supersedes broader
-daily-report, customer-statement and outbound-customer-messaging work for v0.1.0.
+This was the v0.1.0 release target selected by the operator and is retained as
+historical pilot evidence. It superseded broader daily-report, customer-statement
+and outbound-customer-messaging work for v0.1.0.
 The reference to v1.0.0 inside the requested workflow is treated as v0.1.0 throughout;
 it does not select a second Bridge installation or publish a release.
 

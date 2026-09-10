@@ -24,7 +24,7 @@ def current(managed):
     return access.inspect(managed[0], TOKENS["operator-a"], "company-a")["config_revision"]
 
 
-def test_new_user_full_default_is_company_scoped(managed, monkeypatch):
+def test_new_user_read_only_default_is_company_scoped(managed, monkeypatch):
     bridge, path, _, _ = managed
     other = json.loads(path.read_text())["companies"]["company-b"]
     token = "synthetic-new-" + "n" * 32
@@ -39,14 +39,72 @@ def test_new_user_full_default_is_company_scoped(managed, monkeypatch):
     )
     config = Config.load(path)
     actor = config.authenticate(token)
-    assert set(result["permissions"]) == PERMISSIONS
+    assert set(result["permissions"]) == {"read"}
     for permission in PERMISSIONS:
-        config.authorize(actor, "company-a", permission)
+        if permission == "read":
+            config.authorize(actor, "company-a", permission)
+        else:
+            with pytest.raises(BridgeError):
+                config.authorize(actor, "company-a", permission)
         with pytest.raises(BridgeError):
             config.authorize(actor, "company-b", permission)
     assert json.loads(path.read_text())["companies"]["company-b"] == other
     assert bridge.audit(TOKENS["operator-a"], "company-a")["valid"]
     assert token not in json.dumps(result)
+
+
+def test_designated_owner_access_is_scoped_timed_and_audited(managed):
+    _, path, _, _ = managed
+    raw = json.loads(path.read_text())
+    principal = raw["principals"]["operator-a"]
+    principal["owner"] = True
+    principal["companies"]["company-a"] = ["manage-users", "read"]
+    path.write_text(json.dumps(raw))
+    now = [1_800_000_000.0]
+    bridge = Bridge(path, clock=lambda: now[0])
+    inspected = access.inspect(bridge, TOKENS["operator-a"], "company-a")
+    result = access.set_owner_access(
+        bridge,
+        TOKENS["operator-a"],
+        "company-a",
+        inspected["config_revision"],
+        enabled=True,
+        reason="Emergency owner maintenance",
+        hours=1,
+    )
+    assert result["owner_access_enabled"] is True
+    config = Config.load(path)
+    config.authorize("operator-a", "company-a", "submit", at=now[0])
+    bridge._context(TOKENS["operator-a"], "company-a", "submit")
+    audit = bridge.audit(TOKENS["operator-a"], "company-a")
+    assert audit["valid"]
+    disabled = access.set_owner_access(
+        bridge,
+        TOKENS["operator-a"],
+        "company-a",
+        access.inspect(bridge, TOKENS["operator-a"], "company-a")["config_revision"],
+        enabled=False,
+    )
+    assert disabled["owner_access_enabled"] is False
+    assert disabled["previous_owner_access"]["reason"] == "Emergency owner maintenance"
+    with pytest.raises(BridgeError):
+        Config.load(path).authorize("operator-a", "company-a", "submit", at=now[0])
+
+    # Re-enable so the same test also proves that expiration closes the override.
+    access.set_owner_access(
+        bridge,
+        TOKENS["operator-a"],
+        "company-a",
+        access.inspect(bridge, TOKENS["operator-a"], "company-a")["config_revision"],
+        enabled=True,
+        reason="Time bounded owner maintenance",
+        hours=1,
+    )
+    now[0] += 3601
+    with pytest.raises(BridgeError):
+        Config.load(path).authorize("operator-a", "company-a", "submit", at=now[0])
+    with pytest.raises(BridgeError):
+        Config.load(path).authorize("operator-a", "company-b", "submit", at=now[0] - 3601)
 
 
 @pytest.mark.parametrize(

@@ -214,12 +214,7 @@ def validate_receipt(xml, policy, payload, run, *, operation="ReceivePaymentQuer
 def matching_receipt(xml, policy, payload, run):
     """Select one exact payment from a RefNumber query that may return sibling deposit legs."""
     root = fromstring(xml)
-    if (
-        root.tag != "QBXML"
-        or len(root) != 1
-        or root[0].tag != "QBXMLMsgsRs"
-        or len(root[0]) != 1
-    ):
+    if root.tag != "QBXML" or len(root) != 1 or root[0].tag != "QBXMLMsgsRs" or len(root[0]) != 1:
         raise BridgeError("invalid payment duplicate response envelope")
     response = root[0][0]
     if response.tag != "ReceivePaymentQueryRs" or response.get("requestID") != run:

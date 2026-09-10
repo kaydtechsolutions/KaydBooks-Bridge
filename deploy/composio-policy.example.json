@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "companies": {
+    "company-a": {
+      "user_id": "kaydbooks-company-a",
+      "tools": {
+        "GOOGLECALENDAR_EVENTS_LIST": {
+          "version": "20260817_00",
+          "mode": "read",
+          "connected_account_id_env": "KAYDBOOKS_COMPOSIO_COMPANY_A_CALENDAR"
+        },
+        "GMAIL_SEND_EMAIL": {
+          "version": "20260817_00",
+          "mode": "write",
+          "connected_account_id_env": "KAYDBOOKS_COMPOSIO_COMPANY_A_GMAIL"
+        }
+      }
+    }
+  }
+}

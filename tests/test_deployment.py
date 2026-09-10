@@ -62,6 +62,14 @@ def test_qwc_profile_requires_https_and_exact_callback_path(tmp_path):
         QWCProfile.load(path)
 
 
+def test_company_specific_qwc_callback_path_is_supported(tmp_path):
+    profile_path = profile_file(tmp_path)
+    raw = json.loads(profile_path.read_text())
+    raw["endpoint_url"] = "https://bridge.example.com/qbwc/company-a"
+    profile_path.write_text(json.dumps(raw))
+    assert QWCProfile.load(profile_path).endpoint_url.endswith("/qbwc/company-a")
+
+
 def test_qwc_profile_cannot_enable_quickbooks_writes(tmp_path):
     path = profile_file(tmp_path)
     data = json.loads(path.read_text(encoding="utf-8"))
@@ -149,3 +157,5 @@ def test_staging_health_is_explicitly_read_only(tmp_path, monkeypatch):
         "mode": "qbwc-discovery-and-gated-sample-invoices",
         "live_posting": False,
     }
+    company_wsdl = TestClient(app).get("/qbwc/synthetic-company").text
+    assert "https://localhost:8443/qbwc/synthetic-company" in company_wsdl

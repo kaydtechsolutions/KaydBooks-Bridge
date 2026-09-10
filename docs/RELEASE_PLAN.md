@@ -1,7 +1,7 @@
 # Incremental release plan
 
 The operator requested small versioned releases so usable work can be tested
-without waiting for the entire roadmap. The active KB v0.1.0 target is now
+without waiting for the entire roadmap. The completed KB v0.1.0 target was
 **upload to Hermes -> exact operator confirmation -> Bridge/Web Connector entry
 -> mini result report in the operator's Hermes WhatsApp chat**, using the eight
 selected entry types. The [workflow specification and milestone scorecard](HERMES_DATA_ENTRY_PILOT.md)
@@ -13,7 +13,7 @@ No release has been published by creating this plan.
 | --- | --- |
 | KB v0.1.0 | Hermes upload, human confirmation, Web Connector entry and operator WhatsApp result; sales receipt, invoice, credit memo, customer payment, bill, journal, inventory transfer and check |
 | KB v0.1.1, v0.1.2 | Fixes within the pilot's supported scope |
-| KB v0.2.0 and later 0.x versions | Additional data-entry types, delivered in independently verified groups |
+| KB v0.2.0 | Private Linux LXC, Remote MCP, WhatsApp-only Hermes, Tailscale HTTPS, multi-company QBWC, access/recovery controls and optional Composio |
 | KB v1.0.0 | Agreed daily workflow qualified: selected data entry, customer balances/statements, daily reports and authorized Hermes/WhatsApp delivery |
 | KB v1.0.1 and later patches | Compatible bug fixes |
 | KB v1.1.0 and later minor versions | Compatible new features |
@@ -23,8 +23,8 @@ public-contract changes, minor versions for compatible features, patches for fix
 Version zero identifies initial development. Every released artifact must retain
 its original contents; corrected artifacts receive a new version. Python package
 version, application display, release tag, artifact hashes and release notes must
-identify the same candidate. The current package remains `0.1.0.dev1`; no version
-bump or tag is implied by this proposal.
+identify the same candidate. The active package candidate is `0.2.0`; the historical
+v0.1.0 pilot remains unchanged and does not qualify the v0.2.0 deployment.
 
 ## Earliest pilot boundary
 

@@ -100,11 +100,14 @@ signed checkpoints/immutable audit export are future production requirements.
 
 ## Milestones and acceptance gates
 
-The [first-release checklist](FIRST_RELEASE_SCOPE.md) is the current release gate.
-The table below records the narrower implementation evidence; it does not mean that
-partially implemented M3–M6 features can be skipped before final M7 qualification.
-New setup operators receive full supported permissions in their explicitly assigned
-company by default; explicit restrictions and existing grants remain authoritative.
+The current release gate is the v0.2.0
+[39-gate acceptance record](v020-acceptance.json). The historical
+[first-release checklist](FIRST_RELEASE_SCOPE.md) remains the broader product roadmap.
+The table below records narrower implementation evidence; it does not mean that
+partially implemented M3–M6 features are production-qualified.
+New setup operators receive only `read` in their explicitly assigned company unless
+onboarding receives explicit grants. A designated owner can activate a company-scoped,
+reasoned access window for at most eight hours; every action in that window is audited.
 
 | Milestone | Deliverable and acceptance evidence | Status |
 | --- | --- | --- |

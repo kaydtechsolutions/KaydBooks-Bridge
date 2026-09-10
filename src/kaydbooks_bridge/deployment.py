@@ -20,6 +20,36 @@ from .qbwc import company_identity_digest
 from .store import Store
 
 
+class CompanyPathService:
+    """Bind every QBWC session to the company named by its HTTPS route."""
+
+    def __init__(self, service, company):
+        self.service = service
+        self.company = company
+
+    def dispatch(self, body):
+        from qbwc_kit import soap
+
+        from .qbwc import UnknownTicket
+
+        try:
+            call = soap.parse_request(body)
+            if call.method == "authenticate":
+                username = call.get("strUserName") or call.positional(0)
+                connector = self.service.config.connectors.get(username)
+                if connector is None or connector.company != self.company:
+                    raise BridgeError("connector and company route differ")
+            elif call.method not in {"serverVersion", "clientVersion"}:
+                ticket = call.get("ticket") or call.positional(0)
+                if ticket and self.service._locate(ticket).company != self.company:
+                    raise BridgeError("session and company route differ")
+        except UnknownTicket:
+            pass
+        except (BridgeError, ValueError, TypeError):
+            return soap.build_fault("company route authentication failed", code="soap:Client")
+        return self.service.dispatch(body)
+
+
 def _private_file(value: str, label: str) -> Path:
     path = outside_repository(Path(value))
     if not path.is_absolute() or not path.is_file():
@@ -40,8 +70,8 @@ def _https_url(value: object, label: str, *, endpoint: bool = False) -> str:
         or parsed.fragment
     ):
         raise BridgeError(f"invalid {label} URL")
-    if endpoint and parsed.path != "/qbwc":
-        raise BridgeError("QBWC endpoint URL must end in /qbwc")
+    if endpoint and not re.fullmatch(r"/qbwc(?:/[a-z][a-z0-9_-]{0,63})?", parsed.path):
+        raise BridgeError("QBWC endpoint URL must use /qbwc or /qbwc/<company-id>")
     return value
 
 
@@ -278,12 +308,22 @@ def create_staging_app(config_path: str | Path, endpoint_url: str, max_bytes: in
     from .web_ui import install
 
     install(app, config_path, endpoint_url)
-    return create_app(
+    app = create_app(
         service,
         endpoint_url=endpoint_url,
         app=app,
         max_request_bytes=max_bytes,
     )
+    base_url = endpoint_url.removesuffix("/qbwc")
+    for company in sorted(service.config.companies):
+        create_app(
+            CompanyPathService(service, company),
+            endpoint_url=f"{base_url}/qbwc/{company}",
+            path=f"/qbwc/{company}",
+            app=app,
+            max_request_bytes=max_bytes,
+        )
+    return app
 
 
 def app_from_environment():
@@ -304,18 +344,24 @@ def serve() -> int:
             load_secret_file(credential_file)
         config = os.environ.get("KAYDBOOKS_CONFIG", "")
         endpoint = os.environ.get("KAYDBOOKS_QBWC_ENDPOINT", "")
-        cert = _private_file(os.environ.get("KAYDBOOKS_QBWC_CERTFILE", ""), "certificate")
-        key = _private_file(os.environ.get("KAYDBOOKS_QBWC_KEYFILE", ""), "key")
-        ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER).load_cert_chain(cert, key)
+        behind_proxy = os.environ.get("KAYDBOOKS_QBWC_BEHIND_PROXY") == "1"
+        cert = key = None
+        if not behind_proxy:
+            cert = _private_file(os.environ.get("KAYDBOOKS_QBWC_CERTFILE", ""), "certificate")
+            key = _private_file(os.environ.get("KAYDBOOKS_QBWC_KEYFILE", ""), "key")
+            ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER).load_cert_chain(cert, key)
         app = create_staging_app(config, endpoint)
         import uvicorn
 
+        host = os.environ.get("KAYDBOOKS_QBWC_HOST", "127.0.0.1")
+        if behind_proxy and host not in {"127.0.0.1", "::1"}:
+            raise BridgeError("proxied QBWC must bind to loopback")
         uvicorn.run(
             app,
-            host=os.environ.get("KAYDBOOKS_QBWC_HOST", "127.0.0.1"),
+            host=host,
             port=int(os.environ.get("KAYDBOOKS_QBWC_PORT", "8443")),
-            ssl_certfile=str(cert),
-            ssl_keyfile=str(key),
+            ssl_certfile=str(cert) if cert else None,
+            ssl_keyfile=str(key) if key else None,
             access_log=False,
             server_header=False,
         )
