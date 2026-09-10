@@ -36,8 +36,42 @@ jobs:
       - run: uv sync --frozen --extra dev --python 3.12
       - run: uv run --frozen ruff check .
       - run: uv run --frozen ruff format --check .
-      - run: sh -n deploy/install.sh deploy/doctor.sh
+      - run: for script in deploy/install.sh deploy/doctor.sh deploy/auto-install.sh deploy/bootstrap.sh; do sh -n "$script"; done
       - run: uv build
+
+  windows-installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse Windows setup and check invalid endpoints without mutation
+        shell: powershell
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile("$PWD/deploy/windows-setup.ps1", [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count) { throw ($errors | Out-String) }
+          foreach ($url in @('http://host.tail.ts.net', 'https://example.com', 'https://host.tail.ts.net/mcp', 'https://host.tail.ts.net:8443')) {
+            $rejected = $false
+            try { & ./deploy/windows-setup.ps1 -CheckOnly -ServerUrl $url }
+            catch { $rejected = $_.Exception.Message -like 'ServerUrl must*' }
+            if (-not $rejected) { throw "Unsafe endpoint accepted: $url" }
+          }
+      - name: Verify bundled Web Connector detection
+        shell: powershell
+        run: ./tests/windows_setup_checks.ps1
+
+  linux-installer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install and resume on a disposable Linux runner
+        run: |
+          git remote set-url origin https://github.com/kaydtechsolutions/KaydBooks-Bridge.git
+          sudo --preserve-env=GITHUB_ACTIONS python3 tests/installer_linux_smoke.py
+      - name: Service diagnostics on failure
+        if: failure()
+        run: sudo journalctl -u caddy -u kaydbooks-bridge -u kaydbooks-remote-mcp -n 80 --no-pager
 
   browser:
     runs-on: ubuntu-latest

@@ -50,8 +50,14 @@ check test -s /etc/kaydbooks/credentials.json
 check test -s /etc/kaydbooks/remote-policy.json
 check systemctl is-active kaydbooks-bridge.service
 check systemctl is-active kaydbooks-remote-mcp.service
-check systemctl is-active hermes-gateway.service
-check systemctl is-active kaydbooks-hermes-worker.service
+HERMES_ENABLED=0
+if systemctl is-enabled --quiet hermes-gateway.service 2>/dev/null; then
+    HERMES_ENABLED=1
+    check systemctl is-active hermes-gateway.service
+fi
+if systemctl is-enabled --quiet kaydbooks-hermes-worker.service 2>/dev/null; then
+    check systemctl is-active kaydbooks-hermes-worker.service
+fi
 check systemctl is-active caddy.service
 check systemctl is-active tailscaled.service
 if systemctl is-enabled --quiet kaydbooks-openai-tunnel.service 2>/dev/null; then
@@ -60,8 +66,10 @@ if systemctl is-enabled --quiet kaydbooks-openai-tunnel.service 2>/dev/null; the
     check curl --fail --silent --show-error http://127.0.0.1:8090/readyz
 fi
 check curl --fail --silent --show-error http://127.0.0.1:8080/healthz
-check_eventually whatsapp_connected whatsapp_connected
-check_eventually hermes_mcp_connected hermes_mcp_connected
+if [ "$HERMES_ENABLED" = 1 ]; then
+    check_eventually whatsapp_connected whatsapp_connected
+    check_eventually hermes_mcp_connected hermes_mcp_connected
+fi
 HOST=$(printf '%s' "$BASE_URL" | sed -E 's#^https://([^/]+)/?$#\1#')
 if [ -z "$HOST" ] || [ "$HOST" = "$BASE_URL" ]; then
     echo 'FAIL invalid KAYDBOOKS_BASE_URL' >&2

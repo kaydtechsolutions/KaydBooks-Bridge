@@ -68,6 +68,10 @@ install -o root -g root -m 0644 "$SCRIPT_DIR/systemd/kaydbooks-openai-tunnel.ser
 install -o root -g root -m 0644 "$SCRIPT_DIR/systemd/hermes-gateway.service" /etc/systemd/system/
 install -o root -g root -m 0644 "$SCRIPT_DIR/systemd/kaydbooks-hermes-worker.service" /etc/systemd/system/
 install -o root -g root -m 0644 "$SCRIPT_DIR/Caddyfile" /etc/caddy/Caddyfile
+install -d -o caddy -g caddy -m 0750 /var/log/caddy
+if [ ! -e /var/log/caddy/kaydbooks-access.log ]; then
+    install -o caddy -g caddy -m 0640 /dev/null /var/log/caddy/kaydbooks-access.log
+fi
 install -o root -g root -m 0755 "$SCRIPT_DIR/doctor.sh" /usr/local/sbin/kaydbooks-doctor
 if [ ! -e /etc/kaydbooks/bridge.env ]; then
     systemctl disable --now caddy.service >/dev/null 2>&1 || true
