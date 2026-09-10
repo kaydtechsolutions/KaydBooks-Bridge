@@ -5,7 +5,7 @@ KaydBooks Bridge v0.2.0 serves stateless Streamable HTTP at
 the request to the loopback MCP process.
 
 Every request requires a Bearer token that maps to a Bridge principal. The separate
-remote policy then binds that principal to one source (`codex`, `chatgpt` or `whatsapp`),
+remote policy then binds that principal to one source (`codex`, `chatgpt`, `claude`, `gemini` or `whatsapp`),
 an exact company list and exact versioned tools. Bridge permissions are checked again
 inside every tool. The boundary rejects unexpected Host or Origin values, duplicate
 security headers, requests over 1 MiB and rate-limit excess. Logs contain security

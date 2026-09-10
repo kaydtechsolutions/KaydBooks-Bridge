@@ -2,10 +2,15 @@
 
 A multi-company QuickBooks Desktop automation platform. The active release is
 **KaydBooks Bridge v0.2.0**. It runs Bridge, the authenticated Remote MCP server and the
-WhatsApp-only Hermes worker in one private Linux LXC; physical Windows computers retain
+optional WhatsApp-only Hermes worker on a private Linux server or LXC; Windows computers retain
 QuickBooks Desktop and Web Connector. **Production posting is disabled.**
 Explicit private gates permit bounded invoice, bill, payment and customer-credit tests in an
 operator-confirmed sample company; see [controlled sample posting](docs/SAMPLE_POSTING.md).
+
+**New installation:** use the [automatic installer and Windows setup guide](docs/AUTO_INSTALL.md).
+It installs missing Linux dependencies, creates private credentials and a company QWC,
+and verifies HTTPS/MCP. Account enrollment and QuickBooks company authorization remain
+explicit user steps; a fresh install starts with read-only permissions.
 
 The application lives in `kaydbooks_bridge`. The inherited `qbwc_kit` SOAP,
 qbXML and Web Connector library remains available, with its MIT attribution.

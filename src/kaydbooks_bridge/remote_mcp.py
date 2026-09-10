@@ -53,7 +53,7 @@ def load_policy(path):
     for rule in value["principals"].values():
         strict_keys(rule, {"source", "companies", "tools"})
         if (
-            rule["source"] not in {"codex", "chatgpt", "whatsapp"}
+            rule["source"] not in {"codex", "chatgpt", "claude", "gemini", "whatsapp"}
             or not isinstance(rule["companies"], list)
             or not all(isinstance(v, str) for v in rule["companies"])
             or not isinstance(rule["tools"], list)
