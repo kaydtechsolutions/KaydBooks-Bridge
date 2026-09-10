@@ -244,3 +244,93 @@ def test_interrupted_bundle_never_publishes_partial_secrets(tmp_path, monkeypatc
     assert (
         provision(etc, tmp_path / "state", cfg, "books.example.ts.net") / "credentials.json"
     ).is_file()
+
+
+def test_hermes_bootstrap_does_not_inherit_root_working_directory(tmp_path, monkeypatch):
+    from kaydbooks_bridge import installer
+
+    caller = tmp_path / "private-root"
+    caller.mkdir()
+    monkeypatch.chdir(caller)
+    calls = []
+
+    def command(*args, **kwargs):
+        calls.append((args, kwargs))
+        if args[0] == "curl":
+            Path(args[-1]).write_text("#!/bin/sh\nexit 0\n")
+
+    monkeypatch.setattr(installer, "run", command)
+    monkeypatch.setattr(installer, "missing_packages", lambda packages: list(packages))
+    # The stub checks launch isolation, not the third-party runtime installation.
+    with pytest.raises(InstallError, match="runtime location differs"):
+        installer.install_hermes()
+    (sudo,) = [(args, kwargs) for args, kwargs in calls if args[0] == "sudo"]
+    assert sudo[0][:5] == ("sudo", "-u", "hermes", "-H", "bash")
+    assert sudo[1]["cwd"] == "/var/lib/hermes"
+    assert sudo[1]["stdin"] == installer.subprocess.DEVNULL
+    assert sudo[1]["start_new_session"] is True
+    assert "--skip-setup" in sudo[0]
+    install_index = next(
+        i for i, (args, _) in enumerate(calls) if args[:2] == ("apt-get", "install")
+    )
+    sudo_index = next(i for i, (args, _) in enumerate(calls) if args[0] == "sudo")
+    assert install_index < sudo_index
+    assert set(installer.HERMES_PACKAGES) <= set(calls[install_index][0])
+    assert Path.cwd() == caller
+
+
+def test_missing_packages_checks_installed_status_not_just_package_presence(monkeypatch):
+    from kaydbooks_bridge import installer
+
+    monkeypatch.setattr(installer.shutil, "which", lambda name: "/usr/bin/dpkg-query")
+    statuses = {
+        "build-essential": (0, "install ok installed"),
+        "libatomic1": (0, "deinstall ok config-files"),
+        "ffmpeg": (1, ""),
+    }
+
+    def query(args, **kwargs):
+        code, output = statuses[args[-1]]
+        return installer.subprocess.CompletedProcess(args, code, output)
+
+    monkeypatch.setattr(installer.subprocess, "run", query)
+    assert installer.missing_packages(list(statuses)) == ["libatomic1", "ffmpeg"]
+
+
+@pytest.mark.parametrize("components", ["core", "core,hermes"])
+def test_check_includes_selected_component_dependencies(tmp_path, monkeypatch, components):
+    from kaydbooks_bridge import installer
+
+    checked = []
+
+    def inspect(packages):
+        checked.extend(packages)
+        return []
+
+    monkeypatch.setattr(installer, "missing_packages", inspect)
+    installer.preflight(tmp_path, components=components)
+    assert set(installer.PACKAGES) <= set(checked)
+    assert ("build-essential" in checked) == ("hermes" in components)
+
+
+def test_dns_failure_reports_remedy_without_sending_authenticated_probes(
+    tmp_path, monkeypatch, capsys
+):
+    import socket
+    import urllib.error
+
+    from kaydbooks_bridge import installer
+
+    calls = []
+
+    def unreachable(url, body=None, token=None):
+        calls.append((url, token))
+        raise urllib.error.URLError(socket.gaierror(-2, "private diagnostic must not be printed"))
+
+    monkeypatch.setattr(installer, "request", unreachable)
+    monkeypatch.setattr(installer.time, "sleep", lambda seconds: None)
+    assert not installer.verify("https://books.example.ts.net", tmp_path)
+    output = capsys.readouterr().out
+    assert "DNS lookup failed" in output and "tailscale dns status" in output
+    assert "private diagnostic" not in output
+    assert all(url.endswith(("/health", "/healthz")) and token is None for url, token in calls)

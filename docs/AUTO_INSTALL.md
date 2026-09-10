@@ -63,7 +63,7 @@ sh /root/kaydbooks-bootstrap.sh --yes --company company-a --currency USD \
 | `--components core` | Core server, operator read credential, QWC and private HTTPS only; default |
 | `chatgpt` | Dedicated read credential and remote source policy; account/tunnel steps remain below |
 | `claude`, `gemini` | Dedicated read credentials, source policies and client JSON fragments |
-| `hermes` | Installs official Hermes runtime as its service user, configures local read MCP and gateway service override; model/WhatsApp login remains below |
+| `hermes` | Installs compiler/build tools, libatomic1, ripgrep and ffmpeg as root, then installs the official Hermes runtime as its service user and configures local read MCP; model/WhatsApp login remains below |
 | `composio` | Creates a disabled policy for later exact account/tool grants; no external credentials are inferred |
 | `--yes` | Uses supplied/default choices; does not bypass account logins or company authorization |
 
@@ -77,6 +77,8 @@ For a read-only full prerequisite check from an existing clean GitHub checkout:
 ```sh
 python3 deploy/setup.py --check
 ```
+
+Add `--components core,hermes` to include Hermes system prerequisites in the check.
 
 Or use `sh deploy/auto-install.sh --check`; it reports a missing Python without
 installing it. The bootstrap's `--check` checks only bootstrap tools. No check mode
@@ -196,6 +198,7 @@ workspace. Neither tunnel credentials nor app publication are fabricated by setu
 model login and WhatsApp pairing as the installed service user:
 
 ```sh
+cd /var/lib/hermes
 sudo -u hermes -H /var/lib/hermes/.hermes/hermes-agent/venv/bin/hermes setup
 ```
 
@@ -222,6 +225,31 @@ by source policy and company permissions. Listing a tool does not authorize its 
 
 ## 6. Final verification and troubleshooting
 
+If an installation from commit `ef0715e` stopped during Hermes setup with
+`failed to query metadata of symlink /root/.venv: Permission denied`, or asks for a
+`sudo` password for `hermes` while installing Node/build tools, press Ctrl+C. Its
+core services and credentials are already installed. That revision inherited the
+root shell's directory and omitted Hermes system dependencies. New installers use
+`/var/lib/hermes`, install OS dependencies as root, and run the vendor bootstrap
+without a terminal or account-setup wizard. No service-account sudo grant is needed.
+
+Resume that existing installation from the service home using its recorded commit
+and **the same options you originally selected**. For the example selection below:
+
+```sh
+apt-get update
+apt-get install -y build-essential libatomic1 python3-dev libffi-dev pkg-config ripgrep ffmpeg
+cd /var/lib/hermes
+KB_REF=ef0715e14e9fa9fccc1417527b0cf89b9a335a62 sh /root/kaydbooks-bootstrap.sh \
+  --yes --company company-a --currency USD --edition 8 \
+  --components core,chatgpt,hermes,composio
+```
+
+Pinning the original commit keeps resume validation and the cached wheel intact;
+changing directory works around the old launch bug without resetting credentials,
+company binding or installation metadata. Do not delete `installer.json` or give
+the Hermes user access to `/root`.
+
 On Linux:
 
 ```sh
@@ -239,7 +267,31 @@ also pass. Neither command posts accounting or certifies QuickBooks readback.
 
 If a service fails, inspect `journalctl -u SERVICE -n 80 --no-pager` locally. If HTTPS
 fails, check Tailscale login, Serve status, certificate permission, DNS, tailnet access
-rules and system time. If credentials/company checks fail, review only the intended
+rules and system time. If services and loopback health are ready but the MagicDNS URL
+does not resolve, inspect `tailscale dns status` and `/etc/resolv.conf` before restarting
+installation. Correct the resolver/MagicDNS configuration; a ready local service does
+not prove private DNS is working. The verifier reports DNS failure explicitly and
+stops before authenticated probes.
+
+If Tailscale DNS is enabled but `/etc/resolv.conf` still lists public resolvers,
+restart `tailscaled` and retry the HTTPS health URL. For a Proxmox LXC running its
+own Tailscale client, prevent Proxmox from overwriting the working resolver again:
+
+```sh
+touch /etc/.pve-ignore.resolv.conf
+systemctl restart tailscaled
+cat /etc/resolv.conf
+# Replace YOUR_MAGICDNS_NAME with this container's full Tailscale DNS name.
+curl -fsS --max-time 15 https://YOUR_MAGICDNS_NAME/healthz
+```
+
+Run these commands inside the LXC. The ignore file is the
+[documented Proxmox DNS workaround](https://tailscale.com/docs/reference/troubleshooting/containers/proxmox#resolvconf-within-lxc);
+it leaves DNS management to the container. Do not edit Tailscale's generated resolver
+file manually. Repeat the HTTPS check after the next container restart. Once health
+works, resume a partial installation using its original commit and options above.
+
+If credentials/company checks fail, review only the intended
 company in `/etc/kaydbooks/bridge-config.json` and `/etc/kaydbooks/remote-policy.json`.
 Do not loosen access rules merely to make a check green.
 
