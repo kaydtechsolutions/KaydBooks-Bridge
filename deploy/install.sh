@@ -35,7 +35,8 @@ id kaydbooks >/dev/null 2>&1 || useradd --system --gid kaydbooks \
 getent group hermes >/dev/null || groupadd --system hermes
 id hermes >/dev/null 2>&1 || useradd --system --gid hermes \
     --home-dir /var/lib/hermes --shell /usr/sbin/nologin hermes
-usermod -a -G kaydbooks hermes
+# Hermes uses a scoped HTTPS MCP client. Existing memberships are removed by
+# the explicit service migration only after the replacement client is verified.
 id kaydbooks-tunnel >/dev/null 2>&1 || useradd --system --gid kaydbooks \
     --home-dir /var/lib/kaydbooks-tunnel --shell /usr/sbin/nologin kaydbooks-tunnel
 install -d -o root -g kaydbooks -m 0750 /etc/kaydbooks

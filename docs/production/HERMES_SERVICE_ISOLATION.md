@@ -1,8 +1,9 @@
 # Hermes service isolation
 
-Status: the scoped remote client is implemented and protocol-tested. Installer and
-existing-service migration are not yet complete. This document does not claim the
-currently deployed service is isolated.
+Status: the scoped remote client and resumable Hermes service migration are
+implemented and tested locally. Installed Linux qualification, tunnel isolation
+and the legacy deterministic worker migration are still pending. This document
+does not claim the currently deployed service is isolated.
 
 The old gateway joins the `kaydbooks` group to run the local stdio Bridge adapter.
 That can expose the shared credentials file and Bridge state to the agent process,
@@ -73,3 +74,36 @@ and the real HTTPS ASGI Remote MCP boundary, wrong-company denial, token rotatio
 disabled-principal revocation, tool allowlists, preserved errors/structured results,
 bounded configuration/credentials, safe HTTP defaults and no automatic retry.
 Installed OS isolation and migration/rerun qualification remain required step-05 work.
+
+## Hermes migration command
+
+After installing a release containing the remote client, run as root on Linux:
+
+```sh
+/opt/kaydbooks/current/bin/python -m kaydbooks_bridge.service_isolation \
+  --profile /var/lib/hermes/.hermes \
+  --server-url https://YOUR-KB-HOST.tailnet.ts.net
+```
+
+Use the existing gateway's actual `HERMES_HOME` for `--profile`. The installer
+reads that systemd setting and invokes the same migration, preserving provider,
+WhatsApp enrollment, other MCP entries, disabled status and narrower tool filters.
+Custom KaydBooks wrappers or tools not exposed by the remote policy stop migration
+for deliberate compatibility work. They are never silently discarded.
+
+The migration first authenticates with the scoped token and validates the existing
+profile. It then stops the gateway, replaces only its KaydBooks entry, removes the
+Bridge group and environment-file access, and checks filesystem denial as Hermes.
+The user-writable Hermes Python runtime is always executed as Hermes, never root.
+Private backups preserve exact original bytes. A concurrent profile edit aborts
+publication. Scoped tokens never appear in command arguments or profile JSON.
+
+`/etc/kaydbooks/isolation-hermes.json` saves the restart intent. If a check fails
+after the gateway stops, correct the error and rerun the same command: it restores
+a previously running gateway only after isolation checks pass. It does not enable
+an initially inactive gateway or restore broad credential access on failure.
+
+An active or enabled legacy deterministic worker blocks this migration. An inactive,
+disabled worker receives an explicit failing service override, preventing later
+accidental use of its old shared-state adapter. Its separate remote-workflow
+migration remains a release task; this guard is not feature qualification.
