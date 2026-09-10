@@ -63,7 +63,7 @@ sh /root/kaydbooks-bootstrap.sh --yes --company company-a --currency USD \
 | `--components core` | Core server, operator read credential, QWC and private HTTPS only; default |
 | `chatgpt` | Dedicated read credential and remote source policy; account/tunnel steps remain below |
 | `claude`, `gemini` | Dedicated read credentials, source policies and client JSON fragments |
-| `hermes` | Installs official Hermes runtime as its service user, configures local read MCP and gateway service override; model/WhatsApp login remains below |
+| `hermes` | Installs compiler/build tools, libatomic1, ripgrep and ffmpeg as root, then installs the official Hermes runtime as its service user and configures local read MCP; model/WhatsApp login remains below |
 | `composio` | Creates a disabled policy for later exact account/tool grants; no external credentials are inferred |
 | `--yes` | Uses supplied/default choices; does not bypass account logins or company authorization |
 
@@ -77,6 +77,8 @@ For a read-only full prerequisite check from an existing clean GitHub checkout:
 ```sh
 python3 deploy/setup.py --check
 ```
+
+Add `--components core,hermes` to include Hermes system prerequisites in the check.
 
 Or use `sh deploy/auto-install.sh --check`; it reports a missing Python without
 installing it. The bootstrap's `--check` checks only bootstrap tools. No check mode
@@ -196,6 +198,7 @@ workspace. Neither tunnel credentials nor app publication are fabricated by setu
 model login and WhatsApp pairing as the installed service user:
 
 ```sh
+cd /var/lib/hermes
 sudo -u hermes -H /var/lib/hermes/.hermes/hermes-agent/venv/bin/hermes setup
 ```
 
@@ -223,15 +226,19 @@ by source policy and company permissions. Listing a tool does not authorize its 
 ## 6. Final verification and troubleshooting
 
 If an installation from commit `ef0715e` stopped during Hermes setup with
-`failed to query metadata of symlink /root/.venv: Permission denied`, its core
-services and credentials are already installed. That revision ran the unprivileged
-Hermes installer from the root shell's directory. New installers explicitly use
-`/var/lib/hermes` as their working directory.
+`failed to query metadata of symlink /root/.venv: Permission denied`, or asks for a
+`sudo` password for `hermes` while installing Node/build tools, press Ctrl+C. Its
+core services and credentials are already installed. That revision inherited the
+root shell's directory and omitted Hermes system dependencies. New installers use
+`/var/lib/hermes`, install OS dependencies as root, and run the vendor bootstrap
+without a terminal or account-setup wizard. No service-account sudo grant is needed.
 
 Resume that existing installation from the service home using its recorded commit
 and **the same options you originally selected**. For the example selection below:
 
 ```sh
+apt-get update
+apt-get install -y build-essential libatomic1 python3-dev libffi-dev pkg-config ripgrep ffmpeg
 cd /var/lib/hermes
 KB_REF=ef0715e14e9fa9fccc1417527b0cf89b9a335a62 sh /root/kaydbooks-bootstrap.sh \
   --yes --company company-a --currency USD --edition 8 \

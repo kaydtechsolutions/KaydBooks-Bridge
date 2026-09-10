@@ -58,6 +58,11 @@ def hermes_working_directory_smoke():
                 'test "$HOME" = /var/lib/hermes\n'
                 'test "$PWD" = /var/lib/hermes\n'
                 "test -w .\n"
+                "test ! -t 0\n"
+                "if ( : < /dev/tty ) 2>/dev/null; then exit 1; fi\n"
+                "command -v c++ >/dev/null\n"
+                "command -v rg >/dev/null\n"
+                "command -v ffmpeg >/dev/null\n"
                 'printf "PASS Hermes bootstrap runs in its service home\\n"\n'
             )
             return None

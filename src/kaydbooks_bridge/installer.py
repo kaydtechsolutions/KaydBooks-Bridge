@@ -35,6 +35,15 @@ PACKAGES = [
     "sudo",
 ]
 READ_TOOLS = ["company_catalog_v1", "entry_status_v1", "entry_preview_v1", "batch_status_v1"]
+HERMES_PACKAGES = [
+    "build-essential",
+    "libatomic1",
+    "python3-dev",
+    "libffi-dev",
+    "pkg-config",
+    "ripgrep",
+    "ffmpeg",
+]
 
 
 class InstallError(ValueError):
@@ -87,7 +96,20 @@ def valid_hostname(host):
     return host
 
 
-def preflight(source):
+def missing_packages(packages):
+    if not shutil.which("dpkg-query"):
+        return list(packages)
+    missing = []
+    for package in packages:
+        result = subprocess.run(
+            ["dpkg-query", "-W", "-f=${Status}", package], capture_output=True, text=True
+        )
+        if result.returncode or result.stdout.strip() != "install ok installed":
+            missing.append(package)
+    return missing
+
+
+def preflight(source, *, components="core"):
     checks = []
     release = {}
     if Path("/etc/os-release").is_file():
@@ -128,16 +150,8 @@ def preflight(source):
     )
     for label, ok in checks:
         print(f"{'PASS' if ok else 'FAIL'} {label}")
-    missing = []
-    if shutil.which("dpkg-query"):
-        for package in PACKAGES:
-            result = subprocess.run(
-                ["dpkg-query", "-W", "-f=${Status}", package], capture_output=True, text=True
-            )
-            if result.returncode or result.stdout.strip() != "install ok installed":
-                missing.append(package)
-    else:
-        missing = PACKAGES[:]
+    packages = PACKAGES + (HERMES_PACKAGES if "hermes" in components.split(",") else [])
+    missing = missing_packages(packages)
     print("MISSING packages (installed automatically): " + (", ".join(missing) or "none"))
     print(
         "Tailscale: "
@@ -436,6 +450,20 @@ def stage_optional(etc, settings, host):
 
 
 def install_hermes():
+    # Native Node modules need a compiler; newer Node builds need libatomic1.
+    # Resolve OS dependencies while privileged, before switching to the service user.
+    missing = missing_packages(HERMES_PACKAGES)
+    if missing:
+        print("Installing Hermes system prerequisites as root: " + ", ".join(missing))
+        run("apt-get", "update")
+        run(
+            "apt-get",
+            "install",
+            "-y",
+            "--no-install-recommends",
+            *missing,
+            env={**os.environ, "DEBIAN_FRONTEND": "noninteractive", "NEEDRESTART_MODE": "a"},
+        )
     runtime = Path("/var/lib/hermes/.hermes/hermes-agent/venv/bin/hermes")
     if not runtime.exists():
         with tempfile.TemporaryDirectory(prefix="kb-hermes-") as directory:
@@ -463,9 +491,14 @@ def install_hermes():
                 script,
                 "--skip-browser",
                 "--skip-computer-use",
+                "--skip-setup",
                 # sudo -H changes HOME but retains cwd. uv searches cwd/parents
                 # for environments, and the service user cannot inspect /root.
                 cwd="/var/lib/hermes",
+                # Account enrollment is a separate user step. A dependency change
+                # must not strand setup at a service-account sudo password prompt.
+                stdin=subprocess.DEVNULL,
+                start_new_session=True,
             )
     if not runtime.exists():
         raise InstallError(
@@ -711,7 +744,8 @@ def main(argv=None, *, source=None):
             )
             return 0 if verify(env["KAYDBOOKS_BASE_URL"], etc) else 1
         source = Path(source or Path(__file__).resolve().parents[2])
-        ok, missing = preflight(source)
+        components = args.components + (",hermes" if args.install_hermes else "")
+        ok, missing = preflight(source, components=components)
         if args.check:
             return 0 if ok and not missing and shutil.which("tailscale") else 1
         if not ok:
