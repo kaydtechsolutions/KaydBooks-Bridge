@@ -253,6 +253,9 @@ def require(config, actor, policy, store, db, job, now):
     Claimed jobs cannot bypass cancellation or scheduling rules via manual dispatch.
     This guard is process context, never an externally supplied authority parameter.
     """
+    from .sample_qualification import require_if_delegated
+
+    require_if_delegated(config, policy, store, db, job, job.get("approval_by"), now)
     schema(db)
     claim = db.execute(
         """SELECT c.*, o.profile_id FROM dispatch_claims c
