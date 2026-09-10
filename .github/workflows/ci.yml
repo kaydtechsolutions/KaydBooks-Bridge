@@ -56,6 +56,9 @@ jobs:
             catch { $rejected = $_.Exception.Message -like 'ServerUrl must*' }
             if (-not $rejected) { throw "Unsafe endpoint accepted: $url" }
           }
+      - name: Verify bundled Web Connector detection
+        shell: powershell
+        run: ./tests/windows_setup_checks.ps1
 
   linux-installer:
     runs-on: ubuntu-24.04

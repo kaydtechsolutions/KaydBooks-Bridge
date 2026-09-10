@@ -23,8 +23,29 @@ function Get-QBSoftware {
         'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*',
         'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*'
     )
-    @(Get-ItemProperty -Path $roots -ErrorAction SilentlyContinue |
-        Where-Object { $_.DisplayName -match 'QuickBooks' })
+    $installed = @(Get-ItemProperty -Path $roots -ErrorAction SilentlyContinue |
+        Where-Object { $_.DisplayName -match 'QuickBooks|QBWebConnector' })
+    $installed
+    # Bundled QBWC may have no separate uninstall entry. Check only the known
+    # Intuit locations and verify the publisher; never launch it for detection.
+    if (-not @($installed | Where-Object { $_.DisplayName -match 'Web.?Connector' }).Count) {
+        foreach ($common in @(${env:CommonProgramFiles(x86)}, $env:CommonProgramFiles)) {
+            if (-not $common) { continue }
+            $candidate = Join-Path $common 'Intuit\QuickBooks\QBWebConnector\QBWebConnector.exe'
+            if (-not (Test-Path -LiteralPath $candidate)) { continue }
+            $signature = Get-AuthenticodeSignature -LiteralPath $candidate
+            if ($signature.Status -eq 'Valid' -and $signature.SignerCertificate.Subject -match '(?i)\bIntuit\b') {
+                [pscustomobject]@{ DisplayName = 'QuickBooks Web Connector'; InstallLocation = $candidate }
+                break
+            }
+        }
+    }
+}
+
+function Get-QBDesktopSoftware($Software) {
+    @($Software | Where-Object {
+        $_.DisplayName -notmatch 'Web.?Connector|SDK|Tools|Tool Hub|Database Server|Runtime|Redistributable|File Doctor|_VC'
+    })
 }
 
 function Install-IntuitPackage([string]$Path) {
@@ -79,14 +100,14 @@ if (Test-Path -LiteralPath $tailscale) {
 }
 
 $software = Get-QBSoftware
-$qb = @($software | Where-Object { $_.DisplayName -notmatch 'Web Connector|SDK|Tools|Tool Hub|Database Server' })
-$qbwc = @($software | Where-Object { $_.DisplayName -match 'Web Connector' })
+$qb = @(Get-QBDesktopSoftware $software)
+$qbwc = @($software | Where-Object { $_.DisplayName -match 'Web.?Connector' })
 if (-not $CheckOnly) {
     if (-not $qb.Count -and $QuickBooksInstaller) { Install-IntuitPackage $QuickBooksInstaller }
     if (-not $qbwc.Count -and $WebConnectorInstaller) { Install-IntuitPackage $WebConnectorInstaller }
     $software = Get-QBSoftware
-    $qb = @($software | Where-Object { $_.DisplayName -notmatch 'Web Connector|SDK|Tools|Tool Hub|Database Server' })
-    $qbwc = @($software | Where-Object { $_.DisplayName -match 'Web Connector' })
+    $qb = @(Get-QBDesktopSoftware $software)
+    $qbwc = @($software | Where-Object { $_.DisplayName -match 'Web.?Connector' })
 }
 Report 'QuickBooks Desktop installed' ($qb.Count -gt 0)
 Report 'QuickBooks Web Connector installed' ($qbwc.Count -gt 0)
