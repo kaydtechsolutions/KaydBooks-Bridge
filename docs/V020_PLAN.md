@@ -10,26 +10,28 @@ does not qualify live deployment. Merge requires all preceding gates; the final
 merge gate is recorded only after the qualified branch lands on main. Publishing
 remains disabled by the repository release workflow.
 
-## Initial audit
+## Audit record
 
 - Codex: unrestricted filesystem, network enabled, approval policy never. This
   does not grant credentials or override OS and service authentication.
-- Windows: physical QuickBooks host; QuickBooks services and QBWC running.
+- Windows: this physical host runs Codex, QuickBooks Desktop and QBWC. It is not a
+  Proxmox VM. The Proxmox host is a separate physical computer.
 - Repository: started at 73c2888 on codex/foundation. Four modified tracked files
   and three untracked inventory worksheet files preserved with SHA256 manifest,
   binary patch and verified full Git bundle outside Git. No AGENTS.md found in
   the workspace or ancestor directories; global Codex AGENTS.md is empty.
-- GitHub: origin read succeeds. Push and CI still require verification.
-- Hermes: SSH succeeds to existing Debian 13 LXC; gateway and KaydBooks worker
-  active. Runs as root today; v0.2.0 requires a dedicated restricted account.
-- Proxmox: online in Tailscale. Direct SSH refuses an unknown host key. No
-  verified Proxmox SSH identity has yet been found; snapshot/storage/network
-  inventory remains pending. Do not weaken SSH trust checks.
-- Current Bridge runtime is on Windows. Configuration and credentials reside
-  outside Git. No runtime or accounting changes have been made.
-- Existing code has per-company state, durable QBWC and stdio MCP. New-user
-  permissions default broadly and must become restricted. Historical documents
-  disagree on v0.1.0 scores; those are not v0.2.0 acceptance evidence.
+- GitHub: origin read, authenticated push, draft PR and Windows/Linux CI are verified.
+- Hermes: the gateway and KaydBooks worker are active in the new Debian 13 LXC under
+  dedicated restricted accounts. The prior LXC remains stopped as rollback evidence.
+- Proxmox: the separate physical host is administered through the verified
+  `kaydbooks-proxmox` SSH alias. The new LXC is reached through `kaydbooks-lxc`;
+  its storage, network and snapshot qualification have passed.
+- Current Bridge, Remote MCP and Hermes runtimes are in the new Linux LXC. Private
+  configuration and credentials remain outside Git. Windows retains only the local
+  Codex operator, QuickBooks Desktop, QBWC and private connector material.
+- The release candidate has per-company state, durable QBWC, authenticated HTTP MCP
+  with retained stdio compatibility, and restricted new-user defaults. Historical
+  v0.1.0 scores remain earlier-pilot evidence and do not qualify v0.2.0.
 
 ## Execution order
 
@@ -49,9 +51,10 @@ remains disabled by the repository release workflow.
 
 ## Access classification
 
-Available now: repository, local shell, Windows service inspection, Hermes SSH,
-Tailscale inventory, GitHub read. Approval is not presently a tool restriction.
-Missing/unverified: trusted Proxmox login, snapshot capability, fresh LXC,
-ChatGPT authenticated client connection, neutral HTTPS endpoint.
-Human-only if encountered: MFA, WhatsApp QR, QuickBooks Add Application/license.
-No production company is authorized for posting by this request.
+Available and verified: repository, local shell, the physical Windows workstation,
+Proxmox and LXC SSH aliases, Tailscale private HTTPS, Linux services, Remote MCP,
+Hermes WhatsApp, GitHub push and CI. The ChatGPT principal, Secure MCP Tunnel client
+and draft configuration are prepared; creating its persistent tunnel credentials and
+app remains an authenticated human checkpoint. QuickBooks Add Application approval and
+the live sample cycle are also human checkpoints. No production company is authorized
+for posting by this request.

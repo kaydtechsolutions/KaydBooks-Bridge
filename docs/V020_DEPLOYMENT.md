@@ -1,17 +1,22 @@
 # KaydBooks Bridge v0.2.0 deployment
 
 v0.2.0 uses one fresh, unprivileged Linux LXC for KaydBooks Bridge, Remote MCP and
-the WhatsApp-only Hermes worker. QuickBooks Desktop and Web Connector stay on the
-physical Windows accounting computer.
+the WhatsApp-only Hermes worker. Codex, QuickBooks Desktop and Web Connector run on
+the same physical Windows accounting computer. Proxmox is a separate physical server;
+the qualified operator path reaches it through the existing `kaydbooks-proxmox` SSH
+alias and reaches the KaydBooks LXC through `kaydbooks-lxc`. The Windows computer is
+not a Proxmox VM.
 
 ```text
-Windows QuickBooks + QBWC
+Physical Windows: Codex + QuickBooks + QBWC
           |
           | HTTPS 443 over Tailscale
           v
 Tailscale Serve -> Caddy 127.0.0.1:8088
                     |-- Bridge/QBWC 127.0.0.1:8080
                     `-- Remote MCP 127.0.0.1:8000/mcp
+
+Separate physical Proxmox host -- unprivileged KaydBooks Linux LXC
 ```
 
 ## Install
