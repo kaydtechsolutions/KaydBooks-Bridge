@@ -36,9 +36,12 @@ getent group hermes >/dev/null || groupadd --system hermes
 id hermes >/dev/null 2>&1 || useradd --system --gid hermes \
     --home-dir /var/lib/hermes --shell /usr/sbin/nologin hermes
 usermod -a -G kaydbooks hermes
+id kaydbooks-tunnel >/dev/null 2>&1 || useradd --system --gid kaydbooks \
+    --home-dir /var/lib/kaydbooks-tunnel --shell /usr/sbin/nologin kaydbooks-tunnel
 install -d -o root -g kaydbooks -m 0750 /etc/kaydbooks
 install -d -o kaydbooks -g kaydbooks -m 2770 /var/lib/kaydbooks /var/log/kaydbooks
 install -d -o hermes -g hermes -m 0700 /var/lib/hermes
+install -d -o kaydbooks-tunnel -g kaydbooks -m 0750 /var/lib/kaydbooks-tunnel
 install -d -o root -g root -m 0755 /opt/kaydbooks/releases
 
 SHORT=$(printf '%.12s' "$EXPECTED")
@@ -61,6 +64,7 @@ ln -sfn "$RELEASE" /opt/kaydbooks/current
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 install -o root -g root -m 0644 "$SCRIPT_DIR/systemd/kaydbooks-bridge.service" /etc/systemd/system/
 install -o root -g root -m 0644 "$SCRIPT_DIR/systemd/kaydbooks-remote-mcp.service" /etc/systemd/system/
+install -o root -g root -m 0644 "$SCRIPT_DIR/systemd/kaydbooks-openai-tunnel.service" /etc/systemd/system/
 install -o root -g root -m 0644 "$SCRIPT_DIR/systemd/hermes-gateway.service" /etc/systemd/system/
 install -o root -g root -m 0644 "$SCRIPT_DIR/systemd/kaydbooks-hermes-worker.service" /etc/systemd/system/
 install -o root -g root -m 0644 "$SCRIPT_DIR/Caddyfile" /etc/caddy/Caddyfile

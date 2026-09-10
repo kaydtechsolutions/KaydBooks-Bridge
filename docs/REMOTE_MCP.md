@@ -15,7 +15,39 @@ Exposed tools cover company catalogs, reviewed entry preparation/status, batch p
 QBWC reports and the optional Composio request lifecycle. There is no shell, SQL, raw
 qbXML, filesystem, Proxmox or Tailscale tool. WhatsApp policy deliberately omits Composio.
 
-For Codex or ChatGPT, add the private `/mcp` URL and the assigned Bearer token through
-that product's secure connector configuration. Keep tokens out of prompts, Git, shell
-history and `.qwc` files. Test unauthenticated refusal, authenticated `initialize`,
+Codex can use the private `/mcp` URL and its assigned Bearer token through secure MCP
+configuration on this Tailscale-connected workstation. Keep tokens out of prompts, Git,
+shell history and `.qwc` files. Test unauthenticated refusal, authenticated `initialize`,
 `tools/list`, a permitted read and a denied company/tool before use.
+
+For ChatGPT developer-mode testing, use OpenAI Secure MCP Tunnel so the LXC remains
+private. Create a tunnel ID and runtime API key in Platform tunnel settings, associate the
+target ChatGPT workspace, and install the latest `tunnel-client` release in the LXC. Do
+not hard-code a download version or use Tailscale Funnel for this path. Initialize the
+dedicated profile as the `kaydbooks-tunnel` user with the private HTTPS MCP URL:
+
+```sh
+sudo install -o root -g kaydbooks -m 0640 deploy/openai-tunnel.env.example \
+  /etc/kaydbooks/openai-tunnel.env
+set -a
+. /etc/kaydbooks/openai-tunnel.env
+set +a
+sudo -u kaydbooks-tunnel env HOME=/var/lib/kaydbooks-tunnel \
+  CONTROL_PLANE_API_KEY="$CONTROL_PLANE_API_KEY" tunnel-client init \
+  --profile kaydbooks-private-mcp --tunnel-id "$OPENAI_MCP_TUNNEL_ID" \
+  --mcp-server-url "https://<private-magicdns-name>/mcp"
+sudo -u kaydbooks-tunnel env HOME=/var/lib/kaydbooks-tunnel \
+  CONTROL_PLANE_API_KEY="$CONTROL_PLANE_API_KEY" tunnel-client doctor \
+  --profile kaydbooks-private-mcp --explain
+sudo systemctl enable --now kaydbooks-openai-tunnel
+unset CONTROL_PLANE_API_KEY OPENAI_MCP_TUNNEL_ID
+```
+
+Enter the runtime key only in the root-owned environment file, and enter the tunnel ID
+only through the authenticated setup command. In ChatGPT Apps developer mode, choose
+Tunnel, select that ID, configure Bearer authentication for the `chatgpt` principal,
+scan the frozen tool list and create the draft app. This final connector creation and any
+workspace publication require the signed-in workspace administrator.
+
+Official references: [Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels)
+and [ChatGPT developer-mode MCP apps](https://help.openai.com/en/articles/12584461-developer-mode-apps-and-full-mcp-connectors-in-chatgpt-beta).
