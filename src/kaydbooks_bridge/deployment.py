@@ -216,7 +216,9 @@ def load_secret_file(path: str | Path) -> None:
             not isinstance(name, str)
             or not re.fullmatch(r"KAYDBOOKS_[A-Z0-9_]+", name)
             or not isinstance(value, str)
-            or len(value) < 32
+            # Composio issues opaque provider keys shorter than Bridge tokens.
+            # Match its adapter's minimum without weakening our own credentials.
+            or len(value) < (20 if name == "KAYDBOOKS_COMPOSIO_API_KEY" else 32)
             or any(char in value for char in "\r\n\0")
         ):
             raise BridgeError("invalid private credential file")
