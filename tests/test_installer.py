@@ -244,3 +244,26 @@ def test_interrupted_bundle_never_publishes_partial_secrets(tmp_path, monkeypatc
     assert (
         provision(etc, tmp_path / "state", cfg, "books.example.ts.net") / "credentials.json"
     ).is_file()
+
+
+def test_hermes_bootstrap_does_not_inherit_root_working_directory(tmp_path, monkeypatch):
+    from kaydbooks_bridge import installer
+
+    caller = tmp_path / "private-root"
+    caller.mkdir()
+    monkeypatch.chdir(caller)
+    calls = []
+
+    def command(*args, **kwargs):
+        calls.append((args, kwargs))
+        if args[0] == "curl":
+            Path(args[-1]).write_text("#!/bin/sh\nexit 0\n")
+
+    monkeypatch.setattr(installer, "run", command)
+    # The stub checks launch isolation, not the third-party runtime installation.
+    with pytest.raises(InstallError, match="runtime location differs"):
+        installer.install_hermes()
+    (sudo,) = [(args, kwargs) for args, kwargs in calls if args[0] == "sudo"]
+    assert sudo[0][:5] == ("sudo", "-u", "hermes", "-H", "bash")
+    assert sudo[1]["cwd"] == "/var/lib/hermes"
+    assert Path.cwd() == caller

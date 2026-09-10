@@ -463,6 +463,9 @@ def install_hermes():
                 script,
                 "--skip-browser",
                 "--skip-computer-use",
+                # sudo -H changes HOME but retains cwd. uv searches cwd/parents
+                # for environments, and the service user cannot inspect /root.
+                cwd="/var/lib/hermes",
             )
     if not runtime.exists():
         raise InstallError(

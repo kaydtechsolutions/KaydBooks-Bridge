@@ -222,6 +222,27 @@ by source policy and company permissions. Listing a tool does not authorize its 
 
 ## 6. Final verification and troubleshooting
 
+If an installation from commit `ef0715e` stopped during Hermes setup with
+`failed to query metadata of symlink /root/.venv: Permission denied`, its core
+services and credentials are already installed. That revision ran the unprivileged
+Hermes installer from the root shell's directory. New installers explicitly use
+`/var/lib/hermes` as their working directory.
+
+Resume that existing installation from the service home using its recorded commit
+and **the same options you originally selected**. For the example selection below:
+
+```sh
+cd /var/lib/hermes
+KB_REF=ef0715e14e9fa9fccc1417527b0cf89b9a335a62 sh /root/kaydbooks-bootstrap.sh \
+  --yes --company company-a --currency USD --edition 8 \
+  --components core,chatgpt,hermes,composio
+```
+
+Pinning the original commit keeps resume validation and the cached wheel intact;
+changing directory works around the old launch bug without resetting credentials,
+company binding or installation metadata. Do not delete `installer.json` or give
+the Hermes user access to `/root`.
+
 On Linux:
 
 ```sh

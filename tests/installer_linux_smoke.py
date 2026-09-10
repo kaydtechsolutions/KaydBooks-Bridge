@@ -46,6 +46,38 @@ class PrivateTLSFixture(BaseHTTPRequestHandler):
         pass
 
 
+def hermes_working_directory_smoke():
+    """Launch a vendor-script substitute through real sudo from a private root cwd."""
+    original_run, original_cwd = installer.run, Path.cwd()
+
+    def command(*args, **kwargs):
+        if args[0] == "curl" and "https://hermes-agent.nousresearch.com/install.sh" in args:
+            Path(args[-1]).write_text(
+                "#!/bin/sh\nset -eu\n"
+                'test "$(id -un)" = hermes\n'
+                'test "$HOME" = /var/lib/hermes\n'
+                'test "$PWD" = /var/lib/hermes\n'
+                "test -w .\n"
+                'printf "PASS Hermes bootstrap runs in its service home\\n"\n'
+            )
+            return None
+        return original_run(*args, **kwargs)
+
+    installer.run = command
+    os.chdir("/root")
+    try:
+        try:
+            installer.install_hermes()
+        except installer.InstallError as exc:
+            # The substitute checks privilege/cwd isolation, not the vendor runtime.
+            assert "runtime location differs" in str(exc)
+        else:
+            raise AssertionError("fixture unexpectedly found an installed Hermes runtime")
+    finally:
+        os.chdir(original_cwd)
+        installer.run = original_run
+
+
 def main():
     if os.environ.get("GITHUB_ACTIONS") != "true" or os.geteuid() != 0:
         raise SystemExit("Only run as root on a disposable GitHub Actions runner")
@@ -126,6 +158,7 @@ def main():
             }
             installer.apply_install(source, settings, revision, [])
             assert before == {name: (etc / name).read_bytes() for name in before}
+            hermes_working_directory_smoke()
             original_run("sudo", "-u", "caddy", "test", "-w", "/var/log/caddy/kaydbooks-access.log")
             for service in ("caddy", "kaydbooks-bridge", "kaydbooks-remote-mcp"):
                 original_run("systemctl", "is-active", service)
