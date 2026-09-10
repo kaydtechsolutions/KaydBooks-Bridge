@@ -482,13 +482,19 @@ class Config:
         env_names = set()
         for name, principal in principals.items():
             identifier(name)
-            strict_keys(principal, {"token_env", "companies"}, {"owner", "sample_qualification"})
+            strict_keys(
+                principal,
+                {"token_env", "companies"},
+                {"owner", "sample_qualification", "disabled"},
+            )
             if "sample_qualification" in principal:
                 from .sample_qualification import validate_grant
 
                 validate_grant(principal, name)
             if type(principal.get("owner", False)) is not bool:
                 raise BridgeError("owner designation must be boolean")
+            if type(principal.get("disabled", False)) is not bool:
+                raise BridgeError("principal disabled state must be boolean")
             env = principal["token_env"]
             if not isinstance(env, str) or not re.fullmatch(r"KAYDBOOKS_[A-Z0-9_]+", env):
                 raise BridgeError("use a KAYDBOOKS_ environment secret reference")
@@ -501,8 +507,10 @@ class Config:
             for company, permissions in grants.items():
                 if company not in companies or not isinstance(permissions, list):
                     raise BridgeError("invalid company permission grants")
-                if any(p not in PERMISSIONS for p in permissions):
+                if any(not isinstance(p, str) or p not in ALL_PERMISSIONS for p in permissions):
                     raise BridgeError("unsupported permission")
+                if len(permissions) != len(set(permissions)):
+                    raise BridgeError("permission grants must be distinct")
         owner_access = data.get("owner_access", {})
         if not isinstance(owner_access, dict):
             raise BridgeError("owner access must be an object")
@@ -580,6 +588,8 @@ class Config:
     def authenticate(self, token: str) -> str:
         matches = []
         for name, principal in self.principals.items():
+            if principal.get("disabled", False):
+                continue
             expected = os.environ.get(principal["token_env"], "")
             if len(expected) >= 32 and secrets.compare_digest(token.encode(), expected.encode()):
                 matches.append(name)
@@ -593,6 +603,7 @@ class Config:
         moment = time.time() if at is None else at
         return bool(
             principal.get("owner", False)
+            and not principal.get("disabled", False)
             and grant.get("principal") == actor
             and grant.get("activated_at", moment + 1) <= moment < grant.get("expires_at", moment)
         )
@@ -602,8 +613,17 @@ class Config:
     ) -> Company:
         principal = self.principals.get(actor, {})
         granted = permission in principal.get("companies", {}).get(company, [])
-        if company not in self.companies or (
-            not granted and not self.owner_override(actor, company, at)
+        if (
+            permission not in ALL_PERMISSIONS
+            or principal.get("disabled", False)
+            or company not in self.companies
+            or (
+                not granted
+                and (
+                    permission in PRODUCTION_PERMISSIONS
+                    or not self.owner_override(actor, company, at)
+                )
+            )
         ):
             raise BridgeError("permission denied")
         return self.companies[company]
@@ -681,3 +701,8 @@ PERMISSIONS = frozenset(
         "backup",
     }
 )
+
+# Keep legacy role presets and setup requests stable. Production permissions must
+# be named explicitly; an owner override cannot provide these capabilities.
+PRODUCTION_PERMISSIONS = frozenset({"post-production", "manage-production"})
+ALL_PERMISSIONS = PERMISSIONS | PRODUCTION_PERMISSIONS

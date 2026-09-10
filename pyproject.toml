@@ -38,6 +38,7 @@ dev = [
     "uvicorn>=0.23",
     "playwright>=1.55,<2",
     "reportlab>=4,<5",
+    "PyYAML>=6,<7",
 ]
 hermes = [
     "mcp>=1.10,<2",
@@ -65,6 +66,7 @@ kaydbooks-bridge-qualification = "kaydbooks_bridge.qualification:main"
 kaydbooks-bridge-setup = "kaydbooks_bridge.onboarding:main"
 kaydbooks-bridge-dispatch = "kaydbooks_bridge.dispatch:main"
 kaydbooks-bridge-mcp = "kaydbooks_bridge.remote_mcp:main"
+kaydbooks-bridge-remote-client = "kaydbooks_bridge.remote_client:main"
 kaydbooks-bridge-composio = "kaydbooks_bridge.composio:main"
 kaydbooks-bridge-channel = "kaydbooks_bridge.hermes_channel:main"
 

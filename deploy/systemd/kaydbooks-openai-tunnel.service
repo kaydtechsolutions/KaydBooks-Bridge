@@ -6,7 +6,7 @@ Wants=network-online.target caddy.service kaydbooks-remote-mcp.service
 [Service]
 Type=simple
 User=kaydbooks-tunnel
-Group=kaydbooks
+Group=kaydbooks-tunnel
 Environment=HOME=/var/lib/kaydbooks-tunnel
 EnvironmentFile=/etc/kaydbooks/openai-tunnel.env
 ExecStart=/usr/local/bin/tunnel-client run --profile kaydbooks-private-mcp
@@ -17,6 +17,7 @@ PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
 ReadWritePaths=/var/lib/kaydbooks-tunnel
+InaccessiblePaths=/etc/kaydbooks /var/lib/kaydbooks /var/log/kaydbooks
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true

@@ -1,8 +1,8 @@
 # Company users, roles and approval
 
 A principal with `manage-users` may administer users only in explicitly assigned
-companies. New assigned users receive a concrete list of all supported permissions
-unless the request specifies roles or permissions. Loading configuration never expands
+companies. New assigned users receive read-only access unless the request specifies
+roles or permissions. Loading configuration never expands
 existing grants. A new setup operator includes `manage-users`; existing deployments
 need an explicit operator-controlled grant to their intended administrator.
 
@@ -12,7 +12,7 @@ Role presets are combinable:
 | --- | --- |
 | preparer | read, prepare, validate, submit, review-source |
 | approver | read, validate, approve |
-| administrator | all currently supported permissions |
+| administrator | all legacy permissions; production permissions require explicit grants |
 
 `roles` selects their union. `permissions` supplies an exact list instead; it cannot be
 combined with `roles`. `deny` removes individual permissions. An empty `permissions`
@@ -47,3 +47,54 @@ Tests cover default/full and combined roles, individual restrictions, empty gran
 cross-company denial, immutable credential references, concurrency, failed replacement,
 CLI/MCP routing, queued-job revocation and changing self-approval policy. These access
 contracts support the separate manual-form and conversational workflow milestones.
+
+## Explicit production permissions
+
+`post-production` and `manage-production` are separate, explicitly named permissions.
+They are not included in the administrator preset, ordinary setup, read-only defaults
+or timed owner overrides. No existing principal gains them when configuration loads.
+Changing either permission through `set-user` requires both `manage-users` and an
+explicit `manage-production` grant in the same company. The first production
+administrator must therefore be provisioned deliberately through trusted local
+configuration; a legacy company administrator cannot promote itself.
+
+Permission membership alone does not enable production posting. The current build
+still rejects a production mode; reviewed enrollment and final write authorization
+are separate implementation work in [the production design](production/AUTHORIZATION_DESIGN.md).
+
+## Credential rotation and disabling principals
+
+Local administrative CLI actions accept credential **references**, never secret values:
+
+```text
+python -m kaydbooks_bridge.access --config PRIVATE_CONFIG --company COMPANY rotate-credential REQUEST.json
+python -m kaydbooks_bridge.access --config PRIVATE_CONFIG --company COMPANY disable-user REQUEST.json
+```
+
+For rotation, the request contains `principal`, `expected_revision`, and `token_env`.
+Provision a new distinct secret of at least 32 characters in the private secret
+store of every process serving that principal, then reload those services so the
+new environment reference is available. Keep the old reference during this staging
+step. Run the reviewed rotation; the configuration switches references atomically,
+so the old token stops authenticating on subsequent requests even if its old
+environment variable still exists. Verify the new token through an authenticated
+read before removing old secret material. Do not log either value or place it in
+the request JSON. On failure inspect the actual current config revision before retrying.
+
+Disabling accepts `principal`, `expected_revision`, and boolean `disabled`.
+Disabled principals cannot authenticate, use retained actor identities or activate
+owner overrides. Their earlier approvals fail the current-permission check before
+new dispatch. Existing jobs, grants and audit history remain intact; re-enabling is
+an explicit audited action. Rotation preserves the principal's grants and approvals;
+use disabling or grant revocation when authority itself must be removed.
+
+These actions affect the principal across companies. The caller needs `manage-users`
+in every assigned company, and explicit `manage-production` in each company where
+the target has a production permission. A company-only administrator cannot rotate
+another company's credentials through a shared user. The existing company access
+MCP tool does not expose these global credential/disable actions.
+
+All changes retain revision checks and audit intents/results. POSIX replacements
+preserve the original file owner/group/mode and sync the parent directory so a
+service account does not lose read access after an operator runs a change. Windows
+configuration must remain within the installer-protected private directory.

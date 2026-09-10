@@ -41,7 +41,7 @@ whatsapp_connected() {
 }
 
 hermes_mcp_connected() {
-    pgrep -u hermes -f '/opt/kaydbooks/current/bin/kaydbooks-bridge-tools' >/dev/null
+    pgrep -u hermes -f '/opt/kaydbooks/current/bin/kaydbooks-bridge-remote-client' >/dev/null
 }
 
 check test -s /etc/kaydbooks/bridge.env
@@ -64,11 +64,17 @@ if systemctl is-enabled --quiet kaydbooks-openai-tunnel.service 2>/dev/null; the
     check systemctl is-active kaydbooks-openai-tunnel.service
     check curl --fail --silent --show-error http://127.0.0.1:8090/healthz
     check curl --fail --silent --show-error http://127.0.0.1:8090/readyz
+    check sudo -u kaydbooks-tunnel test ! -r /etc/kaydbooks/credentials.json
+    check sudo -u kaydbooks-tunnel test ! -w /var/lib/kaydbooks
 fi
 check curl --fail --silent --show-error http://127.0.0.1:8080/healthz
 if [ "$HERMES_ENABLED" = 1 ]; then
     check_eventually whatsapp_connected whatsapp_connected
     check_eventually hermes_mcp_connected hermes_mcp_connected
+    check sudo -u hermes test ! -r /etc/kaydbooks/credentials.json
+    check sudo -u hermes test ! -r /etc/kaydbooks/bridge-config.json
+    check sudo -u hermes test ! -w /var/lib/kaydbooks
+    check sudo -u hermes test ! -w /etc/kaydbooks-hermes
 fi
 HOST=$(printf '%s' "$BASE_URL" | sed -E 's#^https://([^/]+)/?$#\1#')
 if [ -z "$HOST" ] || [ "$HOST" = "$BASE_URL" ]; then

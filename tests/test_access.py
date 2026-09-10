@@ -126,7 +126,7 @@ def test_combined_roles_and_individual_restrictions(roles, expected):
     "arguments",
     [
         {"roles": ["root"]},
-        {"permissions": ["post-production"]},
+        {"permissions": ["post-arbitrary"]},
         {"roles": ["preparer", "preparer"]},
         {"deny": ["shell"]},
         {"roles": [], "permissions": []},

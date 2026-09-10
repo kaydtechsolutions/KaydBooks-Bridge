@@ -1,0 +1,2260 @@
+{
+  "schema_version": 1,
+  "baseline_commit": "3a7cca3d7859f316464f1eaf7cf4520f96c07dae",
+  "production_qualified": false,
+  "historical_gates": [
+    {
+      "id": "M3-01",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Non-tax service invoice in the confirmed sample: exact request,\n  duplicate prevention, durable dispatch, independent read-back, abrupt-parent-exit\n  recovery and refusal to resend a dispatched invoice.",
+      "historical_checkbox": "checked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M3-02",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Inventory and mixed invoices: fresh items/accounts, supported inventory\n  settings, quantity/price calculations, saved-line and stock-effect comparison.\n  The non-tax, single-currency simple-inventory/mixed path is sample-qualified: a USD15\n  mixed invoice matched saved lines/balance and stock decrease from two to zero. Broader\n  currency and inventory settings remain separate unqualified variants; tax is excluded.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M3-03",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Supplier bills: vendor binding, expense/service/inventory lines,\n  payable and expense/asset accounts, due dates, terms and reference checks. Verify\n  saved lines, totals and liability effects; preserve an unknown outcome without retry.\n  Base-currency expense, mixed purchased-service and simple inventory bills, including\n  standard Net30 terms and native inventory quantity increase, are sample-qualified.\n  Advanced inventory, discounted/date-driven terms and broader variants remain unchecked.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M3-04",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Customer receipts: exact customer/invoice allocation, full and partial\n  settlement, supported deposits/unapplied amounts, and independent balance read-back.\n  Single-currency partial/full cash receipts and an explicit unapplied receipt are\n  sample-qualified. Fresh Customer Balance Summary and customer balance independently\n  reconcile unpaid invoices minus unapplied funds. Broader variants remain unchecked.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M3-05",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Supplier payments: exact vendor/bill allocation, partial settlement,\n  source account and supported payment method; compare saved allocation and balances.\n  Two native single-currency bank-account payments independently verified partial and\n  final settlement. Vendor balance and Vendor Balance Summary agree with remaining\n  complete BillToPay evidence. Broader methods and variants remain unchecked.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M3-06",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Customer credit notes and refunds: reference the intended customer,\n  invoice/credit and accounts, avoid duplicate applications, verify remaining credit.\n  One native USD5 non-tax service credit passed original-invoice limits, saved credit\n  verification and independent customer balance decrease from USD25 to USD20. It was\n  initially unapplied. A subsequent native USD3 application verified the invoice balance\n  10 -> 7, remaining credit 5 -> 2 and unchanged customer balance 20. Both reciprocal\n  links are retained with their native negative sign. A recorded USD2 Visa refund then\n  verified credit 2 -> 0, customer balance 20 -> 22 and bank 510 -> 508, without card\n  processing. A later USD15 mixed inventory/service credit verified a two-unit stock\n  return (0 -> 2), unchanged USD5 average cost, customer balance 54 -> 39 and USD10\n  inventory valuation. Independent ledger entries balance and reverse inventory/COGS;\n  source-invoice limits, missing-baseline rejection and no-resend recovery are tested.\n  See [customer inventory returns](CUSTOMER_INVENTORY_RETURNS.md). Other refund and\n  broader currency/cost/settings variants remain unqualified; M3-06 stays partial.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M3-07",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Supplier credits: correct vendor/accounts/items and bill applications;\n  verify remaining payable and unused credit independently. Native USD2 expense and\n  USD5 mixed service/expense credits passed source-bill limits, saved lines, independent\n  CreditToApply and vendor/net payable balance changes 30 -> 28 -> 23. Vendor Balance\n  Summary independently agrees. A native USD2 credit application then verified bill\n  10 -> 8, unused credit 2 -> 0, vendor balance unchanged at 23 and bank unchanged at 508.\n  The generated zero-amount payment stub was independently read and the held attempt\n  reconciled without resend. A later two-unit USD10 inventory purchase/return verified\n  stock 0 -> 2 -> 0, unused return credit USD10 and vendor/net payables 23 -> 33 -> 23.\n  This qualifies simple average-cost returns; broader currency/cost/settings remain unfinished.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M3-08",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Discounts and additional charges: explicit line/document treatment,\n  non-tax rounding rules, correct accounts and exact saved totals for each operation.\n  Customer/supplier settlement discounts now pass native exact-account/amount and\n  independent balance verification. USD6+1 and USD7+1 settled the original USD7/USD8\n  balances. A supplier reference-length rejection was independently confirmed absent\n  and retained without resend before a separately approved corrected job. Document/line\n  discounts and additional charges use explicit per-operation contracts; see [settlement discounts](SETTLEMENT_DISCOUNTS.md).\n  Fixed-discount and sales/purchase charge master creation/update also pass six native\n  attempts and independent recovery/restore checks. Two installed non-tax service invoices\n  independently verified line/document discounts and charges, including cent-exact\n  proportional allocation. Two installed supplier bills also verified document/line\n  discounts and charges, signed expense accounts/memos and independent outstanding\n  balances. Inventory cost allocation and credit/refund adjustment variants remain\n  unfinished; see [invoice adjustments](INVOICE_ADJUSTMENTS.md) and\n  [bill adjustments](BILL_ADJUSTMENTS.md).",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M3-09",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": "\u2014 EXCLUDED: Tax-enabled transaction qualification is outside this release.\n  Non-tax validation remains enforced; taxable requests must not silently lose tax.",
+      "historical_checkbox": "excluded",
+      "production_status": "excluded_by_user",
+      "new_evidence": []
+    },
+    {
+      "id": "M3-10",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Single- and multi-currency behavior: transaction/base amounts,\n  exchange rate/date, master currency compatibility and payment allocations verified.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M3-11",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Customer/vendor/item creation and updates: explicit fields and review,\n  duplicate detection, stale-edit rejection, independent read-back and no record deletion.\n  Installed qualification created five isolated customer/supplier/service/inventory\n  masters, including both service aggregates, and updated only those five records.\n  All ten attempts independently verified; two response exceptions recovered without\n  resending. Balance summaries were unchanged and signed restore preserved all evidence.\n  Supported fields and single-currency boundaries are documented in [master records](MASTER_RECORDS.md).",
+      "historical_checkbox": "checked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M3-12",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Every enabled write family passes wrong-company, stale-master,\n  revoked-permission, duplicate, missing-response, crash/restart and reconciliation tests\n  plus a controlled real sample test. Preserve already verified invoice evidence.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M4-01",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Immutable source bytes/hash, field confidence and exact source review\n  through narrow MCP tools; installed Hermes discovery and a sample MCP preparation run.",
+      "historical_checkbox": "checked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M4-02",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Manual forms use the shared service contracts for all release operations;\n  explicit company, preview, errors and review are visible without technical commands.\n  Browser forms now cover the nine current contracts, corrections, source review,\n  spreadsheet mapping, reports and access controls. Synthetic browser tests and an\n  installed native invoice draft/report run pass. Complete release variants and\n  discovery of originals created outside verified Bridge history remain unfinished.\n  Payment/credit/refund forms now offer party-scoped, searchable verified originals;\n  installed selection and fresh payment checks pass without preparing or posting.\n  Master\n  create/update forms now pass native read/check and desktop/mobile qualification.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M4-03",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " PDF/photo/scan extraction is qualified against a retained test corpus;\n  uncertain identities, numbers, dates and totals are held for review. Embedded\n  instructions cannot change permissions or execution policy. Printed English PDF, PNG\n  and JPEG intake now passes a retained six-source local OCR corpus, ambiguity and\n  embedded-instruction checks, bounded decoding, revocation and required field review.\n  Installed sample upload/native-check preparation correctly held all unreviewed fields\n  with zero accounting writes. Unsupported/illegible sources remain manual review.\n  See [offline extraction](DOCUMENT_EXTRACTION.md).",
+      "historical_checkbox": "checked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M4-04",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Excel/CSV intake: explicit column mapping, row errors, preview, source\n  hashes and stable duplicate identity across re-imports and partial batches. Installed\n  CSV/XLSX qualification held an invalid amount, accepted a corrected file, preserved\n  row identity after reordering and returned identical drafts after restart/retry. No\n  accounting writes occurred. The supported table layout is one transaction per row,\n  with explicitly mapped indexed lines; ambiguous long-form grouping is rejected.\n  Browser mapping forms remain M4-02 work.",
+      "historical_checkbox": "checked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M4-05",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Hermes chat: operation/company clarification, retained intent and\n  review, actual conversational test, no arbitrary shell/SQL/qbXML write interface.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M4-06",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Draft correction/revision: preserve original evidence, create a new\n  revision, invalidate prior approvals and stale previews, preserve canonical lineage,\n  and forbid editing/resubmitting an unknown or already posted transaction. Installed\n  sample correction retained the original, rejected stale evidence/preview, required a\n  fresh exact master check and left the successor validated with zero accounting writes.\n  Signed isolated restore preserved all 26 jobs and valid audit without service activation.",
+      "historical_checkbox": "checked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M4-07",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Company user management: full permissions by default for a new assigned\n  user, combinable roles, explicit restrictions, revocation and separately configurable\n  self-approval. Cross-company denial, queued-job revocation, stale/concurrent updates\n  and failed atomic replacement pass. Installed-package qualification exercised full\n  default access, two/all role presets, explicit two-permission access and revocation.\n  The test user was left with no grants, other principals unchanged and no accounting\n  writes. CLI/MCP administration is complete; manual browser forms are tracked in M4-02.",
+      "historical_checkbox": "checked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M5-01",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Local schedule occurrence deduplication, timezones, dependencies,\n  cancellation, versioned preferences, canonical delegation and read-only board contracts.",
+      "historical_checkbox": "checked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M5-02",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Manual workflow is the default for a new company; approval and the\n  deliberate posting action remain distinct and auditable. New-company setup requires\n  approval and enables no dispatch gate. The manual acceptance test proves approval\n  and submit perform zero writes; only deliberate native dispatch writes, with ordered audit.",
+      "historical_checkbox": "checked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M5-03",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Scheduled posting of approved work: persisted cadence/timezone,\n  cancellation, missed-run policy, restart recovery and no overlapping dispatch.\n  Installed bounded scheduled dispatch wrote one approved USD5 sample invoice and\n  independently verified it. A restarted worker performed zero repeat writes. Durable\n  claims, cancellation at final authorization, skipped/coalesced runs, policy/grant\n  revocation and interrupted planning pass synthetic tests and signed isolated restore.",
+      "historical_checkbox": "checked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M5-04",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Automatic mode: explicitly configured rules, limits, source/review\n  policy and eligible operations; exceptions held for review; permission/identity/master\n  and duplicate checks remain identical to manual dispatch.\n  Installed source/operation/count/amount rules wrote and independently verified one\n  additional approved USD5 sample invoice. Unapproved submission was rejected in both\n  modes. Profiles were cancelled and the company paused afterward; production remains\n  unavailable. See [dispatch modes](DISPATCH_MODES.md). Notification delivery and the\n  broader operation matrix remain separate M5-06/M3-12 gates.",
+      "historical_checkbox": "checked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M5-05",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Hermes messaging: verify supported channel interface/version, company\n  destination and recipient authorization; redact output, deduplicate/retry deliveries\n  without replaying accounting transactions; test approvals, failures and completion.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M5-06",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " End-to-end input \u2192 review \u2192 posting \u2192 verification \u2192 notification tests\n  for all three modes, including restart, revocation and notification failure.\n\nExisting board snapshots are not scheduled accounting posting. A local outbox is\nnot a delivered message. Existing preferences and delegation are supporting work;\nadditional native Hermes Kanban/delegation interfaces are optional extensions unless\nneeded by the agreed workflow.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M6-01",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Unpaid customer invoices and unpaid supplier bills.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M6-02",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Receivables and payables aging, with explicit aging date/buckets.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M6-03",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Customer and supplier statements, including payments and credits.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M6-04",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Profit and loss.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M6-05",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Balance sheet.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M6-06",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Cash flow.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M6-07",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Inventory quantities and valuation with supported location filters.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M6-08",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Sales analysis by customer, item and period.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M6-09",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Purchase analysis by supplier, item and period.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M6-10",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": "\u2014 EXCLUDED: Sales/purchase tax summaries are outside this release.",
+      "historical_checkbox": "excluded",
+      "production_status": "excluded_by_user",
+      "new_evidence": []
+    },
+    {
+      "id": "M6-11",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Trial balance and general ledger.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M6-12",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Native report support matrix and actual sample reconciliation for each\n  enabled report. Unsupported requests fail explicitly; history is not current balance.\n\nNative report qualification now covers 18 single-currency US qbXML 17 report types:\nfinancial statements, unpaid invoices/bills, statements, aging, inventory, sales and\npurchases. All native row/column counts passed. P&L and balance-sheet income match;\ntrial-balance accounts match the general ledger; statements, aging buckets and balance\nsummaries reconcile. Extra tests cover cash-basis financial statements, an empty period,\nexact entity/item filters and monthly columns. Unpaid reports explicitly exclude unapplied\nreceipts/credits. Installed reads and retained-response recovery pass with zero writes.\nCash flow, multi-currency report variants and inventory location support remain unfinished;\nthese supporting results do not close the wider M6 gates. See [native reports](NATIVE_REPORTS.md).\n\nThe existing historical verified-invoice register is qualified supporting evidence.\nIt does not satisfy the unpaid invoices, aging, financial statement or ledger gates.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M7-01",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Reusable private company setup and scoped offline readiness checks;\n  configured identity versus verified connection are distinguished.",
+      "historical_checkbox": "checked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M7-02",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Signed Bridge snapshot and isolated SQLite/evidence restore drill;\n  integrity and audit continuity checked without activating the restored connector.",
+      "historical_checkbox": "checked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M7-03",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Run the complete supported workflow matrix through the installed\n  package with actual authorized sample data and representative company settings.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M7-04",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Operational backup and failover procedure, including authoritative\n  service ownership, no simultaneous writers and uncertain-write recovery. Bridge\n  snapshots and QuickBooks company backups must be identified separately.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M7-05",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Deployment identity, secrets, TLS lifecycle, monitoring, resource limits,\n  upgrades/migrations and external immutable audit retention qualified for deployment.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    },
+    {
+      "id": "M7-06",
+      "source": "docs/FIRST_RELEASE_SCOPE.md",
+      "requirement_and_existing_evidence": " Publish a traceable release-readiness report: accepted scope, supported\n  versions, test evidence, operational ownership and explicit remaining limitations.\n\nBackup and access-control work may support earlier development. It must not move the\nproject into final M7 qualification while required M3\u2013M6 functionality is unfinished.\nProduction pilot authorization, PR merge and release publication are separate from\nimplementing and qualifying the software with the authorized sample company.\n\n## Implementation order and current work\n\n1. M3 supplier bill preparation/read-back and generalized operation lifecycle, retaining\n   existing invoice invariants. First qualify a base-currency non-tax bill path.\n2. Complete service/inventory transactions, payments, credits/refunds, master updates,\n   discounts/charges, then currency variants for each operation. Tax is excluded.\n3. Complete M4 forms/import/extraction/chat and revision/permission workflows over those\n   contracts. Individual supporting changes may land earlier when required by M3.\n4. Complete M5 manual/scheduled/automatic posting and Hermes notification integration.\n5. Complete M6 required native reports and reconciliation.\n6. Complete final M7 deployment/recovery qualification across the finished workflows.\n\nBefore implementing each native operation, verify the exact QuickBooks SDK schema,\nedition/version support and saved-record projections. Do not infer support from generic\nrequest names in the inherited library. Current supported operation families are listed in the project status; each new\nfamily requires policy, evidence, durable dispatch and independent native readback.\n\nCurrent step: remaining input workflows and broader adjustment variants, then the\nremaining non-tax acceptance gates. No real company details belong here.",
+      "historical_checkbox": "unchecked",
+      "production_status": "pending",
+      "new_evidence": []
+    }
+  ],
+  "fourteen_required_entries": [
+    {
+      "entry": "Invoice",
+      "historical_status": "Service and mixed simple-inventory invoices sample-qualified; service lost-response recovery qualified",
+      "production_status": "pending"
+    },
+    {
+      "entry": "Sales receipt",
+      "historical_status": "Mixed service/simple-inventory sample qualified: USD10, deposit +10, customer balance unchanged, stock -1; cash/check methods supported",
+      "production_status": "pending"
+    },
+    {
+      "entry": "Bill",
+      "historical_status": "Expense/purchased-service/inventory sample bill verified, including payable balance and stock increase; actual bill interruption qualification remains",
+      "production_status": "pending"
+    },
+    {
+      "entry": "Inventory transfer",
+      "historical_status": "Basic QBWC sample qualified: one unit source -1/destination +1; total stock and average cost unchanged",
+      "production_status": "pending"
+    },
+    {
+      "entry": "Credit memo",
+      "historical_status": "Mixed inventory/service USD15 credit sample-qualified through QBWC: customer balance USD59 \u00e2\u2020\u2019 USD44, stock 2 \u00e2\u2020\u2019 4, unchanged average cost, one write; broader cases and actual interruption qualification remain",
+      "production_status": "pending"
+    },
+    {
+      "entry": "Bill credit",
+      "historical_status": "Mixed expense/service/inventory USD20 credit sample-qualified through QBWC: vendor/net payable balance USD54 \u00e2\u2020\u2019 USD34, stock 4 \u00e2\u2020\u2019 2, one write; broader cases and actual interruption qualification remain",
+      "production_status": "pending"
+    },
+    {
+      "entry": "Account transfer",
+      "historical_status": "Not implemented",
+      "production_status": "pending"
+    },
+    {
+      "entry": "Customer payment",
+      "historical_status": "Basic partial payment sample-qualified through QBWC: USD5 payment, invoice outstanding USD15 \u00e2\u2020\u2019 USD10, one write and valid audit; broader cases and actual interruption qualification remain",
+      "production_status": "pending"
+    },
+    {
+      "entry": "Supplier payment",
+      "historical_status": "Basic partial payment sample-qualified through QBWC: USD5 payment, selected bill outstanding USD20 \u00e2\u2020\u2019 USD15, one write and valid audit; broader cases and actual interruption qualification remain",
+      "production_status": "pending"
+    },
+    {
+      "entry": "Check",
+      "historical_status": "Vendor expense check qualified: USD5, bank -5, expense +5, vendor payable unchanged",
+      "production_status": "pending"
+    },
+    {
+      "entry": "Journal",
+      "historical_status": "Balanced ordinary-account journal qualified: USD5 effect; original saved memos repaired with one memo-only Mod and exact readback",
+      "production_status": "pending"
+    },
+    {
+      "entry": "New item",
+      "historical_status": "Selected native item types exist; QBWC migration and remaining types required",
+      "production_status": "pending"
+    },
+    {
+      "entry": "New chart-of-accounts account",
+      "historical_status": "Not implemented",
+      "production_status": "pending"
+    },
+    {
+      "entry": "Batch Enter Transactions",
+      "historical_status": "CSV/XLSX intake exists; the requested Company-menu-style batch workflow remains unfinished",
+      "production_status": "pending"
+    }
+  ],
+  "operation_variants": [
+    {
+      "id": "invoice.create:1",
+      "operation": "invoice.create",
+      "variant": "service",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "invoice.create:2",
+      "operation": "invoice.create",
+      "variant": "inventory",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "invoice.create:3",
+      "operation": "invoice.create",
+      "variant": "mixed",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "invoice.create:4",
+      "operation": "invoice.create",
+      "variant": "line/document discount",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "invoice.create:5",
+      "operation": "invoice.create",
+      "variant": "additional charges",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "bill.create:1",
+      "operation": "bill.create",
+      "variant": "expense",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "bill.create:2",
+      "operation": "bill.create",
+      "variant": "purchased service",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "bill.create:3",
+      "operation": "bill.create",
+      "variant": "inventory",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "bill.create:4",
+      "operation": "bill.create",
+      "variant": "mixed",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "bill.create:5",
+      "operation": "bill.create",
+      "variant": "terms",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "bill.create:6",
+      "operation": "bill.create",
+      "variant": "discounts/charges",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "sales-receipt.create:1",
+      "operation": "sales-receipt.create",
+      "variant": "service",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "sales-receipt.create:2",
+      "operation": "sales-receipt.create",
+      "variant": "inventory",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "sales-receipt.create:3",
+      "operation": "sales-receipt.create",
+      "variant": "mixed",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "sales-receipt.create:4",
+      "operation": "sales-receipt.create",
+      "variant": "cash/check",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "sales-receipt.create:5",
+      "operation": "sales-receipt.create",
+      "variant": "deposit account",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "customer-payment.create:1",
+      "operation": "customer-payment.create",
+      "variant": "full allocation",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "customer-payment.create:2",
+      "operation": "customer-payment.create",
+      "variant": "partial allocation",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "customer-payment.create:3",
+      "operation": "customer-payment.create",
+      "variant": "multiple invoices",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "customer-payment.create:4",
+      "operation": "customer-payment.create",
+      "variant": "unapplied/deposit",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "customer-payment.create:5",
+      "operation": "customer-payment.create",
+      "variant": "settlement discount",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "supplier-payment.create:1",
+      "operation": "supplier-payment.create",
+      "variant": "full allocation",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "supplier-payment.create:2",
+      "operation": "supplier-payment.create",
+      "variant": "partial allocation",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "supplier-payment.create:3",
+      "operation": "supplier-payment.create",
+      "variant": "multiple bills",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "supplier-payment.create:4",
+      "operation": "supplier-payment.create",
+      "variant": "supported payment methods",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "supplier-payment.create:5",
+      "operation": "supplier-payment.create",
+      "variant": "settlement discount",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "customer-credit.create:1",
+      "operation": "customer-credit.create",
+      "variant": "service",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "customer-credit.create:2",
+      "operation": "customer-credit.create",
+      "variant": "inventory",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "customer-credit.create:3",
+      "operation": "customer-credit.create",
+      "variant": "mixed",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "customer-credit.create:4",
+      "operation": "customer-credit.create",
+      "variant": "discounts/charges",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "supplier-credit.create:1",
+      "operation": "supplier-credit.create",
+      "variant": "expense",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "supplier-credit.create:2",
+      "operation": "supplier-credit.create",
+      "variant": "service",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "supplier-credit.create:3",
+      "operation": "supplier-credit.create",
+      "variant": "inventory",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "supplier-credit.create:4",
+      "operation": "supplier-credit.create",
+      "variant": "mixed",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "supplier-credit.create:5",
+      "operation": "supplier-credit.create",
+      "variant": "discounts/charges",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "customer-credit.apply:1",
+      "operation": "customer-credit.apply",
+      "variant": "full",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "customer-credit.apply:2",
+      "operation": "customer-credit.apply",
+      "variant": "partial",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "customer-credit.apply:3",
+      "operation": "customer-credit.apply",
+      "variant": "multiple eligible originals",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "supplier-credit.apply:1",
+      "operation": "supplier-credit.apply",
+      "variant": "full",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "supplier-credit.apply:2",
+      "operation": "supplier-credit.apply",
+      "variant": "partial",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "supplier-credit.apply:3",
+      "operation": "supplier-credit.apply",
+      "variant": "multiple eligible originals",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "customer-refund.create:1",
+      "operation": "customer-refund.create",
+      "variant": "supported refund records",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "customer-refund.create:2",
+      "operation": "customer-refund.create",
+      "variant": "customer credit linkage",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "customer-refund.create:3",
+      "operation": "customer-refund.create",
+      "variant": "bank and customer effects",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "check.create:1",
+      "operation": "check.create",
+      "variant": "supported payee",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "check.create:2",
+      "operation": "check.create",
+      "variant": "expense accounts",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "check.create:3",
+      "operation": "check.create",
+      "variant": "bank effect",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "journal.create:1",
+      "operation": "journal.create",
+      "variant": "balanced multi-line",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "journal.create:2",
+      "operation": "journal.create",
+      "variant": "memos",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "journal.create:3",
+      "operation": "journal.create",
+      "variant": "account type restrictions",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "inventory-transfer.create:1",
+      "operation": "inventory-transfer.create",
+      "variant": "source/destination sites",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "inventory-transfer.create:2",
+      "operation": "inventory-transfer.create",
+      "variant": "quantity/valuation conservation",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "master.change:1",
+      "operation": "master.change",
+      "variant": "customer create/update",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "master.change:2",
+      "operation": "master.change",
+      "variant": "vendor create/update",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "master.change:3",
+      "operation": "master.change",
+      "variant": "service item create/update",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "master.change:4",
+      "operation": "master.change",
+      "variant": "inventory item create/update",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "master.change:5",
+      "operation": "master.change",
+      "variant": "remaining agreed item types",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "master.change:6",
+      "operation": "master.change",
+      "variant": "stale EditSequence",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "master.change:7",
+      "operation": "master.change",
+      "variant": "duplicate name",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "account-transfer.create:1",
+      "operation": "account-transfer.create",
+      "variant": "source/destination account",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "account-transfer.create:2",
+      "operation": "account-transfer.create",
+      "variant": "equal debit/credit effect",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "account.create:1",
+      "operation": "account.create",
+      "variant": "supported account types",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "account.create:2",
+      "operation": "account.create",
+      "variant": "parent/reference checks",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "account.create:3",
+      "operation": "account.create",
+      "variant": "duplicate/stale validation",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "batch-entry:1",
+      "operation": "batch-entry",
+      "variant": "supported row types",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "batch-entry:2",
+      "operation": "batch-entry",
+      "variant": "preview/validation",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "batch-entry:3",
+      "operation": "batch-entry",
+      "variant": "partial completion",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "batch-entry:4",
+      "operation": "batch-entry",
+      "variant": "repeat import",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    },
+    {
+      "id": "batch-entry:5",
+      "operation": "batch-entry",
+      "variant": "stable row identity",
+      "status": "pending",
+      "evidence": [],
+      "required_checks": [
+        "typed validation",
+        "fresh master references",
+        "exact review/approval",
+        "authorized QBWC dispatch",
+        "independent saved record",
+        "ledger/balance/stock effects where applicable",
+        "wrong company",
+        "revocation",
+        "stale evidence",
+        "duplicate/reimport denial",
+        "lost response and restart reconciliation without resend"
+      ]
+    }
+  ],
+  "reports": [
+    {
+      "name": "balance-sheet",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "cash-flow",
+      "registered_at_baseline": false,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "check-detail",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "customer-balances",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "customer-statement",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "deposit-detail",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "general-ledger",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "inventory-by-site",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "inventory-stock",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "inventory-valuation",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "job-profitability",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "journal",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "payables-aging",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "profit-loss",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "purchases-items",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "purchases-vendors",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "receivables-aging",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "sales-customers",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "sales-items",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "time-by-job",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "trial-balance",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "unpaid-bills",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "unpaid-invoices",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "vendor-balances",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    },
+    {
+      "name": "vendor-statement",
+      "registered_at_baseline": true,
+      "production_status": "pending",
+      "checks": [
+        "date/as-of",
+        "supported basis",
+        "currency",
+        "filters",
+        "paging/completeness",
+        "empty results",
+        "company isolation",
+        "independent reconciliation"
+      ],
+      "evidence": []
+    }
+  ],
+  "cross_cutting_dimensions": {
+    "currency": [
+      "single base currency",
+      "multi-currency with exact rates/dates/master compatibility"
+    ],
+    "inventory": [
+      "simple inventory",
+      "supported site-aware sales/purchases",
+      "explicitly reject unsupported settings"
+    ],
+    "input": [
+      "manual",
+      "printed English PDF/PNG/JPEG with source review",
+      "CSV/XLSX",
+      "Hermes WhatsApp"
+    ],
+    "posting": [
+      "manual",
+      "scheduled",
+      "explicit bounded automatic"
+    ],
+    "companies": [
+      "single",
+      "multiple isolated assignments",
+      "wrong-company and swapped-file denial"
+    ],
+    "environments": [
+      "supported standalone Linux",
+      "supported Proxmox LXC/VM",
+      "supported Windows QB/QBWC"
+    ],
+    "recovery": [
+      "lost add response",
+      "lost lookup",
+      "crash before/after authorization",
+      "restart",
+      "restore without replay"
+    ]
+  },
+  "dimension_rule": "Before qualifying an operation, expand applicable dimensions into explicit cases with evidence. Non-applicability requires a technical explanation; agreed scope cannot be excluded without user decision.",
+  "excluded_by_user": [
+    "tax-enabled transactions/reports",
+    "Google Drive connection",
+    "Google Sheets connection",
+    "Google Docs connection",
+    "initiating actual bank/card payments"
+  ],
+  "remaining_external_decisions": [
+    "new bounded sample write batches",
+    "restored real-company backup and access",
+    "exact live pilot scope/window/budgets",
+    "release publication if not already authorized"
+  ]
+}

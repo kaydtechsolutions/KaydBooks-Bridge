@@ -1,0 +1,1190 @@
+{
+  "schema_version": 1,
+  "baseline_commit": "3a7cca3d7859f316464f1eaf7cf4520f96c07dae",
+  "evidence_level": "source_inventory",
+  "production_qualified": false,
+  "modules": [
+    {
+      "path": "src/kaydbooks_bridge/__init__.py",
+      "sha256": "b58d5b5920282c5463f815693e4d1a0611aafe08410adfe66965017dd318d02b",
+      "summary": "Company-scoped application layer. This milestone cannot post to QuickBooks.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/__main__.py",
+      "sha256": "482b8693e2fe6dbd732e3d7961e03827d3efa187bad11d29da188be580ebbeea",
+      "summary": null,
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/access.py",
+      "sha256": "909f0c1243f151ee060841320d55a1b54e74445d2feaf5725397ed575ae7e2a7",
+      "summary": "Private company user administration with concrete grants and audited atomic updates.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/account_lookup.py",
+      "sha256": "fe7308f2befa621c7191b937b7c0d37652924ba1681fb9e0e0a0b2e23cda048e",
+      "summary": "Bounded account preview. No arbitrary queries, balances or bank details.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/account_roles.py",
+      "sha256": "58f9c90f7cc916e9eea7b9692999bcb18e2fb2fe269da231479caeeb18b6ae71",
+      "summary": "Account-role checks over private, verified exact lookup evidence; no posting.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/application_evidence.py",
+      "sha256": "89a090754b04e0a3d9ddf873d9d2ce645671cc955b75c06c8c41a6a87fc611d2",
+      "summary": "Customer-credit evidence with exact invoice/credit links, ownership and expiry.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/batch_preflight.py",
+      "sha256": "9830b318bca152b0bce2dc435fefae472aeaf990f8f58e70801304ba341a4561",
+      "summary": "Bounded, company-bound readback for exact transaction references; never writes.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/bill_adjustments.py",
+      "sha256": "31fd2ae43bd11e5299111071cebe096d3d96d6c2266ad1e32a74f35464c98134",
+      "summary": "Reviewed expense-account bill adjustments; inventory cost allocation is separate.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/bill_evidence.py",
+      "sha256": "8ff056e5e68ef22ec4c5d98cea5bd9ae639764af810eeeaaf28f82a772ec6b32",
+      "summary": "Bill-specific verified SDK master evidence; invoice evidence is not interchangeable.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/bill_lookup.py",
+      "sha256": "f70bb05bd73c174e40f0f59df35ebda9191af878e708ea8ffb6c1ec68839e353",
+      "summary": "Fixed supplier/account preview for bill onboarding; not posting evidence.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/bill_receipt.py",
+      "sha256": "b9765d145bb8af698c8921ab0f765d388c632be60e4f611a02f1cbdf1a2d5220",
+      "summary": "Fixed expense-bill XML and exact saved-record comparison; no dispatch.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/bill_receipt_evidence.py",
+      "sha256": "9384c813fb556a543ef63e4d368f19a30f747c4e27bfdfd1423c623b2f8b61bb",
+      "summary": "Reconcile saved bills using durable, owned, read-only SDK evidence.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/bills.py",
+      "sha256": "e32f65744f2f9efa8ea968108830fe5e65409d23c57e11c061bfee6ab16a1a86",
+      "summary": "Base-currency supplier-bill policy and simulation contracts; no native writes.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/capabilities.py",
+      "sha256": "ce227f7f36507c817cc3ef3d437904148ac33ea7ba3505fe1a7cbdd4f53162eb",
+      "summary": "Evidence inventory, not an enable switch or a claim of installed support.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/check_evidence.py",
+      "sha256": "70ebedc7b26268a4c941a14bcbf83831cb085c63c3831ba836b0415e7f8c9358",
+      "summary": "Fresh, owned QBWC check master evidence.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/checks.py",
+      "sha256": "46a7144d9394f594f1e896e2981715b86c55b9f3cb501d0734c1534a03fe851c",
+      "summary": "Reviewed vendor expense checks; no bank transmission or bill settlement.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/cli.py",
+      "sha256": "ffca3f85ea93a58c8bb682752072f3b30c3ea718e088a8372c766fb0f560abf6",
+      "summary": "Authenticated local CLI with an explicit controlled-sample posting command.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/composio.py",
+      "sha256": "f72981e96da59fea10509d7140fb32453fdaf675621472621020bba81eeb207a",
+      "summary": "Company-scoped, approved Composio tool execution with no blind retry.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/config.py",
+      "sha256": "18b6320092398576073e16f95b7ca450f1397b9d3225bca1f5af7dbf739f020f",
+      "summary": "Private configuration is operator-controlled, never supplied by document content.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/credit_application.py",
+      "sha256": "8a5557877adc7d17bd209368502bb43637bd54c53e557bf51ff12485090d5269",
+      "summary": "Apply an existing credit to one invoice; no new payment or money movement.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/credit_evidence.py",
+      "sha256": "346a009f6f265eaa3d2c728f459dd956a015901fd5a21287b56f8b624f249fed",
+      "summary": "Customer-credit evidence with original-invoice limits, ownership and expiry.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/customer_credits.py",
+      "sha256": "8462f80692b7d115cc66acc4a6f1eb9468d7895375d07e39ee300d151aa6abe2",
+      "summary": "Non-tax service/inventory credits tied to an invoice; no automatic application.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/customer_payments.py",
+      "sha256": "dc49914807934e63d2e43933125902bf05b767cbefc36193515301f379fdba5e",
+      "summary": "Exact customer-payment allocation checks; this module cannot dispatch writes.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/customer_refunds.py",
+      "sha256": "e04fd0f54e77fda0e3de1efc6e17be37a1ba87e3ab2e2301fd81ffa1b2350e09",
+      "summary": "Recorded credit-card refunds only; never invoke a payment processor.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/deployment.py",
+      "sha256": "29717dbe2a70e5aa9d9ab3d5f65aedf84e304a5f0299adbcbf18606f2a7ee14c",
+      "summary": "Fail-closed deployment surface for read-only QBWC qualification.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/deployment_walkthrough.py",
+      "sha256": "4f254a8fa32787fc479d966a138081981198e86549ee608a4ff85273c464f12d",
+      "summary": "Offline, secret-safe verification of one isolated company deployment.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/direct_sdk.py",
+      "sha256": "29e0a7104c8ee5e9cebc9196083a6e94373bfc1c22432c57e2f3c08e02fe8bac",
+      "summary": "Authenticated, durable read-only SDK discovery; never accepts transaction XML.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/dispatch.py",
+      "sha256": "3dedb925ef463314c60d152faae1b9dd44a5d8bf1b44144fbf8e7654e3e6e49d",
+      "summary": "Opt-in bounded sample dispatch; approvals and native fences remain authoritative.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/documents.py",
+      "sha256": "2746fe09bc01ac5e275105a1f981c919f5506531a875bf952de78919850d0d84",
+      "summary": "Company-scoped immutable source capture; extracted content is never authority.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/extraction.py",
+      "sha256": "d0d85bbf4621c4aafeb9de707087ee4897346720a54c9259412370192ba1de9d",
+      "summary": "Immutable offline document observations. Extracted text never authorizes an action.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/extraction_worker.py",
+      "sha256": "39981c7a138ca03474027e7297fca7f127ce4e17704f7e66d264b7b180e42a7c",
+      "summary": "Bounded isolated raster/PDF decoding and offline OCR. No Bridge credentials.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/hermes_batches.py",
+      "sha256": "4dfe73feede6ba56532542c9a993d0e968339cad80d204b90d3071a1780352ad",
+      "summary": "Immutable reviewed batches; channel confirmation is separate from agent tools.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/hermes_channel.py",
+      "sha256": "41816c16da968086cdf96041c4894da90c8705b96086e244881ac96c3dff39b6",
+      "summary": "Fixed signed channel RPC over SSH. Not an agent or MCP approval tool.\n\nThe gateway host administrator is trusted. A model with unrestricted root shell\naccess on that host is outside this boundary; tool filtering alone is not a sandbox.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/hermes_intake.py",
+      "sha256": "cb3e0731b0019490220d8462632cf602c0c27d81ea9dfd17cf0c531f4a4363b3",
+      "summary": "Prepare a captured structured upload without model-authored field confidence.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/hermes_qbwc.py",
+      "sha256": "48394a54b537d0c4a4c835a143596441ce2504ae2b089810999d4c8058229188",
+      "summary": "Hermes entry tools use the same fixed QBWC path as the qualified browser forms.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/hermes_setup.py",
+      "sha256": "c12522d9fa15c08502edfb2ef4ad6ced5122c19b1511f1ecbb35fc1116011b5a",
+      "summary": "Generate private Hermes connection files without modifying a running deployment.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/hermes_tools.py",
+      "sha256": "77f931a6fe3996f1c9203f65908d536fcf5690b5be24dc5e10b2609db65679ae",
+      "summary": "Versioned narrow tools. QBWC dispatch requires existing approval and sample gates.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/installer.py",
+      "sha256": "ecbe5ea0880692907ada6949d33835d8eb52e99c7317eacee3cbc8c1cc0cfd25",
+      "summary": "First-install wizard. Standard library only until the KB wheel is installed.\n\nNo company writes, account enrollment, existing-deployment adoption, or implicit upgrade.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/inventory_catalog.py",
+      "sha256": "5e3dfdf973475fa2fb80df8ead9bfcdbb708290119cd0171cea07255e18fac36",
+      "summary": "Read-only inventory-site discovery for private company configuration.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/inventory_transfer_evidence.py",
+      "sha256": "716151a2bf25f23a5dc0471203041e716d85c63b2bd128a314c460dc3d29a639",
+      "summary": "Fresh, owned QBWC inventory_transfer master evidence.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/inventory_transfers.py",
+      "sha256": "41ca1c955d8f60a28ffe357592231b856cc69c076ded25e6b37102123a1af58e",
+      "summary": "Site-to-site stock transfers with exact per-site and total-stock readback.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/inventory_worksheet.py",
+      "sha256": "a62165e3facd0d5ddc1450932bab3769ff1ef74f7d351e583c44149f1186f410",
+      "summary": "Printable counting worksheet from a verified native inventory-by-site report.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/invoice_adjustments.py",
+      "sha256": "bd2b082899e7a9d8ee530b1ea9c6a578d7c73ddb1f298ee1cea4a201c4620270",
+      "summary": "Explicit fixed invoice adjustments and deterministic, cent-exact line placement.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/invoice_commercial.py",
+      "sha256": "85eae4bac9a6454228167947d52b0bd0877ec1fd6b2b7f699e21578997f0909e",
+      "summary": "US simple invoice checks against configured tax and list-price policy; no writes.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/invoice_compatibility.py",
+      "sha256": "0ba0a2891ba77a0e186b884fece8bfc3bc476f53bf30b266d1313abb0f65c6fa",
+      "summary": "Bounded exact invoice master checks; never constructs a transaction request.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/invoice_evidence.py",
+      "sha256": "2429986b4bad8e2085c3a01703681af4be0f911c698bd50d8c9da11f39f5edf3",
+      "summary": "Resolve invoice evidence from durable company state, never from client claims.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/invoice_preview.py",
+      "sha256": "0f295d169f560232941a9c676dd9238eccf0048dc699e05595053a0160768603",
+      "summary": "Deterministic review data for a validated invoice; no transport or write request.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/invoice_receipt.py",
+      "sha256": "3a4f60381ef6088bb3c95ed696cc9d7f619c0c6f89bede3c7b8f8a305e880304",
+      "summary": "Non-tax service/inventory invoice request and receipt validation; no dispatch.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/journal_entries.py",
+      "sha256": "eac4ecd0dabbe3bf064dcb40e32f6ee923e84c183959d372d57f4f2124f2ec19",
+      "summary": "Balanced non-tax journal entries with independent account-balance readback.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/journal_evidence.py",
+      "sha256": "00ba9c35b832c4de7cb57f0a819e028d61d22c88eb23295a4019f5c03794da23",
+      "summary": "Fresh, owned QBWC journal master evidence.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/journal_memo_repair.py",
+      "sha256": "dc27357584b45c7e6fb19c5ca9aadb9551cb65570c65e3f7b6137363b9c96480",
+      "summary": "One-shot sample-only repair for the former unsupported US journal header memo.\n\nThis is not arbitrary transaction editing. The original approved journal, warning\nresponse and monetary baseline remain immutable; only missing line memos can change.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/master_checks.py",
+      "sha256": "93e4240ebebbe683aca37b7093d688b82da8d535b90236ccdd7bf1a4490927ce",
+      "summary": "Durable exact master observations used by reviewed create/update proposals.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/master_posting.py",
+      "sha256": "56f8f29056da3c4b05c8e094f59299075d7b7329479e60e9c8d3de5eae9bbc3b",
+      "summary": "One-shot controlled sample master changes and independent saved-record recovery.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/master_records.py",
+      "sha256": "8b1adaa8a65b849838c1fc4458452606c3a7e31491c0999a334411eaf940bbb8",
+      "summary": "Explicit non-tax master changes; no balances, deletions or historical account edits.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/native_reports.py",
+      "sha256": "1d7cad2d35f771f007384ab2325272eca18a9c6f9ffd01a7b6c87bddff78ef55",
+      "summary": "Fixed native report requests and complete typed readbacks; no inferred totals.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/onboarding.py",
+      "sha256": "f027bb80e75973caab84d11cf6c320918141930d6fbc9db7e264a9398906bd2c",
+      "summary": "Private company setup and offline diagnostics; never opens QuickBooks or posts.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/operations.py",
+      "sha256": "8fc52e89320de8637d1d76a3c222a93a533b8913a80f15d39f3c97a3d6c46ee4",
+      "summary": "Local workflow/report operations; no scheduler daemon or external deliveries.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/payment_evidence.py",
+      "sha256": "6225a82941500902f25238835b7b0c52f2a11b07827992304e61781766e37d78",
+      "summary": "Customer-payment evidence with exact allocations, ownership and expiry.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/payment_receipt.py",
+      "sha256": "6206d64f9aa63410d51ab7746f1dffd718a6f9e1aad1669336c1e0803e4c2cd6",
+      "summary": "Fixed ReceivePayment requests and exact saved allocation verification.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/qbwc.py",
+      "sha256": "5e5b595f39862a6a1b9a9afca797173cce5d19894dc7fe92db4c380176271bff",
+      "summary": "Durable, read-only QBWC discovery callbacks.\n\nThis service deliberately has no task injection or write request API.  It emits one\nfixed HostQuery/CompanyQuery batch, optionally extended by an authenticated bounded\naccount or invoice master check, and verifies CompanyRet evidence before accepting results.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/qbwc_accounts.py",
+      "sha256": "73ae8e8051f505a1dccf60387a2dc7d6a640ab5cd835705d9ebba81688a13c45",
+      "summary": "Explicit, authenticated one-update account preview scheduling for QBWC.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/qbwc_contracts.py",
+      "sha256": "a83d332a3b75e1a02b261f4c2bf27df92ce34c1036236b8998cc7fd6724b29bb",
+      "summary": "Fixed transaction contracts for the shared QBWC lifecycle; no arbitrary qbXML.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/qbwc_invoices.py",
+      "sha256": "ddd39781ea8315bb1b0a336696961451fe6aab3d9683949c686501996cf9b0a2",
+      "summary": "One-update QBWC invoice master checks; no invoice posting API.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/qbwc_posting.py",
+      "sha256": "cf69206b0fb239efd366339c4d17403201236be33fb3e4ccedf8ec16a25baf75",
+      "summary": "Bounded sample invoice posting over QBWC; writes are handed out at most once.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/qbwc_posting_schema.py",
+      "sha256": "70c6f8019f44b611bd78ba59eb62554e8aba445b2bf46d41f91db0d32c033610",
+      "summary": "Durable invoice dispatch envelopes and append-only QBWC exchange evidence.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/qbwc_reference_data.py",
+      "sha256": "853c2eca01e58a1e487b5bfc6b8bc9e931ba2c1c13e3dbc1b423e9ac4d0ac62c",
+      "summary": "Fresh company-bound QuickBooks reference data through QBWC.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/qbwc_reports.py",
+      "sha256": "cb94f3d7f5774fa3ec22a25994e994b2f5e71b0a657efd5fcbf43285f9219a79",
+      "summary": "Fresh, company-bound reports through the existing read-only QBWC queue.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/qbwc_schema_upgrade.py",
+      "sha256": "3561143374bebb169f8f6afebe16a6764a0b16d34b906f20528272eb8cef26c7",
+      "summary": "Transactional expansion of the fixed QBWC read-operation allowlist.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/qualification.py",
+      "sha256": "538b95c7d639dd27f6eaa6b5810d606bbde96ede1c77a07b7eb48e9a11c923ca",
+      "summary": "Signed, quiescent company snapshots and isolated restore drills; no live restore.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/receipt_evidence.py",
+      "sha256": "4b343873e023d8ed18670dc3fa9717ff95d2f8aeb9e25de573204e24ccb76e14",
+      "summary": "Reconcile saved invoices using durable, owned, read-only SDK evidence.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/reference_data.py",
+      "sha256": "0be443a7f7dadbef26ad9c76946a929e728efc5091e9247da844278f1f5e01b7",
+      "summary": "Complete read-only QuickBooks reference lists for company mapping.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/refund_evidence.py",
+      "sha256": "f7ad4811f55f55ccfb1e93a1e4715af3c044a86d2e8410a2cd773aae19dc6ae7",
+      "summary": "Customer-refund evidence with unused-credit limits, ownership and expiry.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/remote_mcp.py",
+      "sha256": "554cd776fbba957cfcc05cae0605ba2bd3a6c03238fae8dcfde099c4e5858e41",
+      "summary": "Authenticated Streamable HTTP with explicit source and versioned tool boundaries.\n\nTokens are resolved on each request and never shared through mutable global state.\nThe existing deterministic Bridge remains responsible for all accounting decisions.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/reports.py",
+      "sha256": "95496c221d05dc1c47a8724de78074e1b7dde9280c07be33359684cde492c9b3",
+      "summary": "Historical register from verified receipts, not a live QuickBooks ledger report.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/reviewed_qbwc.py",
+      "sha256": "2f12d2c952f49d3d8c5629a81fd04292c48c1f7b97d08563459b83def5bcefbc",
+      "summary": "Opt-in exact reviewed batches over QBWC with durable at-most-once handout.\n\nNo automatic retry of writes. Each entry has a preflight, one handout and an\nindependent TxnID readback. Any error holds the batch and preserves all evidence.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/reviewed_requests.py",
+      "sha256": "c92fd89a5b7aaaaf32ec4b2b31d76180aa03de291d8efd4c69628bd14cddab89",
+      "summary": "Requests and strict saved-field comparison for explicitly reviewed entries.\n\nThis module never dispatches XML. References resolve only through private mappings.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/revisions.py",
+      "sha256": "7018a308848a95d7403517fbded6a8e9b7f852ba31612d8e33675edea8229821",
+      "summary": "Immutable draft lineage and canonical duplicate reservations across corrections.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/sales_receipt_evidence.py",
+      "sha256": "065ce6140a904b1e7efa432ba1c24e3bd256e2f8679f7eef2a17fea68bf31103",
+      "summary": "Fresh, owned QBWC sales-receipt master evidence.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/sales_receipts.py",
+      "sha256": "94f27a6c93a5329545f4ec134c505cb37a72f07ead0d9b1a88c90857e1d2a2dd",
+      "summary": "Bounded non-tax sales receipts: cash/check accounting, never payment processing.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/sample_application_posting.py",
+      "sha256": "19bf95294d49666f8f1f755eff8d2c59069f3b6db5ec458a467872c1307be66c",
+      "summary": "Explicitly gated sample-company customer credits. Production posting is unavailable.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/sample_bill_posting.py",
+      "sha256": "7be175b8f318aed303c990d71e92df4e47eabdcb02a478b4acff82b64cc1c662",
+      "summary": "Explicitly gated sample-company bills. Production posting is unavailable.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/sample_check_posting.py",
+      "sha256": "0b517b301db8fadf68c28ca4823ec2641035d225008c8fb93f780511cb453af6",
+      "summary": "Bounded sample checks through the shared QBWC lifecycle only.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/sample_credit_posting.py",
+      "sha256": "619c35722cd66a7c99d8e57f31e56f68f85407201a6b6ef0586476c32c730774",
+      "summary": "Explicitly gated sample-company customer credits. Production posting is unavailable.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/sample_inventory_transfer_posting.py",
+      "sha256": "866cda789494da431a3c3c2b4ce0562af3d5b169bfb342bbf6526cce62e5bce8",
+      "summary": "Bounded sample inventory_transfers through the shared QBWC lifecycle only.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/sample_journal_posting.py",
+      "sha256": "29502c4ac78b63132bff8aaaa1050237f40f05bf9b1ba5f12980516f6d093d07",
+      "summary": "Bounded sample journals through the shared QBWC lifecycle only.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/sample_payment_posting.py",
+      "sha256": "e96842aac60a106bbc516ab80e6c5e6c7e3d5d5e25470101535f50be2059d0a9",
+      "summary": "Explicitly gated sample-company customer payments. Production posting is unavailable.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/sample_posting.py",
+      "sha256": "2634109f9c8b46f3735801707487f085d82ab89216e3fa24e456eab2b9cbdccd",
+      "summary": "Explicitly gated sample-company invoices. Production posting is unavailable.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/sample_qualification.py",
+      "sha256": "6ad1628e531d8b168f5b3d2833d29cdfe2b25776015e6ea83618e5f9cbb94b07",
+      "summary": "Expiring, exact-payload sample approvals delegated explicitly by an operator.\n\nThis does not dispatch, replace evidence, or grant production permissions.\nDelegated approvals are recorded as automation, never as a human reviewer.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/sample_refund_posting.py",
+      "sha256": "0cc64aca60ec2715122d160b9fd31016b4431705894e1ca025831ceb982c90ef",
+      "summary": "Explicitly gated sample-company recorded customer refunds. Production posting is unavailable.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/sample_sales_receipt_posting.py",
+      "sha256": "11573ad5970a23d5a7528932b859c6d270316482a8d86fcd9ba0a6a4468de988",
+      "summary": "Bounded sample sales receipts through the shared QBWC lifecycle only.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/sample_supplier_application_posting.py",
+      "sha256": "95b09b5453766516d0ff3f3f93b8b561bd96ef479f804632b4bf6801438a634d",
+      "summary": "Explicitly gated sample-company supplier credit applications. Production posting is unavailable.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/sample_supplier_credit_posting.py",
+      "sha256": "bb55eafd4ebc560607d9893c6f5f7b85ba06e659e04baf81f402585f125ca4ae",
+      "summary": "Explicitly gated sample-company supplier credits. Production posting is unavailable.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/sample_supplier_payment_posting.py",
+      "sha256": "a6f08a3e963ca0d4ae5b09bd24d8045bf361749e64164e0402034b6a64715a20",
+      "summary": "Explicitly gated sample-company supplier payments. Production posting is unavailable.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/service.py",
+      "sha256": "853acb4ce9fb3d13284593f9b62e8aa971adfa9e130a7136e345c1e279a15f83",
+      "summary": "Single company-scoped execution contract for trusted interface adapters.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/settlement_discounts.py",
+      "sha256": "4cc8643a0b0077c06a1c9f6ac2c3502acd56af6a6bb29d65d8acc98d106a5d1d",
+      "summary": "Explicit payment discounts, separate from cash and never inferred from terms.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/simulation.py",
+      "sha256": "71a13150387a80d29c92a8c6ef815409de8bf6a647b0f29ebcdf2723540acb33",
+      "summary": "Durable synthetic external ledger. This module has no network or SDK client.\n\nIts interface is a bridge-internal test contract, NOT a Hermes or QuickBooks API.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/source_review.py",
+      "sha256": "a67817dde260fd042acba39c8cfe2569c6bbf5c1ff0cc9a644fa33878453e8cc",
+      "summary": "Explicit review confirms extracted values without rewriting original evidence.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/store.py",
+      "sha256": "e9241a6323e9d0e3fad31719163c46eb04d7030888fe9680eb8f047a9551f8b9",
+      "summary": "Per-company SQLite durability. No in-memory queue or automatic write retry.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/supplier_application.py",
+      "sha256": "da0a91a1ffc5758f5ac8514d692ea76aac3d325444a1731d2e9b44a0d20aa7ff",
+      "summary": "Apply an existing credit to one bill; no new payment or money movement.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/supplier_application_evidence.py",
+      "sha256": "dfa60c416be503b052789743b91c4cfdd30a073a24edea7fcf3809ee088f1ccd",
+      "summary": "Supplier-credit evidence with exact bill/credit links, ownership and expiry.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/supplier_credit_evidence.py",
+      "sha256": "c751c5645e1a39c03209611f012982bd4c8bc00d929c9674515e6d0bb4d0ba89",
+      "summary": "Supplier-credit evidence with original-bill limits, ownership and expiry.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/supplier_credits.py",
+      "sha256": "87af1427290eb175b21153b85d83b81f0a8411aea86572a1481d730d4cab278e",
+      "summary": "Non-tax expense/service supplier credits tied to an original bill.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/supplier_payment_evidence.py",
+      "sha256": "3248cbaa0050fa7f7a928227b2d8f17037e6acc01b2bec56ccbc1d350254cf41",
+      "summary": "Supplier-payment evidence with exact allocations, ownership and expiry.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/supplier_payment_receipt.py",
+      "sha256": "9fd6fbb15af9a15b7e514d1d682f595f7062ca93163a5e14223b3380e81d8cd2",
+      "summary": "Fixed BillPaymentCheck requests and exact saved allocation verification.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/supplier_payment_rejection.py",
+      "sha256": "2bd065e73a40fa95ac4bf9982f34192394196d8fcae282a8095f1bd13228cc1d",
+      "summary": "Resolve an explicit native length rejection only after an independent absence read.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/supplier_payments.py",
+      "sha256": "deac3db638853d37c1465cb9de0af24710b62cf2fe76ec291f4152d22faacf24",
+      "summary": "Fixed vendor/bill payment checks. No raw XML or money-transfer interface.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/tabular.py",
+      "sha256": "bd23865119c03f59a25deded52943742e50625221eeb0651b6889b0cbd3f794d",
+      "summary": "Bounded spreadsheet intake; explicit mappings prepare drafts, never accounting writes.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/transaction_choices.py",
+      "sha256": "dfabbdd6cf280868b4c9907200a6070027db3e4702d03e709010d73dff6cf4e2",
+      "summary": "Search verified Bridge history; selections are never current-balance evidence.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/validation.py",
+      "sha256": "a1ec576882be232e4bd11b18f81c425a96c6f77a00245e20c267d441613145ae",
+      "summary": "Narrow synthetic invoice schema; never accepts raw qbXML, SQL, or instructions.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/web_ui.py",
+      "sha256": "6c9a2889b853bbc53e3c7a8ff31984141d7b5661ef99a6d3d766f7e43b1a0e23",
+      "summary": "Same-origin browser facade over the shared company contracts.",
+      "inspection": "AST inventory; presence is not qualification"
+    },
+    {
+      "path": "src/kaydbooks_bridge/workflows.py",
+      "sha256": "a91fe3f6c8a964d29ace31fcb4f23b325648eea60401fd9db060f67b49c56ccf",
+      "summary": "Local optional workflows; no message delivery or accounting dispatch.",
+      "inspection": "AST inventory; presence is not qualification"
+    }
+  ],
+  "registered_routes_and_tools": [
+    {
+      "module": "src/kaydbooks_bridge/deployment.py",
+      "function": "health",
+      "decorator": "app.get('/healthz')",
+      "line": 293
+    },
+    {
+      "module": "src/kaydbooks_bridge/deployment.py",
+      "function": "support",
+      "decorator": "app.get('/support')",
+      "line": 301
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "company_catalog_v1",
+      "decorator": "app.tool()",
+      "line": 307
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "batch_preview_v1",
+      "decorator": "app.tool()",
+      "line": 312
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "batch_status_v1",
+      "decorator": "app.tool()",
+      "line": 320
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "qbwc_entry_v1",
+      "decorator": "app.tool()",
+      "line": 325
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "qbwc_report_v1",
+      "decorator": "app.tool()",
+      "line": 377
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "native_report_v1",
+      "decorator": "app.tool()",
+      "line": 423
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "qbwc_reference_data_v1",
+      "decorator": "app.tool()",
+      "line": 443
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "table_intake_v1",
+      "decorator": "app.tool()",
+      "line": 452
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "company_access_v1",
+      "decorator": "app.tool()",
+      "line": 457
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "revise_document_v1",
+      "decorator": "app.tool()",
+      "line": 464
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "extract_document_v1",
+      "decorator": "app.tool()",
+      "line": 492
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "master_lookup_v1",
+      "decorator": "app.tool()",
+      "line": 497
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "check_master_change_v1",
+      "decorator": "app.tool()",
+      "line": 506
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "prepare_master_change_v1",
+      "decorator": "app.tool()",
+      "line": 513
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "prepare_extraction_v1",
+      "decorator": "app.tool()",
+      "line": 535
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "capture_document_v1",
+      "decorator": "app.tool()",
+      "line": 559
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "prepare_invoice_v1",
+      "decorator": "app.tool()",
+      "line": 575
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "lookup_invoice_masters_v1",
+      "decorator": "app.tool()",
+      "line": 597
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "prepare_bill_v1",
+      "decorator": "app.tool()",
+      "line": 604
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "lookup_bill_masters_v1",
+      "decorator": "app.tool()",
+      "line": 626
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "prepare_customer_payment_v1",
+      "decorator": "app.tool()",
+      "line": 633
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "check_customer_payment_v1",
+      "decorator": "app.tool()",
+      "line": 655
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "prepare_supplier_payment_v1",
+      "decorator": "app.tool()",
+      "line": 662
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "check_supplier_payment_v1",
+      "decorator": "app.tool()",
+      "line": 684
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "prepare_customer_credit_v1",
+      "decorator": "app.tool()",
+      "line": 691
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "check_customer_credit_v1",
+      "decorator": "app.tool()",
+      "line": 713
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "prepare_supplier_credit_v1",
+      "decorator": "app.tool()",
+      "line": 720
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "check_supplier_credit_v1",
+      "decorator": "app.tool()",
+      "line": 742
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "prepare_supplier_application_v1",
+      "decorator": "app.tool()",
+      "line": 749
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "check_supplier_application_v1",
+      "decorator": "app.tool()",
+      "line": 771
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "prepare_credit_application_v1",
+      "decorator": "app.tool()",
+      "line": 778
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "check_credit_application_v1",
+      "decorator": "app.tool()",
+      "line": 800
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "prepare_customer_refund_v1",
+      "decorator": "app.tool()",
+      "line": 807
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "check_customer_refund_v1",
+      "decorator": "app.tool()",
+      "line": 829
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "validate_v1",
+      "decorator": "app.tool()",
+      "line": 836
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "submit_v1",
+      "decorator": "app.tool()",
+      "line": 841
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "status_v1",
+      "decorator": "app.tool()",
+      "line": 846
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "preview_v1",
+      "decorator": "app.tool()",
+      "line": 851
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "verify_receipt_v1",
+      "decorator": "app.tool()",
+      "line": 856
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "recover_v1",
+      "decorator": "app.tool()",
+      "line": 861
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "board_v1",
+      "decorator": "app.tool()",
+      "line": 866
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "memory_v1",
+      "decorator": "app.tool()",
+      "line": 871
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "receipt_register_v1",
+      "decorator": "app.tool()",
+      "line": 876
+    },
+    {
+      "module": "src/kaydbooks_bridge/hermes_tools.py",
+      "function": "workflow_v1",
+      "decorator": "app.tool()",
+      "line": 883
+    },
+    {
+      "module": "src/kaydbooks_bridge/remote_mcp.py",
+      "function": "company_catalog_v1",
+      "decorator": "server.tool(annotations=read)",
+      "line": 221
+    },
+    {
+      "module": "src/kaydbooks_bridge/remote_mcp.py",
+      "function": "entry_status_v1",
+      "decorator": "server.tool(annotations=read)",
+      "line": 226
+    },
+    {
+      "module": "src/kaydbooks_bridge/remote_mcp.py",
+      "function": "entry_preview_v1",
+      "decorator": "server.tool(annotations=read)",
+      "line": 236
+    },
+    {
+      "module": "src/kaydbooks_bridge/remote_mcp.py",
+      "function": "entry_prepare_v1",
+      "decorator": "server.tool(annotations=write)",
+      "line": 246
+    },
+    {
+      "module": "src/kaydbooks_bridge/remote_mcp.py",
+      "function": "entry_review_v1",
+      "decorator": "server.tool(annotations=write)",
+      "line": 260
+    },
+    {
+      "module": "src/kaydbooks_bridge/remote_mcp.py",
+      "function": "batch_preview_v1",
+      "decorator": "server.tool(annotations=write)",
+      "line": 272
+    },
+    {
+      "module": "src/kaydbooks_bridge/remote_mcp.py",
+      "function": "batch_status_v1",
+      "decorator": "server.tool(annotations=read)",
+      "line": 277
+    },
+    {
+      "module": "src/kaydbooks_bridge/remote_mcp.py",
+      "function": "qbwc_report_v1",
+      "decorator": "server.tool(annotations=write)",
+      "line": 282
+    },
+    {
+      "module": "src/kaydbooks_bridge/remote_mcp.py",
+      "function": "composio_prepare_v1",
+      "decorator": "server.tool(annotations=write)",
+      "line": 308
+    },
+    {
+      "module": "src/kaydbooks_bridge/remote_mcp.py",
+      "function": "composio_approve_v1",
+      "decorator": "server.tool(annotations=write)",
+      "line": 327
+    },
+    {
+      "module": "src/kaydbooks_bridge/remote_mcp.py",
+      "function": "composio_execute_v1",
+      "decorator": "server.tool(annotations=write)",
+      "line": 338
+    },
+    {
+      "module": "src/kaydbooks_bridge/remote_mcp.py",
+      "function": "composio_status_v1",
+      "decorator": "server.tool(annotations=read)",
+      "line": 349
+    },
+    {
+      "module": "src/kaydbooks_bridge/web_ui.py",
+      "function": "page",
+      "decorator": "app.get('/app')",
+      "line": 463
+    },
+    {
+      "module": "src/kaydbooks_bridge/web_ui.py",
+      "function": "asset",
+      "decorator": "app.get('/app/{asset}')",
+      "line": 469
+    }
+  ],
+  "validated_operations": [
+    "bill.create",
+    "check.create",
+    "customer-credit.apply",
+    "customer-credit.create",
+    "customer-payment.create",
+    "customer-refund.create",
+    "inventory-transfer.create",
+    "invoice.create",
+    "journal.create",
+    "master.change",
+    "sales-receipt.create",
+    "supplier-credit.apply",
+    "supplier-credit.create",
+    "supplier-payment.create"
+  ],
+  "shared_qbwc_contracts": [
+    "check.create",
+    "inventory-transfer.create",
+    "journal.create",
+    "sales-receipt.create",
+    "invoice.create",
+    "bill.create",
+    "customer-payment.create",
+    "supplier-payment.create",
+    "customer-credit.create",
+    "supplier-credit.create"
+  ],
+  "native_report_names": [
+    "profit-loss",
+    "balance-sheet",
+    "trial-balance",
+    "customer-balances",
+    "vendor-balances",
+    "inventory-valuation",
+    "inventory-stock",
+    "inventory-by-site",
+    "sales-customers",
+    "sales-items",
+    "purchases-vendors",
+    "purchases-items",
+    "unpaid-invoices",
+    "unpaid-bills",
+    "customer-statement",
+    "vendor-statement",
+    "general-ledger",
+    "receivables-aging",
+    "payables-aging",
+    "job-profitability",
+    "time-by-job",
+    "check-detail",
+    "deposit-detail",
+    "journal"
+  ],
+  "test_files": [
+    "tests/test_access.py",
+    "tests/test_account_roles.py",
+    "tests/test_batch_preflight.py",
+    "tests/test_bill_adjustments.py",
+    "tests/test_bill_balance.py",
+    "tests/test_bill_lookup.py",
+    "tests/test_bill_services.py",
+    "tests/test_bills.py",
+    "tests/test_bridge.py",
+    "tests/test_builder.py",
+    "tests/test_capabilities.py",
+    "tests/test_composio.py",
+    "tests/test_credit_application.py",
+    "tests/test_customer_credits.py",
+    "tests/test_customer_payments.py",
+    "tests/test_customer_refunds.py",
+    "tests/test_deployment.py",
+    "tests/test_deployment_walkthrough.py",
+    "tests/test_direct_sdk.py",
+    "tests/test_dispatch.py",
+    "tests/test_documents_tools.py",
+    "tests/test_example_sync.py",
+    "tests/test_expiry_boundary.py",
+    "tests/test_extraction.py",
+    "tests/test_fixed_percentage_pricing.py",
+    "tests/test_hermes_batches.py",
+    "tests/test_hermes_channel.py",
+    "tests/test_hermes_intake.py",
+    "tests/test_hermes_qbwc.py",
+    "tests/test_hermes_setup.py",
+    "tests/test_installer.py",
+    "tests/test_inventory_bills.py",
+    "tests/test_inventory_customer_credits.py",
+    "tests/test_inventory_sales.py",
+    "tests/test_inventory_supplier_credits.py",
+    "tests/test_inventory_worksheet.py",
+    "tests/test_invoice_adjustments.py",
+    "tests/test_invoice_commercial.py",
+    "tests/test_invoice_compatibility.py",
+    "tests/test_invoice_evidence.py",
+    "tests/test_invoice_preview.py",
+    "tests/test_invoice_receipt.py",
+    "tests/test_journal_memo_repair.py",
+    "tests/test_master_posting.py",
+    "tests/test_master_records.py",
+    "tests/test_native_master_gate.py",
+    "tests/test_native_reports.py",
+    "tests/test_onboarding.py",
+    "tests/test_parser.py",
+    "tests/test_qbwc_accounts.py",
+    "tests/test_qbwc_bill_process_recovery.py",
+    "tests/test_qbwc_bills.py",
+    "tests/test_qbwc_checks.py",
+    "tests/test_qbwc_customer_credit_inventory.py",
+    "tests/test_qbwc_customer_credits.py",
+    "tests/test_qbwc_discovery.py",
+    "tests/test_qbwc_inventory_posting.py",
+    "tests/test_qbwc_inventory_transfers.py",
+    "tests/test_qbwc_invoices.py",
+    "tests/test_qbwc_journals.py",
+    "tests/test_qbwc_payments.py",
+    "tests/test_qbwc_posting.py",
+    "tests/test_qbwc_receipts.py",
+    "tests/test_qbwc_reference_data.py",
+    "tests/test_qbwc_reports.py",
+    "tests/test_qbwc_sales_receipts.py",
+    "tests/test_qbwc_schema_upgrade.py",
+    "tests/test_qbwc_supplier_credit_inventory.py",
+    "tests/test_qbwc_supplier_credits.py",
+    "tests/test_qbwc_supplier_payments.py",
+    "tests/test_receipt_lifecycle.py",
+    "tests/test_receipt_report.py",
+    "tests/test_remote_mcp.py",
+    "tests/test_reviewed_qbwc.py",
+    "tests/test_revision_evidence.py",
+    "tests/test_revisions.py",
+    "tests/test_sample_bills.py",
+    "tests/test_sample_payments.py",
+    "tests/test_sample_posting.py",
+    "tests/test_sample_qualification.py",
+    "tests/test_sample_supplier_payments.py",
+    "tests/test_server.py",
+    "tests/test_service.py",
+    "tests/test_session.py",
+    "tests/test_settlement_discounts.py",
+    "tests/test_soap.py",
+    "tests/test_supplier_application.py",
+    "tests/test_supplier_credits.py",
+    "tests/test_supplier_payment_rejections.py",
+    "tests/test_supplier_payments.py",
+    "tests/test_tabular.py",
+    "tests/test_testing.py",
+    "tests/test_transaction_choices.py",
+    "tests/test_web_browser.py",
+    "tests/test_web_ui.py",
+    "tests/test_workflows_qualification.py",
+    "tests/test_wsdl.py",
+    "tests/test_xml_hardening.py"
+  ]
+}

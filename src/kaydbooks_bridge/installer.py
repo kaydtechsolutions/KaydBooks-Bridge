@@ -11,6 +11,7 @@ import json
 import os
 import re
 import secrets
+import shlex
 import shutil
 import socket
 import ssl
@@ -470,6 +471,108 @@ def stage_optional(etc, settings, host):
     return notes
 
 
+def replace_private(path, value, *, group="root"):
+    """Root-owned configuration publication with a private, exact backup."""
+    path = Path(path)
+    if any(p.is_symlink() for p in (path, *path.parents)):
+        raise InstallError("private path contains a symbolic link")
+    payload = value if isinstance(value, str) else json.dumps(value, indent=2) + "\n"
+    if path.exists() and path.read_text() == payload:
+        run("chown", f"root:{group}", path)
+        run("chmod", "0640", path)
+        return
+    if path.exists():
+        backup = path.with_name(path.name + ".backup-" + str(time.time_ns()))
+        fd = os.open(backup, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(path.read_bytes())
+            stream.flush()
+            os.fsync(stream.fileno())
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    temporary = path.with_name(path.name + ".new-" + str(time.time_ns()))
+    try:
+        private_write(temporary, payload)
+        run("chown", f"root:{group}", temporary)
+        run("chmod", "0640", temporary)
+        with temporary.open("r+b") as stream:
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def configure_hermes_remote(
+    runtime,
+    hermes_home,
+    base_url,
+    *,
+    etc=Path("/etc/kaydbooks"),
+    scoped=Path("/etc/kaydbooks-hermes"),
+    dry_run=False,
+):
+    """Prepare a scoped client and update one profile before removing OS access.
+
+    This function does not restart or reconfigure a running gateway. Service
+    migration must stop it first; its active profile is an explicit argument.
+    """
+    principal = json.loads((etc / "bridge-config.json").read_text())["principals"]["whatsapp"]
+    policy = json.loads((etc / "remote-policy.json").read_text())["principals"]["whatsapp"]
+    if principal.get("disabled", False) or policy["source"] != "whatsapp":
+        raise InstallError("an enabled WhatsApp principal is required")
+    secrets_file = json.loads((etc / "credentials.json").read_text())
+    token = secrets_file[principal["token_env"]]
+    if list(secrets_file.values()).count(token) != 1:
+        raise InstallError("WhatsApp credential must be unique")
+    if any(p.is_symlink() for p in (scoped, *scoped.parents)):
+        raise InstallError("scoped directory must not contain symlinks")
+    run("install", "-d", "-o", "root", "-g", "hermes", "-m", "0750", scoped)
+    replace_private(scoped / "token.json", {"token": token}, group="hermes")
+    client_path = scoped / "client.json"
+    replace_private(
+        client_path,
+        {
+            "url": base_url.rstrip("/") + "/mcp",
+            "token_file": str(scoped / "token.json"),
+            "tools": policy["tools"],
+        },
+        group="hermes",
+    )
+    client = "/opt/kaydbooks/current/bin/kaydbooks-bridge-remote-client"
+    run(
+        "sudo",
+        "-u",
+        "hermes",
+        "-H",
+        client,
+        "--config",
+        client_path,
+        "--check",
+        cwd="/var/lib/hermes",
+    )
+    entry = {
+        "command": client,
+        "args": ["--config", str(client_path)],
+        "enabled": True,
+        "supports_parallel_tool_calls": False,
+        "tools": {"include": policy["tools"], "resources": False, "prompts": False},
+    }
+    # Hermes owns its Python runtime; execute it only under its own account.
+    run(
+        "sudo",
+        "-u",
+        "hermes",
+        "-H",
+        runtime.parent / "python",
+        "-I",
+        "-c",
+        Path(__file__).with_name("hermes_profile.py").read_text(),
+        input=json.dumps(
+            {"path": str(hermes_home / "config.yaml"), "entry": entry, "dry_run": dry_run}
+        ),
+        cwd="/var/lib/hermes",
+    )
+
+
 def install_hermes():
     # Native Node modules need a compiler; newer Node builds need libatomic1.
     # Resolve OS dependencies while privileged, before switching to the service user.
@@ -525,75 +628,30 @@ def install_hermes():
         raise InstallError(
             "Hermes runtime location differs; inspect installer output before configuring units"
         )
-    etc = Path("/etc/kaydbooks")
-    credentials = json.loads((etc / "credentials.json").read_text())
-    tool_file = etc / "hermes-tools.json"
-    if not tool_file.exists():
-        private_write(
-            tool_file, {"KAYDBOOKS_HERMES_SECRET": credentials["KAYDBOOKS_HERMES_SECRET"]}
-        )
-    run("chown", "root:hermes", tool_file)
-    run("chmod", "0640", tool_file)
-    # Use the actual installer's default profile; no deployment-specific user name.
-    hermes_home = Path("/var/lib/hermes/.hermes")
-    fragment = {
-        "mcp_servers": {
-            "kaydbooks": {
-                "command": "/opt/kaydbooks/current/bin/kaydbooks-bridge-tools",
-                "args": [],
-                "enabled": True,
-                "supports_parallel_tool_calls": False,
-                "env": {
-                    "KAYDBOOKS_CONFIG": "/etc/kaydbooks/bridge-config.json",
-                    "KAYDBOOKS_TOOL_SECRET_FILE": str(tool_file),
-                    "KAYDBOOKS_TOOL_TOKEN_ENV": "KAYDBOOKS_HERMES_SECRET",
-                },
-                "tools": {
-                    "include": ["company_catalog_v1", "batch_status_v1"],
-                    "resources": False,
-                    "prompts": False,
-                },
-            }
-        },
-    }
-    fragment_path = etc / "hermes-fragment.json"
-    if not fragment_path.exists():
-        private_write(fragment_path, fragment)
-    # Hermes supplies PyYAML. Preserve the installer-generated provider settings.
-    run(
-        runtime.parent / "python",
-        "-c",
-        """
-import json, pathlib, yaml
-path = pathlib.Path('/var/lib/hermes/.hermes/config.yaml')
-data = yaml.safe_load(path.read_text()) if path.exists() else {}
-data = data or {}
-fragment = json.load(open('/etc/kaydbooks/hermes-fragment.json'))
-servers = data.setdefault('mcp_servers', {})
-if 'kaydbooks' not in servers:
-    servers.update(fragment['mcp_servers'])
-    path.write_text(yaml.safe_dump(data, sort_keys=False))
-""",
+    # Read systemd's configured profile so an upgrade preserves existing enrollment.
+    environment = run(
+        "systemctl",
+        "show",
+        "hermes-gateway.service",
+        "--property=Environment",
+        "--value",
+        capture=True,
     )
-    run("chown", "hermes:hermes", hermes_home / "config.yaml")
-    override = Path("/etc/systemd/system/hermes-gateway.service.d/installer.conf")
-    if not override.exists():
-        private_write(
-            override,
-            f"""[Service]
-Environment=HERMES_HOME={hermes_home}
-Environment=PATH=/var/lib/hermes/.local/bin:{hermes_home}/node/bin:/usr/local/bin:/usr/bin:/bin
-Environment=KAYDBOOKS_TOOL_SECRET_FILE={tool_file}
-Environment=KAYDBOOKS_TOOL_TOKEN_ENV=KAYDBOOKS_HERMES_SECRET
-WorkingDirectory={hermes_home}
-ExecStart=
-ExecStart={runtime.parent}/python -m hermes_cli.main gateway run
-""",
-        )
-    run("systemctl", "daemon-reload")
-    print(
-        "PASS Hermes runtime/MCP configured; ACTION model login and WhatsApp pairing required before enabling gateway"
-    )
+    values = dict(item.split("=", 1) for item in shlex.split(environment) if "=" in item)
+    hermes_home = Path(values.get("HERMES_HOME", "/var/lib/hermes/.hermes"))
+    env_file = Path("/etc/kaydbooks/bridge.env").read_text()
+    urls = [
+        line.split("=", 1)[1]
+        for line in env_file.splitlines()
+        if line.startswith("KAYDBOOKS_BASE_URL=")
+    ]
+    if len(urls) != 1:
+        raise InstallError("one configured private server URL is required")
+    from .service_isolation import migrate
+
+    migrate(hermes_home, urls[0])
+    print("PASS Hermes scoped MCP configured; existing provider and WhatsApp settings preserved")
+    print("ACTION New installations still require model login and WhatsApp pairing")
 
 
 def build_wheel(source, revision):
