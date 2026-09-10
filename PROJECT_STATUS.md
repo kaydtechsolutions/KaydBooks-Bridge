@@ -9,8 +9,10 @@ WhatsApp-only Hermes worker, reached privately through Tailscale HTTPS and loopb
 Physical Windows computers continue to run QuickBooks Desktop and Web Connector. The
 optional Composio adapter is company-scoped and approval-gated. Production posting remains
 disabled; only explicit bounded sample gates may write.
-The remaining gates are ChatGPT connector authorization, physical QBWC import, the
-bounded live sample preview/post/readback/duplicate cycle, and final merge.
+The remaining gates are physical QBWC import, the bounded live sample
+preview/post/readback/duplicate cycle, and final merge. The ChatGPT development app
+is connected through the outbound-only OpenAI tunnel and its read-only live tool call
+is qualified.
 
 ## Prior release: KB v0.1.0
 

@@ -26,7 +26,9 @@ remains disabled by the repository release workflow.
 - Proxmox: the separate physical host is administered through the verified
   `kaydbooks-proxmox` SSH alias. The new LXC is reached through `kaydbooks-lxc`;
   its storage, network and snapshot qualification have passed.
-- Current Bridge, Remote MCP and Hermes runtimes are in the new Linux LXC. Private
+- Current Bridge, Remote MCP, OpenAI Secure MCP Tunnel and Hermes runtimes are in the
+  new Linux LXC. The ChatGPT development app is connected and its live read-only call
+  is qualified. Private
   configuration and credentials remain outside Git. Windows retains only the local
   Codex operator, QuickBooks Desktop, QBWC and private connector material.
 - The release candidate has per-company state, durable QBWC, authenticated HTTP MCP
@@ -53,8 +55,7 @@ remains disabled by the repository release workflow.
 
 Available and verified: repository, local shell, the physical Windows workstation,
 Proxmox and LXC SSH aliases, Tailscale private HTTPS, Linux services, Remote MCP,
-Hermes WhatsApp, GitHub push and CI. The ChatGPT principal, Secure MCP Tunnel client
-and draft configuration are prepared; creating its persistent tunnel credentials and
-app remains an authenticated human checkpoint. QuickBooks Add Application approval and
-the live sample cycle are also human checkpoints. No production company is authorized
-for posting by this request.
+the connected ChatGPT development app, Hermes WhatsApp, GitHub push and CI. The
+restricted ChatGPT principal completed a live read-only tool call through the Secure
+MCP Tunnel. QuickBooks Add Application approval and the live sample cycle remain human
+checkpoints. No production company is authorized for posting by this request.
